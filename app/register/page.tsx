@@ -1,167 +1,173 @@
-'use client'
-
-import { useState } from 'react'
 import { registerUser } from './actions'
 import Link from 'next/link'
 
-export default function RegisterPage() {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const inputStyle = "w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 py-12 px-4 flex items-center justify-center">
-      
-      <div className="max-w-lg w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative overflow-hidden my-8">
         
-        {/* Indikátor průběhu (Progress bar) */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2 px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Krok {step} ze 3
-            </span>
-            <span className="text-xs font-bold text-gray-400">
-              {step === 1 && '🔑 Účet'}
-              {step === 2 && '👤 Páníček'}
-              {step === 3 && '🐾 Mazlíček'}
-            </span>
-          </div>
-          <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-300 ease-out"
-              style={{ width: `${(step / 3) * 100}%` }}
-            ></div>
-          </div>
+        {/* Hlavička */}
+        <div className="text-center mb-6">
+          <Link href="/" className="inline-block text-4xl mb-2">
+            🐾
+          </Link>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+            Registrace do PawMeet
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+            Vyplňte údaje a vytvořte profil své smečky.
+          </p>
         </div>
 
-        <form action={registerUser}>
+        {/* Chybová hláška */}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
+            ⚠️ {decodeURIComponent(error)}
+          </div>
+        )}
+
+        <form action={registerUser} className="space-y-4">
           
-          {/* KROK 1: ÚČET */}
-          {step === 1 && (
-            <div className="space-y-5 animate-fadeIn">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Vytvořte si přístup
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                  Zadejte údaje, kterými se budete přihlašovat.
-                </p>
-              </div>
+          {/* OSOBNÍ ÚDAJE */}
+          <div className="space-y-3">
+            <h2 className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              👤 Údaje páníčka
+            </h2>
 
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">E-mail</label>
-                <input type="email" name="email" required placeholder="příklad@email.cz" className={inputStyle} />
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Jméno *</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  required
+                  placeholder="Jan"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">Heslo</label>
-                <input type="password" name="password" required placeholder="Alespoň 6 znaků" className={inputStyle} />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all mt-4"
-              >
-                Pokračovat na profil ➔
-              </button>
-            </div>
-          )}
-
-          {/* KROK 2: MAJITEL */}
-          {step === 2 && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Něco o vás
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                  Ať ostatní v okolí vědí, s kým si píšou.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <input type="text" name="firstName" required placeholder="Jméno" className={inputStyle} />
-                <input type="text" name="lastName" required placeholder="Příjmení" className={inputStyle} />
-              </div>
-              <input type="text" name="username" required placeholder="Uživatelské jméno (např. rex_master)" className={inputStyle} />
-              <input type="text" name="city" required placeholder="Město (např. Praha)" className={inputStyle} />
-              <div>
-                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">Datum narození</label>
-                <input type="date" name="ownerBirthDate" className={inputStyle} />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="w-1/3 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 transition"
-                >
-                  ⬅ Zpět
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="w-2/3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all"
-                >
-                  Přidat mazlíčka ➔
-                </button>
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Příjmení *</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  required
+                  placeholder="Novák"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
               </div>
             </div>
-          )}
 
-          {/* KROK 3: MAZLÍČEK */}
-          {step === 3 && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-amber-500 to-purple-600 bg-clip-text text-transparent">
-                  Váš parťák 🐾
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-                  To nejdůležitější na PawMeet!
-                </p>
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Uživatelské jméno *</label>
+              <input
+                type="text"
+                name="username"
+                required
+                placeholder="honzanovac"
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">E-mail *</label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="jan@novak.cz"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
               </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Město (volitelné)</label>
+                <input
+                  type="text"
+                  name="city"
+                  placeholder="Praha"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <input type="text" name="petName" required placeholder="Jméno mazlíčka" className={inputStyle} />
-                <select name="petType" className={inputStyle}>
-                  <option value="pes">🐶 Pes</option>
-                  <option value="kocka">🐱 Kočka</option>
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Heslo *</label>
+              <input
+                type="password"
+                name="password"
+                required
+                minLength={6}
+                placeholder="Alespoň 6 znaků"
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          <hr className="border-gray-200 dark:border-gray-800 my-4" />
+
+          {/* ÚDAJE O MAZLÍČKOVI */}
+          <div className="space-y-3">
+            <h2 className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              🐶 Údaje o mazlíčkovi
+            </h2>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Jméno mazlíčka *</label>
+                <input
+                  type="text"
+                  name="petName"
+                  required
+                  placeholder="Rex"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Druh *</label>
+                <select
+                  name="petType"
+                  required
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                >
+                  <option value="pes">Pes 🐶</option>
+                  <option value="kocka">Kočka 🐱</option>
+                  <option value="jine">Jiné 🐾</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="text" name="petBreed" placeholder="Plemeno" className={inputStyle} />
-                <select name="petGender" className={inputStyle}>
-                  <option value="Kluk">Kluk / Kocour</option>
-                  <option value="Holka">Holka / Fena</option>
-                </select>
-              </div>
-              <input type="text" name="petTemperament" placeholder="Povaha (hravý, energický, stydlivý...)" className={inputStyle} />
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="w-1/3 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 transition"
-                >
-                  ⬅ Zpět
-                </button>
-                <button
-                  type="submit"
-                  className="w-2/3 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-black text-lg rounded-2xl shadow-xl hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  Dokončit 🚀
-                </button>
-              </div>
             </div>
-          )}
 
+            <div>
+              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Plemeno *</label>
+              <input
+                type="text"
+                name="petBreed"
+                required
+                placeholder="Německý ovčák / Kříženec"
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all mt-4"
+          >
+            Vytvořit účet a vstoupit 🐾
+          </button>
         </form>
 
-        <p className="text-center mt-8 text-sm text-gray-500 dark:text-gray-400 font-medium">
-          Už máte účet?{' '}
+        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
+          Již máte účet?{' '}
           <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1">
             Přihlaste se
           </Link>
-        </p>
+        </div>
 
       </div>
     </div>
