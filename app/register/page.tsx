@@ -1,102 +1,168 @@
+'use client'
+
+import { useState } from 'react'
 import { registerUser } from './actions'
 import Link from 'next/link'
 
-export default async function RegisterPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>
-}) {
-  const { error } = await searchParams
-
-  const inputStyle = "w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+export default function RegisterPage() {
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const inputStyle = "w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 py-12 px-4 flex items-center justify-center">
       
-      <div className="max-w-2xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative">
+      <div className="max-w-lg w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative overflow-hidden">
         
-        {/* Dekorace */}
-        <div className="absolute -top-6 -left-6 text-4xl animate-bounce">🎾</div>
-        <div className="absolute -bottom-6 -right-6 text-4xl animate-bounce delay-300">🐟</div>
-
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-            Nová smečka začíná zde!
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium mt-2">
-            Zabere to jen minutku a váš mazlíček získá tisíce kámošů.
-          </p>
+        {/* Indikátor průběhu (Progress bar) */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-2 px-1">
+            <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              Krok {step} ze 3
+            </span>
+            <span className="text-xs font-bold text-gray-400">
+              {step === 1 && '🔑 Účet'}
+              {step === 2 && '👤 Páníček'}
+              {step === 3 && '🐾 Mazlíček'}
+            </span>
+          </div>
+          <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 transition-all duration-300 ease-out"
+              style={{ width: `${(step / 3) * 100}%` }}
+            ></div>
+          </div>
         </div>
 
-        {error && (
-          <div className="mb-8 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium animate-pulse">
-            ⚠️ {decodeURIComponent(error)}
-          </div>
-        )}
-
-        <form action={registerUser} className="space-y-10">
+        <form action={registerUser}>
           
-          {/* SEKCE 1: ÚČET */}
-          <section>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">1</div>
-              <h3 className="text-xl font-bold">Bezpečný přístup</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="email" name="email" required placeholder="E-mailová adresa" className={inputStyle} />
-              <input type="password" name="password" required placeholder="Silné heslo" className={inputStyle} />
-            </div>
-          </section>
+          {/* KROK 1: ÚČET */}
+          {step === 1 && (
+            <div className="space-y-5 animate-fadeIn">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  Vytvořte si přístup
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                  Zadejte údaje, kterými se budete přihlašovat.
+                </p>
+              </div>
 
-          {/* SEKCE 2: MAJITEL */}
-          <section>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">2</div>
-              <h3 className="text-xl font-bold">O vás (páníček)</h3>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">E-mail</label>
+                <input type="email" name="email" required placeholder="příklad@email.cz" className={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">Heslo</label>
+                <input type="password" name="password" required placeholder="Alespoň 6 znaků" className={inputStyle} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-base rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all mt-4"
+              >
+                Pokračovat na profil ➔
+              </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="firstName" required placeholder="Vaše jméno" className={inputStyle} />
-              <input type="text" name="lastName" required placeholder="Vaše příjmení" className={inputStyle} />
+          )}
+
+          {/* KROK 2: MAJITEL */}
+          {step === 2 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  Něco o vás
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                  Ať ostatní v okolí vědí, s kým si píšou.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" name="firstName" required placeholder="Jméno" className={inputStyle} />
+                <input type="text" name="lastName" required placeholder="Příjmení" className={inputStyle} />
+              </div>
               <input type="text" name="username" required placeholder="Uživatelské jméno (např. rex_master)" className={inputStyle} />
-              <input type="text" name="city" required placeholder="Město" className={inputStyle} />
-              <div className="sm:col-span-2">
-                <label className="text-xs font-bold text-gray-400 ml-2 mb-1 block uppercase">Datum narození</label>
+              <input type="text" name="city" required placeholder="Město (např. Praha)" className={inputStyle} />
+              <div>
+                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">Datum narození</label>
                 <input type="date" name="ownerBirthDate" className={inputStyle} />
               </div>
-            </div>
-          </section>
 
-          {/* SEKCE 3: MAZLÍČEK */}
-          <section className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border border-indigo-100 dark:border-indigo-800/50">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm">3</div>
-              <h3 className="text-xl font-bold">Váš čtyřnohý parťák</h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="petName" required placeholder="Jméno mazlíčka" className={inputStyle} />
-              <select name="petType" className={inputStyle}>
-                <option value="pes">🐶 Pes</option>
-                <option value="kocka">🐱 Kočka</option>
-              </select>
-              <input type="text" name="petBreed" placeholder="Plemeno" className={inputStyle} />
-              <select name="petGender" className={inputStyle}>
-                <option value="Kluk">Kluk / Kocour</option>
-                <option value="Holka">Holka / Fena</option>
-              </select>
-              <div className="sm:col-span-2">
-                 <input type="text" name="petTemperament" placeholder="Povaha (hravý, klidný, hlídač...)" className={inputStyle} />
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="w-1/3 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 transition"
+                >
+                  ⬅ Zpět
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="w-2/3 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all"
+                >
+                  Přidat mazlíčka ➔
+                </button>
               </div>
             </div>
-          </section>
+          )}
 
-          <button type="submit" className="w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-black text-xl rounded-2xl shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-95 transition-all duration-200">
-            Vstoupit do světa PawMeet 🐾
-          </button>
+          {/* KROK 3: MAZLÍČEK */}
+          {step === 3 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-amber-500 to-purple-600 bg-clip-text text-transparent">
+                  Váš parťák 🐾
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                  To nejdůležitější na PawMeet!
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" name="petName" required placeholder="Jméno mazlíčka" className={inputStyle} />
+                <select name="petType" className={inputStyle}>
+                  <option value="pes">🐶 Pes</option>
+                  <option value="kocka">🐱 Kočka</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" name="petBreed" placeholder="Plemeno" className={inputStyle} />
+                <select name="petGender" className={inputStyle}>
+                  <option value="Kluk">Kluk / Kocour</option>
+                  <option value="Holka">Holka / Fena</option>
+                </select>
+              </div>
+              <input type="text" name="petTemperament" placeholder="Povaha (hravý, energický, stydlivý...)" className={inputStyle} />
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="w-1/3 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold rounded-2xl hover:bg-gray-200 transition"
+                >
+                  ⬅ Zpět
+                </button>
+                <button
+                  type="submit"
+                  className="w-2/3 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-black text-lg rounded-2xl shadow-xl hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  Dokončit 🚀
+                </button>
+              </div>
+            </div>
+          )}
+
         </form>
 
-        <p className="text-center mt-8 text-gray-500 dark:text-gray-400 font-medium">
-          Už jsi členem? <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Přihlas se</Link>
+        <p className="text-center mt-8 text-sm text-gray-500 dark:text-gray-400 font-medium">
+          Už máte účet?{' '}
+          <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1">
+            Přihlaste se
+          </Link>
         </p>
+
       </div>
     </div>
   )
