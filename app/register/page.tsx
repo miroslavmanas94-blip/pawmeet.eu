@@ -9,227 +9,113 @@ export default async function RegisterPage({
   const { error } = await searchParams
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8 text-gray-900 dark:text-gray-100 flex items-center justify-center">
-      <div className="max-w-2xl w-full space-y-8 bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 py-12 px-4 flex items-center justify-center">
+      
+      <div className="max-w-2xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative">
         
-        {/* Hlavička */}
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-indigo-600 dark:text-indigo-400">
-            PawMeet 🐾
+        {/* Dekorace */}
+        <div className="absolute -top-6 -left-6 text-4xl animate-bounce">🎾</div>
+        <div className="absolute -bottom-6 -right-6 text-4xl animate-bounce delay-300">🐟</div>
+
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+            Nová smečka začíná zde!
           </h1>
-          <h2 className="mt-2 text-2xl font-bold">Vytvořte si nový účet</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Připojte se k světové komunitě milovníků psů a koček.
+          <p className="text-gray-500 dark:text-gray-400 font-medium mt-2">
+            Zabere to jen minutku a váš mazlíček získá tisíce kámošů.
           </p>
         </div>
 
-        {/* Chybová hláška */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm font-medium">
+          <div className="mb-8 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium animate-pulse">
             ⚠️ {decodeURIComponent(error)}
           </div>
         )}
 
-        <form action={registerUser} className="space-y-8">
+        <form action={registerUser} className="space-y-10">
           
           {/* SEKCE 1: ÚČET */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-800 pb-2 text-indigo-600 dark:text-indigo-400">
-              1. Přihlašovací údaje
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">E-mail *</label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  placeholder="tvuj@email.cz"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Heslo *</label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  placeholder="Minimálně 6 znaků"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
+          <section>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">1</div>
+              <h3 className="text-xl font-bold">Bezpečný přístup</h3>
             </div>
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input type="email" name="email" required placeholder="E-mailová adresa" className="input-field" />
+              <input type="password" name="password" required placeholder="Silné heslo" className="input-field" />
+            </div>
+          </section>
 
-          {/* SEKCE 2: INFORMACE O MAJITELI */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-800 pb-2 text-indigo-600 dark:text-indigo-400">
-              2. O majiteli
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Jméno *</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  placeholder="Petr"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Příjmení *</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  required
-                  placeholder="Novák"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Uživatelské jméno *</label>
-                <input
-                  type="text"
-                  name="username"
-                  required
-                  placeholder="petr_novak"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Datum narození</label>
-                <input
-                  type="date"
-                  name="ownerBirthDate"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Město *</label>
-                <input
-                  type="text"
-                  name="city"
-                  required
-                  placeholder="Praha"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
+          {/* SEKCE 2: MAJITEL */}
+          <section>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">2</div>
+              <h3 className="text-xl font-bold">O vás (páníček)</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input type="text" name="firstName" required placeholder="Vaše jméno" className="input-field" />
+              <input type="text" name="lastName" required placeholder="Vaše příjmení" className="input-field" />
+              <input type="text" name="username" required placeholder="Uživatelské jméno (např. rex_master)" className="input-field" />
+              <input type="text" name="city" required placeholder="Město" className="input-field" />
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-gray-400 ml-2 mb-1 block uppercase">Datum narození</label>
+                <input type="date" name="ownerBirthDate" className="input-field" />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Bio (krátce o sobě)</label>
-              <textarea
-                name="bio"
-                rows={2}
-                placeholder="Rád chodím na dlouhé procházky do přírody..."
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-              />
-            </div>
-          </div>
+          </section>
 
-          {/* SEKCE 3: INFORMACE O MAZLÍČKOVI */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-200 dark:border-gray-800 pb-2 text-indigo-600 dark:text-indigo-400">
-              3. Váš mazlíček
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Jméno mazlíčka *</label>
-                <input
-                  type="text"
-                  name="petName"
-                  required
-                  placeholder="Alík"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Druh mazlíčka *</label>
-                <select
-                  name="petType"
-                  required
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="pes">🐶 Pes</option>
-                  <option value="kocka">🐱 Kočka</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Plemeno</label>
-                <input
-                  type="text"
-                  name="petBreed"
-                  placeholder="Zlatý retrívr, Mývalí kočka..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Datum narození mazlíčka</label>
-                <input
-                  type="date"
-                  name="petBirthDate"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Pohlaví</label>
-                <select
-                  name="petGender"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="Pes/Kocour">Pes / Kocour</option>
-                  <option value="Fena/Kočka">Fena / Kočka</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Velikost</label>
-                <select
-                  name="petSize"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                >
-                  <option value="Malý">Malý (do 10 kg)</option>
-                  <option value="Střední">Střední (10 - 25 kg)</option>
-                  <option value="Velký">Velký (nad 25 kg)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Povaha</label>
-                <input
-                  type="text"
-                  name="petTemperament"
-                  placeholder="Přátelský, Hravý, Klidný..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Oblíbené aktivity</label>
-                <input
-                  type="text"
-                  name="petActivities"
-                  placeholder="Aportování, Běhání, Plavání (oddělte čárkou)"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                />
+          {/* SEKCE 3: MAZLÍČEK */}
+          <section className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border border-indigo-100 dark:border-indigo-800/50">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm">3</div>
+              <h3 className="text-xl font-bold">Váš čtyřnohý parťák</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input type="text" name="petName" required placeholder="Jméno mazlíčka" className="input-field" />
+              <select name="petType" className="input-field">
+                <option value="pes">🐶 Pes</option>
+                <option value="kocka">🐱 Kočka</option>
+              </select>
+              <input type="text" name="petBreed" placeholder="Plemeno" className="input-field" />
+              <select name="petGender" className="input-field">
+                <option value="Kluk">Kluk / Kocour</option>
+                <option value="Holka">Holka / Fena</option>
+              </select>
+              <div className="sm:col-span-2">
+                 <input type="text" name="petTemperament" placeholder="Povaha (hravý, klidný, hlídač...)" className="input-field" />
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* Odesílací tlačítko */}
-          <button
-            type="submit"
-            className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-indigo-500/30 transition duration-200"
-          >
-            Dokončit registraci a vstoupit do PawMeet
+          <button type="submit" className="w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white font-black text-xl rounded-2xl shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-95 transition-all duration-200">
+            Vstoupit do světa PawMeet 🐾
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-          Již máte účet?{' '}
-          <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline">
-            Přihlaste se zde
-          </Link>
+        <p className="text-center mt-8 text-gray-500 dark:text-gray-400 font-medium">
+          Už jsi členem? <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Přihlas se</Link>
         </p>
-
       </div>
+
+      <style jsx>{`
+        .input-field {
+          width: 100%;
+          padding: 0.875rem 1.25rem;
+          border-radius: 1rem;
+          border: 1px solid rgba(209, 213, 219, 0.5);
+          background: rgba(255, 255, 255, 0.5);
+          outline: none;
+          transition: all 0.2s;
+        }
+        :global(.dark) .input-field {
+          background: rgba(17, 24, 39, 0.5);
+          border-color: rgba(55, 65, 81, 0.5);
+        }
+        .input-field:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+      `}</style>
     </div>
   )
 }
