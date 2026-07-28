@@ -1,44 +1,11 @@
-import { createClient } from '../../utils/supabase/server'
-import { redirect } from 'next/navigation'
+import { updatePasswordAction } from './actions'
 
-export default async function ResetPasswordPage({
-  searchParams,
-}: {
+export default async function ResetPasswordPage(props: {
   searchParams: Promise<{ email?: string; error?: string }>
 }) {
-  const { email, error } = await searchParams
-
-  async function updatePasswordAction(formData: FormData) {
-    'use server'
-    const code = formData.get('code') as string
-    const newPassword = formData.get('password') as string
-    const userEmail = formData.get('email') as string
-
-    const supabase = await createClient()
-
-    // 1. Ověření 6místného kódu pro obnovu hesla
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: userEmail,
-      token: code,
-      type: 'recovery',
-    })
-
-    if (verifyError) {
-      redirect(`/reset-password?email=${encodeURIComponent(userEmail)}&error=Neplatný+nebo+expirovaný+kód`)
-    }
-
-    // 2. Nastavení nového hesla
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    })
-
-    if (updateError) {
-      redirect(`/reset-password?email=${encodeURIComponent(userEmail)}&error=${encodeURIComponent(updateError.message)}`)
-    }
-
-    // 3. Po úspěchu přesměrujeme na přihlášení s potvrzovací hláškou
-    redirect('/login?message=Heslo+bylo+úspěšně+změněno.+Můžete+se+přihlásit.')
-  }
+  const searchParams = await props.searchParams
+  const email = searchParams?.email
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
@@ -74,7 +41,7 @@ export default async function ResetPasswordPage({
               required
               maxLength={6}
               placeholder="123456"
-              className="w-full text-center text-3xl font-black tracking-[0.5em] py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+              className="w-full text-center text-3xl font-black tracking-[0.5em] py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none"
             />
           </div>
 
@@ -87,13 +54,13 @@ export default async function ResetPasswordPage({
               name="password"
               required
               placeholder="Alespoň 6 znaků"
-              className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none transition font-medium text-sm"
+              className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all mt-2"
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg transition-all mt-2"
           >
             Uložit nové heslo 🐾
           </button>

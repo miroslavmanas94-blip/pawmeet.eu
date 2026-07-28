@@ -1,29 +1,11 @@
-import { createClient } from '../../utils/supabase/server'
-import { redirect } from 'next/navigation'
+import { requestResetAction } from "./actions";
 import Link from 'next/link'
 
-export default async function ForgotPasswordPage({
-  searchParams,
-}: {
+export default async function ForgotPasswordPage(props: {
   searchParams: Promise<{ error?: string }>
 }) {
-  const { error } = await searchParams
-
-  async function requestResetAction(formData: FormData) {
-    'use server'
-    const email = formData.get('email') as string
-    const supabase = await createClient()
-
-    // Supabase pošle e-mail s 6místným kódem
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email)
-
-    if (resetError) {
-      redirect(`/forgot-password?error=${encodeURIComponent(resetError.message)}`)
-    }
-
-    // Přesměrujeme na zadání kódu
-    redirect(`/reset-password?email=${encodeURIComponent(email)}`)
-  }
+  const searchParams = await props.searchParams
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
@@ -54,14 +36,14 @@ export default async function ForgotPasswordPage({
               type="email"
               name="email"
               required
-              placeholder="vás@email.cz"
-              className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm"
+              placeholder="vas@email.cz"
+              className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-base rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all"
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-base rounded-2xl shadow-lg transition-all"
           >
             Odeslat kód na e-mail ➔
           </button>

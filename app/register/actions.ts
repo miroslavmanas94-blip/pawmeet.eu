@@ -14,7 +14,7 @@ export async function registerUser(formData: FormData) {
   const petType = formData.get('petType') as string
   const petBreed = formData.get('petBreed') as string
 
-  // Kontrola povinných polí (město v seznamu záměrně chybí)
+  // Kontrola povinných polí (město je volitelné)
   if (
     !email ||
     !password ||
@@ -30,7 +30,7 @@ export async function registerUser(formData: FormData) {
 
   const supabase = await createClient()
 
-  // 1. Vytvoření účtu v Supabase Auth
+  // 1. Registrace účtu v Supabase Auth
   const { error: signUpError } = await supabase.auth.signUp({
     email,
     password,
@@ -51,7 +51,7 @@ export async function registerUser(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(signUpError.message)}`)
   }
 
-  // 2. Okamžité přihlášení a uložení cookies
+  // 2. Okamžité přihlášení a vytvoření cookies relace
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -61,6 +61,6 @@ export async function registerUser(formData: FormData) {
     redirect('/login?message=Účet+vytvořen!+Přihlaste+se+prosím.')
   }
 
-  // 3. Přesměrování na domovskou stránku
+  // 3. Přesměrování rovnou do aplikace
   redirect('/domu')
 }

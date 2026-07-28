@@ -1,4 +1,4 @@
-import { loginUser, resetPassword } from './actions'
+import { loginUser } from './actions'
 import Link from 'next/link'
 
 export default async function LoginPage({
@@ -12,10 +12,6 @@ export default async function LoginPage({
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative overflow-hidden">
         
-        {/* Svítící efekt */}
-        <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
-
-        {/* Hlavička */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-block text-4xl animate-bounce mb-2">
             🐾
@@ -28,7 +24,6 @@ export default async function LoginPage({
           </p>
         </div>
 
-        {/* Hlášky */}
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
             ⚠️ {decodeURIComponent(error)}
@@ -40,7 +35,6 @@ export default async function LoginPage({
           </div>
         )}
 
-        {/* Přihlašovací formulář */}
         <form action={loginUser} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
@@ -56,9 +50,17 @@ export default async function LoginPage({
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
-              Heslo
-            </label>
+            <div className="flex justify-between items-center mb-1 ml-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
+                Heslo
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
+              >
+                Zapomněli jste heslo?
+              </Link>
+            </div>
             <input
               type="password"
               name="password"
@@ -76,18 +78,6 @@ export default async function LoginPage({
           </button>
         </form>
 
-        {/* Obnova hesla */}
-        <form action={resetPassword} className="mt-4 text-center">
-          <input type="hidden" name="email" value="" />
-          <button
-            type="submit"
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
-          >
-            Zapomněli jste heslo?
-          </button>
-        </form>
-
-        {/* Odkaz na registraci */}
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
           Nemáte ještě účet?{' '}
           <Link
