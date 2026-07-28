@@ -8,6 +8,8 @@ export default async function RegisterPage({
 }) {
   const { error } = await searchParams
 
+  const inputStyle = "w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 py-12 px-4 flex items-center justify-center">
       
@@ -41,8 +43,8 @@ export default async function RegisterPage({
               <h3 className="text-xl font-bold">Bezpečný přístup</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="email" name="email" required placeholder="E-mailová adresa" className="input-field" />
-              <input type="password" name="password" required placeholder="Silné heslo" className="input-field" />
+              <input type="email" name="email" required placeholder="E-mailová adresa" className={inputStyle} />
+              <input type="password" name="password" required placeholder="Silné heslo" className={inputStyle} />
             </div>
           </section>
 
@@ -53,13 +55,13 @@ export default async function RegisterPage({
               <h3 className="text-xl font-bold">O vás (páníček)</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="firstName" required placeholder="Vaše jméno" className="input-field" />
-              <input type="text" name="lastName" required placeholder="Vaše příjmení" className="input-field" />
-              <input type="text" name="username" required placeholder="Uživatelské jméno (např. rex_master)" className="input-field" />
-              <input type="text" name="city" required placeholder="Město" className="input-field" />
+              <input type="text" name="firstName" required placeholder="Vaše jméno" className={inputStyle} />
+              <input type="text" name="lastName" required placeholder="Vaše příjmení" className={inputStyle} />
+              <input type="text" name="username" required placeholder="Uživatelské jméno (např. rex_master)" className={inputStyle} />
+              <input type="text" name="city" required placeholder="Město" className={inputStyle} />
               <div className="sm:col-span-2">
                 <label className="text-xs font-bold text-gray-400 ml-2 mb-1 block uppercase">Datum narození</label>
-                <input type="date" name="ownerBirthDate" className="input-field" />
+                <input type="date" name="ownerBirthDate" className={inputStyle} />
               </div>
             </div>
           </section>
@@ -71,18 +73,18 @@ export default async function RegisterPage({
               <h3 className="text-xl font-bold">Váš čtyřnohý parťák</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" name="petName" required placeholder="Jméno mazlíčka" className="input-field" />
-              <select name="petType" className="input-field">
+              <input type="text" name="petName" required placeholder="Jméno mazlíčka" className={inputStyle} />
+              <select name="petType" className={inputStyle}>
                 <option value="pes">🐶 Pes</option>
                 <option value="kocka">🐱 Kočka</option>
               </select>
-              <input type="text" name="petBreed" placeholder="Plemeno" className="input-field" />
-              <select name="petGender" className="input-field">
+              <input type="text" name="petBreed" placeholder="Plemeno" className={inputStyle} />
+              <select name="petGender" className={inputStyle}>
                 <option value="Kluk">Kluk / Kocour</option>
                 <option value="Holka">Holka / Fena</option>
               </select>
               <div className="sm:col-span-2">
-                 <input type="text" name="petTemperament" placeholder="Povaha (hravý, klidný, hlídač...)" className="input-field" />
+                 <input type="text" name="petTemperament" placeholder="Povaha (hravý, klidný, hlídač...)" className={inputStyle} />
               </div>
             </div>
           </section>
@@ -96,26 +98,6 @@ export default async function RegisterPage({
           Už jsi členem? <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Přihlas se</Link>
         </p>
       </div>
-
-      <style jsx>{`
-        .input-field {
-          width: 100%;
-          padding: 0.875rem 1.25rem;
-          border-radius: 1rem;
-          border: 1px solid rgba(209, 213, 219, 0.5);
-          background: rgba(255, 255, 255, 0.5);
-          outline: none;
-          transition: all 0.2s;
-        }
-        :global(.dark) .input-field {
-          background: rgba(17, 24, 39, 0.5);
-          border-color: rgba(55, 65, 81, 0.5);
-        }
-        .input-field:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-        }
-      `}</style>
     </div>
   )
 }
