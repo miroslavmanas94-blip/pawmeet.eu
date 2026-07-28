@@ -16,8 +16,8 @@ export async function registerUser(formData: FormData) {
 
   const supabase = await createClient()
 
-  // 1. Registrace v Supabase Auth (Supabase automaticky pošle e-mail s kódovým tokenem)
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // 1. Registrace v Supabase Auth
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -33,10 +33,10 @@ export async function registerUser(formData: FormData) {
     },
   })
 
-  if (authError) {
-    redirect(`/register?error=${encodeURIComponent(authError.message)}`)
+  if (error) {
+    redirect(`/register?error=${encodeURIComponent(error.message)}`)
   }
 
-  // 2. Přesměrování na zadání ověřovacího kódu
-  redirect(`/verify-email?email=${encodeURIComponent(email)}`)
+  // 2. Přímé přesměrování do hlavní aplikace (Feedu)
+  redirect('/domu')
 }
