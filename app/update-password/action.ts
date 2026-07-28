@@ -12,7 +12,6 @@ export async function updatePasswordAction(formData: FormData): Promise<void> {
 
   const supabase = await createClient()
 
-  // Aktualizace hesla přihlášeného uživatele (z ověřovacího odkazu z e-mailu)
   const { error } = await supabase.auth.updateUser({
     password: password,
   })
@@ -21,6 +20,5 @@ export async function updatePasswordAction(formData: FormData): Promise<void> {
     redirect(`/update-password?error=${encodeURIComponent(error.message)}`)
   }
 
-  // Po úspěšné změně hesla přesměrujeme na přihlášení
   redirect('/login?message=Heslo+bylo+úspěšně+změněno!+Můžete+se+přihlásit.')
 }
