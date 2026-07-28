@@ -1,4 +1,5 @@
-import { updatePasswordAction } from './actions'
+import { createClient } from '../../utils/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 export default async function UpdatePasswordPage({
@@ -7,6 +8,28 @@ export default async function UpdatePasswordPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+
+  // Serverová akce zadaná přímo uvnitř komponenty
+  async function updatePasswordAction(formData: FormData): Promise<void> {
+    'use server'
+    const password = formData.get('password') as string
+
+    if (!password || password.length < 6) {
+      redirect('/update-password?error=Heslo+musí+mít+alespoň+6+znaků')
+    }
+
+    const supabase = await createClient()
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password,
+    })
+
+    if (updateError) {
+      redirect(`/update-password?error=${encodeURIComponent(updateError.message)}`)
+    }
+
+    redirect('/login?message=Heslo+bylo+úspěšně+změněno!+Můžete+se+přihlásit.')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
