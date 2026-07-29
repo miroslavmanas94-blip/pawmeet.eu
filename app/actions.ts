@@ -9,7 +9,7 @@ export { resetPassword } from "./login/actions";
 export { signInWithGoogle } from "./login/actions";
 
 // register – máš registerUser
-export { registerUser } from "./register/actions";
+export { signupAction as registerUser } from "./register/actions";
 
 // verify email – máš resendVerificationAction
 export { resendVerificationAction } from "./verify-email/actions";

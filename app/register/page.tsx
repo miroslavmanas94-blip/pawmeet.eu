@@ -1,28 +1,22 @@
-import { registerUser } from './actions'
+import { signupAction } from './actions'
 import Link from 'next/link'
 
-export default async function RegisterPage({
-  searchParams,
-}: {
+export default async function RegisterPage(props: {
   searchParams: Promise<{ error?: string }>
 }) {
-  const { error } = await searchParams
+  const searchParams = await props.searchParams
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 relative overflow-hidden my-8">
+      <div className="max-w-xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-8">
         
-        <div className="text-center mb-6">
-          <Link href="/" className="inline-block text-4xl mb-2">
-            🐾
-          </Link>
-          <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-            Registrace do PawMeet
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
-            Vyplňte údaje a vytvořte profil své smečky.
-          </p>
-        </div>
+        <h1 className="text-3xl font-black text-center bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent mb-2">
+          Registrace do Pawmeet 🐾
+        </h1>
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-6">
+          Položky označené <span className="text-red-500 font-bold">*</span> jsou povinné
+        </p>
 
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
@@ -30,137 +24,191 @@ export default async function RegisterPage({
           </div>
         )}
 
-        <form action={registerUser} className="space-y-4">
-          <div className="space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              👤 Údaje páníčka
+        <form action={signupAction} className="space-y-5">
+          
+          {/* OSOBNÍ ÚDAJE */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold border-b pb-1 border-gray-200 dark:border-gray-800 text-indigo-600 dark:text-indigo-400">
+              👤 Údaje o uživateli
             </h2>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Jméno *</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  required
-                  placeholder="Jan"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Příjmení *</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  required
-                  placeholder="Novák"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                />
-              </div>
-            </div>
-
+            {/* Email * */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Uživatelské jméno *</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                E-mail <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
-                name="username"
+                name="email"
+                type="email"
                 required
-                placeholder="honzanovac"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                placeholder="jan@example.cz"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Heslo * */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Heslo <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="password"
+                type="password"
+                required
+                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Jméno a Příjmení (NEPOVINNÉ) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">E-mail *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                  Jméno <span className="text-gray-400 font-normal">(nepovinné)</span>
+                </label>
                 <input
-                  type="email"
-                  name="email"
-                  required
-                  placeholder="jan@novak.cz"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  name="firstName"
+                  type="text"
+                  placeholder="Jan"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
               <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Město (volitelné)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                  Příjmení <span className="text-gray-400 font-normal">(nepovinné)</span>
+                </label>
                 <input
+                  name="lastName"
                   type="text"
-                  name="city"
-                  placeholder="Praha"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  placeholder="Novák"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
+            {/* Uživatelské jméno * */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Heslo *</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Uživatelské jméno <span className="text-red-500">*</span>
+              </label>
               <input
-                type="password"
-                name="password"
+                name="username"
+                type="text"
                 required
-                minLength={6}
-                placeholder="Alespoň 6 znaků"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                placeholder="jannovak123"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Datum narození uživatele * */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Datum narození <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="birthDate"
+                type="date"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <hr className="border-gray-200 dark:border-gray-800 my-4" />
-
-          <div className="space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+          {/* ÚDAJE O MAZLÍČKOVI */}
+          <div className="space-y-4 pt-4">
+            <h2 className="text-lg font-bold border-b pb-1 border-gray-200 dark:border-gray-800 text-indigo-600 dark:text-indigo-400">
               🐶 Údaje o mazlíčkovi
             </h2>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Jméno mazlíčka * */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Jméno mazlíčka <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="petName"
+                type="text"
+                required
+                placeholder="Alík"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Pes / Kočka * a Pohlaví Kluk / Holka * */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Jméno mazlíčka *</label>
-                <input
-                  type="text"
-                  name="petName"
-                  required
-                  placeholder="Rex"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Druh *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                  Druh zvířete <span className="text-red-500">*</span>
+                </label>
                 <select
                   name="petType"
                   required
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                  defaultValue=""
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
+                  <option value="" disabled>Vyberte...</option>
                   <option value="pes">Pes 🐶</option>
                   <option value="kocka">Kočka 🐱</option>
-                  <option value="jine">Jiné 🐾</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                  Pohlaví zvířete <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="petGender"
+                  required
+                  defaultValue=""
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="" disabled>Vyberte...</option>
+                  <option value="kluk">Kluk ♂</option>
+                  <option value="holka">Holka ♀</option>
                 </select>
               </div>
             </div>
 
+            {/* Plemeno * */}
             <div>
-              <label className="block text-[11px] font-bold uppercase text-gray-400 mb-1 ml-1">Plemeno *</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Plemeno <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
                 name="petBreed"
+                type="text"
                 required
-                placeholder="Německý ovčák / Kříženec"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                placeholder="Zlatý retrívr, Míšenec, ..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Datum narození zvířete * */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1">
+                Datum narození zvířete <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="petBirthDate"
+                type="date"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all mt-4"
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:opacity-90 text-white font-black rounded-2xl shadow-lg transition-all text-base mt-6"
           >
-            Vytvořit účet a vstoupit 🐾
+            Zaregistrovat se 🐾
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
-          Již máte účet?{' '}
-          <Link href="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1">
-            Přihlaste se
+        <div className="mt-6 text-center">
+          <Link href="/login" className="text-xs text-gray-500 dark:text-gray-400 font-bold hover:underline">
+            Již máte účet? Přihlaste se
           </Link>
         </div>
 
