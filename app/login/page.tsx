@@ -1,12 +1,42 @@
-import { loginUser } from './actions'
+'use client'
+
+export const dynamic = 'force-dynamic'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; message?: string }>
-}) {
-  const { error, message } = await searchParams
+export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  
+  // ⚠️ OPRAVA: Tady jsme odstranili createClient(), aby na něj Next.js při buildu nenarazil.
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMsg('')
+    setLoading(true)
+
+    // ✅ SPRÁVNĚ: Supabase klienta vytvoříme až při samotném pokusu o přihlášení!
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setErrorMsg(error.message)
+      setLoading(false)
+    } else {
+      router.push('/domu')
+      router.refresh()
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
@@ -17,33 +47,29 @@ export default async function LoginPage({
             🐾
           </Link>
           <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-            Vítejte zpět!
+            Vítejte v PawMeet
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
             Vaše smečka už na vás čeká.
           </p>
         </div>
 
-        {error && (
+        {errorMsg && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
-            ⚠️ {decodeURIComponent(error)}
-          </div>
-        )}
-        {message && (
-          <div className="mb-6 p-4 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 text-sm font-medium">
-            ✅ {decodeURIComponent(message)}
+            ⚠️ {errorMsg}
           </div>
         )}
 
-        <form action={loginUser} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
               E-mail
             </label>
             <input
               type="email"
-              name="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="vás@email.cz"
               className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm"
             />
@@ -63,8 +89,9 @@ export default async function LoginPage({
             </div>
             <input
               type="password"
-              name="password"
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-sm"
             />
@@ -72,9 +99,10 @@ export default async function LoginPage({
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2"
+            disabled={loading}
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2 disabled:opacity-50"
           >
-            Přihlásit se 🐾
+            {loading ? 'Přihlašuji...' : 'Přihlásit se 🐾'}
           </button>
         </form>
 
