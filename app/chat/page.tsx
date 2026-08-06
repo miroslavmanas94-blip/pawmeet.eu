@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-// --- TYPY ---
 type Profile = {
   id: string
   username: string
@@ -24,25 +23,21 @@ type Contact = Profile & {
   lastMessageTime?: string
 }
 
-export default function ChatPage() {
+// 1. Komponenta s logikou chatu
+function ChatContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const activeUserId = searchParams.get('userId')
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  
-  // Stavy pro levý panel (Seznam kontaktů)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Stavy pro pravý panel (Aktivní konverzace)
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loadingMessages, setLoadingMessages] = useState(false)
-  
-  // Realtime sledování online uživatelů
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -51,7 +46,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // 1. INICIALIZACE A NAČTENÍ SEZNAMU KONTAKTŮ
   useEffect(() => {
     const initData = async () => {
       const supabase = createClient()
@@ -63,20 +57,17 @@ export default function ChatPage() {
       }
       setCurrentUserId(user.id)
 
-      // Načtení všech zpráv uživatele pro vytvoření seznamu kontaktů
       const { data: msgs } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, content, created_at')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
-      // Načtení profilů
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username, avatar_url')
 
       if (msgs && profiles) {
-        // Zpracování unikátních kontaktů a jejich poslední zprávy
         const contactMap = new Map<string, Contact>()
         
         msgs.forEach((msg) => {
@@ -93,7 +84,6 @@ export default function ChatPage() {
           }
         })
 
-        // Přidání uživatele z URL (pokud v historii ještě není)
         if (activeUserId && !contactMap.has(activeUserId)) {
           const profile = profiles.find((p) => p.id === activeUserId)
           if (profile) contactMap.set(activeUserId, profile)
@@ -107,7 +97,6 @@ export default function ChatPage() {
     initData()
   }, [activeUserId, router])
 
-  // 2. NAČTENÍ AKTIVNÍ KONVERZACE A PROFILU
   useEffect(() => {
     if (!currentUserId || !activeUserId) return
 
@@ -115,7 +104,6 @@ export default function ChatPage() {
       setLoadingMessages(true)
       const supabase = createClient()
 
-      // Hned najdeme profil v kontaktech pro okamžité načtení jména
       const existingContact = contacts.find(c => c.id === activeUserId)
       if (existingContact) {
         setActiveProfile(existingContact)
@@ -128,7 +116,6 @@ export default function ChatPage() {
         if (profile) setActiveProfile(profile)
       }
 
-      // Načtení zpráv
       const { data: chatMsgs } = await supabase
         .from('messages')
         .select('*')
@@ -143,16 +130,13 @@ export default function ChatPage() {
     loadActiveChat()
   }, [activeUserId, currentUserId, contacts])
 
-  // 3. REALTIME ZPRÁVY & ONLINE STATUS (PRESENCE)
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
 
-    // Sledování nových zpráv
     const messageChannel = supabase.channel('chat-messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new as Message
-        // Pokud zpráva patří do otevřeného chatu
         if (
           (newMsg.sender_id === currentUserId && newMsg.receiver_id === activeUserId) ||
           (newMsg.sender_id === activeUserId && newMsg.receiver_id === currentUserId)
@@ -161,7 +145,6 @@ export default function ChatPage() {
           scrollToBottom()
         }
         
-        // Aktualizace posledních zpráv v levém panelu
         setContacts((prev) => {
           const otherId = newMsg.sender_id === currentUserId ? newMsg.receiver_id : newMsg.sender_id
           const updated = [...prev]
@@ -169,7 +152,6 @@ export default function ChatPage() {
           if (index !== -1) {
             updated[index].lastMessage = newMsg.content
             updated[index].lastMessageTime = newMsg.created_at
-            // Posuneme kontakt nahoru
             const [moved] = updated.splice(index, 1)
             updated.unshift(moved)
           }
@@ -178,7 +160,6 @@ export default function ChatPage() {
       })
       .subscribe()
 
-    // Sledování online stavu uživatelů (Presence)
     const presenceChannel = supabase.channel('online-users', {
       config: { presence: { key: currentUserId } }
     })
@@ -201,14 +182,13 @@ export default function ChatPage() {
     }
   }, [currentUserId, activeUserId])
 
-  // 4. ODESLÁNÍ ZPRÁVY
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
 
     const supabase = createClient()
     const textToSend = newMessage.trim()
-    setNewMessage('') // okamžité vyčištění pole
+    setNewMessage('')
 
     await supabase.from('messages').insert({
       sender_id: currentUserId,
@@ -217,7 +197,6 @@ export default function ChatPage() {
     })
   }
 
-  // Zformátování času
   const formatTime = (isoString?: string) => {
     if (!isoString) return ''
     const date = new Date(isoString)
@@ -229,10 +208,7 @@ export default function ChatPage() {
   )
 
   return (
-    // Celá obrazovka (odpočítán prostor pro spodní lištu na mobilu, na PC plná výška)
     <div className="flex w-full h-[calc(100vh-80px)] bg-white overflow-hidden max-w-[1400px] mx-auto border-x border-neutral-200/60 shadow-2xl">
-      
-      {/* LEVÝ PANEL - SEZNAM KONTAKTŮ */}
       <div className={`w-full md:w-[350px] lg:w-[400px] flex-col border-r border-neutral-200 bg-neutral-50/50 ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-neutral-200 bg-white">
           <h1 className="text-xl font-black mb-4">Zprávy</h1>
@@ -276,7 +252,6 @@ export default function ChatPage() {
                         <span className="text-xl">🐾</span>
                       )}
                     </div>
-                    {/* Zelený bod pro ONLINE status */}
                     {isOnline && (
                       <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                     )}
@@ -298,7 +273,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* PRAVÝ PANEL - AKTIVNÍ CHAT */}
       <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
         {!activeUserId ? (
           <div className="text-center text-neutral-400 flex flex-col items-center">
@@ -308,7 +282,6 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
-            {/* HLAVIČKA CHATU */}
             <div className="h-[72px] px-4 border-b border-neutral-200/80 flex items-center gap-4 bg-white/95 backdrop-blur-sm z-10 shadow-sm">
               <button onClick={() => router.push('/chat')} className="md:hidden w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center font-bold">
                 ←
@@ -341,7 +314,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* VÝPIS ZPRÁV */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa] relative">
               {loadingMessages ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#f8f9fa]/80 backdrop-blur-sm z-10">
@@ -355,7 +327,7 @@ export default function ChatPage() {
               ) : (
                 messages.map((msg, index) => {
                   const isMine = msg.sender_id === currentUserId
-                  const showTime = index === 0 || new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 5 * 60000;
+                  const showTime = index === 0 || new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 5 * 60000
 
                   return (
                     <div key={msg.id} className="flex flex-col">
@@ -381,7 +353,6 @@ export default function ChatPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* POLE PRO ODESLÁNÍ ZPRÁVY */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-neutral-200 flex items-center gap-3">
               <input
                 type="text"
@@ -401,7 +372,15 @@ export default function ChatPage() {
           </>
         )}
       </div>
-
     </div>
+  )
+}
+
+// 2. Exportovaná stránka obalená v Suspense pro úspěšný build na Vercelu
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-neutral-400 text-sm">Načítám chat...</div>}>
+      <ChatContent />
+    </Suspense>
   )
 }
