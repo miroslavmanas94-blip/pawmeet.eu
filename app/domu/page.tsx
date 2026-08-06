@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
+import BottomNav from '@/components/BottomNav'
 
 // --- DATOVÉ TYPY ---
 type Comment = {
@@ -40,7 +41,7 @@ type Story = {
   profiles: { username: string; avatar_url: string }
 }
 
-// --- JAZYKOVÉ SLOVNÍKY (6 JAZYKŮ) ---
+// --- JAZYKOVÉ SLOVNÍKY ---
 const languages = [
   { code: 'cs', label: 'Čeština', flag: '🇨🇿' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
@@ -176,7 +177,6 @@ const translations: Record<LangCode, Record<string, string>> = {
 }
 
 export default function HomeFeed() {
-  // Trvalá volba jazyka z localStorage bez probliknutí
   const [lang, setLang] = useState<LangCode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('lang') as LangCode
@@ -188,22 +188,18 @@ export default function HomeFeed() {
   const [isLangOpen, setIsLangOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Základní stavy pro příspěvky a profil
   const [posts, setPosts] = useState<Post[]>([])
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(0)
   const [likedPosts, setLikedPosts] = useState<{ [key: string]: boolean }>({})
   const [savedPosts, setSavedPosts] = useState<{ [key: string]: boolean }>({})
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
-  // Stavy pro modální okna
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
 
-  // Stavy pro Tvorbu Příspěvku & Příběhu
   const [isPostModalOpen, setIsPostModalOpen] = useState(false)
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -217,16 +213,13 @@ export default function HomeFeed() {
   const [location, setLocation] = useState('')
   const [petTag, setPetTag] = useState('')
 
-  // Prohlížeč Stories
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null)
 
-  // --- NAČTENÍ FEEDU & STORIES (24H FILTR) ---
   const initFeed = async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) setCurrentUserId(user.id)
 
-    // 1. Načtení příspěvků
     const { data: postsData } = await supabase
       .from('posts')
       .select('*, profiles(username, avatar_url)')
@@ -252,7 +245,6 @@ export default function HomeFeed() {
       }
     }
 
-    // 2. Načtení příběhů (mladší než 24 hodin)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: storiesData } = await supabase
       .from('stories')
@@ -277,7 +269,6 @@ export default function HomeFeed() {
 
     initFeed()
 
-    // Realtime poslech nových příspěvků a stories pro BLESKOVÉ ZOBRAZENÍ VŠEM
     const supabase = createClient()
     const channel = supabase
       .channel('home-feed-realtime')
@@ -305,7 +296,6 @@ export default function HomeFeed() {
     }
   }, [])
 
-  // Časovač pro automatické přepínání v celoobrazovkovém prohlížeči Stories
   useEffect(() => {
     if (activeStoryIndex === null) return
     const timer = setTimeout(() => {
@@ -318,7 +308,6 @@ export default function HomeFeed() {
     return () => clearTimeout(timer)
   }, [activeStoryIndex, stories.length])
 
-  // Změna jazyka
   const selectLanguage = (code: LangCode) => {
     setLang(code)
     localStorage.setItem('lang', code)
@@ -328,7 +317,6 @@ export default function HomeFeed() {
   const t = translations[lang]
   const currentLangObj = languages.find((l) => l.code === lang) || languages[0]
 
-  // Výběr souboru pro příspěvek/story
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -337,7 +325,6 @@ export default function HomeFeed() {
     setMediaPreview(URL.createObjectURL(file))
   }
 
-  // Upload média do Supabase Storage
   const uploadMediaToStorage = async (file: File) => {
     const supabase = createClient()
     const ext = file.name.split('.').pop()
@@ -348,7 +335,6 @@ export default function HomeFeed() {
     return data.publicUrl
   }
 
-  // Publikace nového Příspěvku
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!mediaFile || !currentUserId) return
@@ -370,7 +356,6 @@ export default function HomeFeed() {
         likes_count: 0
       })
 
-      // Reset a zavření modalu
       setIsPostModalOpen(false)
       setMediaFile(null)
       setMediaPreview(null)
@@ -385,7 +370,6 @@ export default function HomeFeed() {
     }
   }
 
-  // Publikace nového Příběhu (Story)
   const handleCreateStory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!mediaFile || !currentUserId) return
@@ -415,7 +399,6 @@ export default function HomeFeed() {
     }
   }
 
-  // Lajkování
   const handleLike = async (postId: string, currentCount: number) => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -434,12 +417,10 @@ export default function HomeFeed() {
     await supabase.from('posts').update({ likes_count: newCount }).eq('id', postId)
   }
 
-  // Uložení příspěvku (Bookmark)
   const handleBookmark = (postId: string) => {
     setSavedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }))
   }
 
-  // Sdílení příspěvku
   const handleShare = async (postId: string) => {
     const url = `${window.location.origin}/domu#post-${postId}`
     if (navigator.share) {
@@ -450,7 +431,6 @@ export default function HomeFeed() {
     }
   }
 
-  // Otvírání a posílání komentářů
   const openComments = async (postId: string) => {
     setActiveCommentsPostId(postId)
     setLoadingComments(true)
@@ -465,32 +445,17 @@ export default function HomeFeed() {
     setLoadingComments(false)
   }
 
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newComment.trim() || !activeCommentsPostId || !currentUserId) return
-    const supabase = createClient()
-    const text = newComment.trim()
-    setNewComment('')
-
-    const { error } = await supabase.from('comments').insert({
-      post_id: activeCommentsPostId,
-      user_id: currentUserId,
-      content: text
-    })
-    if (!error) openComments(activeCommentsPostId)
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/40 text-neutral-900 pb-28 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/40 text-neutral-900 pb-24 selection:bg-indigo-500 selection:text-white">
       
-      {/* HLAVIČKA A VÝBĚR JAZYKA */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-neutral-200/60 px-4 py-3.5">
-        <div className="max-w-md mx-auto flex justify-between items-center">
+      {/* HLAVIČKA NA CELOU ŠÍŘKU */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-neutral-200/60 px-6 py-3.5 w-full">
+        <div className="w-full flex justify-between items-center">
           <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
             PawMeet
           </h1>
 
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-4 items-center">
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsLangOpen(!isLangOpen)}
@@ -524,11 +489,11 @@ export default function HomeFeed() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto pt-3 px-0 sm:px-2">
+      {/* HLAVNÍ OBSAH - FULL WIDTH S MAX-WIDTH PRO VELKÉ MONITORI */}
+      <main className="w-full px-4 sm:px-8 pt-4 max-w-7xl mx-auto">
         
-        {/* INSTAGRAM STORIES LIŠTA (Expirace 24h) */}
-        <section className="flex gap-4 overflow-x-auto no-scrollbar pb-4 pt-1 px-4 sm:px-0 border-b border-neutral-200/60">
-          {/* Tlačítko Přidat příběh */}
+        {/* STORIES */}
+        <section className="flex gap-4 overflow-x-auto no-scrollbar pb-4 pt-1 border-b border-neutral-200/60 w-full">
           <div 
             onClick={() => setIsStoryModalOpen(true)}
             className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
@@ -539,7 +504,6 @@ export default function HomeFeed() {
             <span className="text-[11px] font-semibold text-neutral-600">{t.myStory}</span>
           </div>
 
-          {/* Seznam nahraných 24h příběhů */}
           {stories.map((story, idx) => (
             <div 
               key={story.id} 
@@ -565,9 +529,9 @@ export default function HomeFeed() {
         {/* VYTVOŘIT PŘÍSPĚVEK LIŠTA */}
         <div 
           onClick={() => setIsPostModalOpen(true)}
-          className="my-3 mx-4 sm:mx-0 p-3.5 bg-white rounded-2xl flex items-center gap-3 border border-neutral-200/60 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors"
+          className="my-4 p-4 bg-white rounded-2xl flex items-center gap-3 border border-neutral-200/60 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors w-full"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">🐾</div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">🐾</div>
           <span className="flex-1 text-neutral-400 text-sm font-medium">
             {t.shareExp}
           </span>
@@ -575,15 +539,14 @@ export default function HomeFeed() {
         </div>
 
         {/* FEED PŘÍSPĚVKŮ */}
-        <div className="flex flex-col gap-6 mt-4">
+        <div className="flex flex-col gap-6 max-w-2xl mx-auto mt-4">
           {posts.map((post) => {
             const isLiked = likedPosts[post.id]
             const isSaved = savedPosts[post.id]
 
             return (
-              <article key={post.id} id={`post-${post.id}`} className="bg-white sm:rounded-3xl border-y sm:border border-neutral-200/60 overflow-hidden shadow-sm">
+              <article key={post.id} id={`post-${post.id}`} className="bg-white rounded-3xl border border-neutral-200/60 overflow-hidden shadow-sm">
                 
-                {/* Hlavička příspěvku */}
                 <div className="flex justify-between items-center px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center text-sm overflow-hidden border border-neutral-200">
@@ -601,7 +564,6 @@ export default function HomeFeed() {
                   <button className="text-neutral-400 hover:text-neutral-600 font-bold px-2">•••</button>
                 </div>
 
-                {/* Média + TEXT NA FOTCE/VIDEU */}
                 <div className="w-full aspect-[4/5] bg-neutral-100 relative overflow-hidden flex items-center justify-center">
                   {post.media_type === 'video' ? (
                     <video src={post.media_url} autoPlay muted loop className="w-full h-full object-cover" />
@@ -609,7 +571,6 @@ export default function HomeFeed() {
                     <img src={post.media_url} className="w-full h-full object-cover" alt="Post media" />
                   )}
 
-                  {/* Textový překryv (Insta Reels/Story Style) */}
                   {post.text_overlay && (
                     <div 
                       className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-center font-black text-lg max-w-[85%] border border-white/20 shadow-2xl animate-in zoom-in-95"
@@ -619,7 +580,6 @@ export default function HomeFeed() {
                     </div>
                   )}
 
-                  {/* Označení mazlíčka */}
                   {post.pet_tag && (
                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-3 py-1 rounded-full border border-white/10 shadow-lg">
                       🐾 {post.pet_tag}
@@ -627,7 +587,6 @@ export default function HomeFeed() {
                   )}
                 </div>
 
-                {/* Tlačítka akci */}
                 <div className="flex justify-between items-center px-4 pt-3 pb-1">
                   <div className="flex gap-4 text-2xl items-center">
                     <button onClick={() => handleLike(post.id, post.likes_count)} className="hover:scale-125 active:scale-90 transition-transform">
@@ -645,7 +604,6 @@ export default function HomeFeed() {
                   </button>
                 </div>
 
-                {/* Popis a Počet lajků */}
                 <div className="px-4 pb-4 pt-1 flex flex-col gap-1">
                   <span className="text-xs font-bold tracking-tight">{post.likes_count} {t.likes}</span>
                   {post.caption && (
@@ -664,7 +622,7 @@ export default function HomeFeed() {
         </div>
       </main>
 
-      {/* --- MODÁLNÍ OKNO: NOVÝ PŘÍSPĚVEK (s textem na fotce) --- */}
+      {/* MODAL NOVÝ PŘÍSPĚVEK */}
       {isPostModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-neutral-200">
@@ -674,7 +632,6 @@ export default function HomeFeed() {
             </div>
 
             <form onSubmit={handleCreatePost} className="p-5 space-y-4">
-              {/* Výběr souboru / Náhled */}
               <div className="relative aspect-square bg-neutral-100 rounded-2xl overflow-hidden border border-dashed border-neutral-300 flex items-center justify-center">
                 {mediaPreview ? (
                   <>
@@ -701,7 +658,6 @@ export default function HomeFeed() {
                 )}
               </div>
 
-              {/* Vstup pro text NA fotce */}
               <div>
                 <label className="text-[11px] font-bold text-neutral-500 uppercase">{t.textOverlay}</label>
                 <div className="flex gap-2 mt-1">
@@ -721,7 +677,6 @@ export default function HomeFeed() {
                 </div>
               </div>
 
-              {/* Popisek, Lokace, Mazlíček */}
               <input
                 type="text"
                 value={caption}
@@ -758,7 +713,7 @@ export default function HomeFeed() {
         </div>
       )}
 
-      {/* --- MODÁLNÍ OKNO: NOVÝ PŘÍBĚH (STORY) --- */}
+      {/* MODAL NOVÝ PŘÍBĚH */}
       {isStoryModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-neutral-200">
@@ -809,7 +764,7 @@ export default function HomeFeed() {
               <button
                 type="submit"
                 disabled={uploading || !mediaFile}
-                className="w-full py-3 bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-500 text-white font-bold text-xs rounded-2xl disabled:opacity-50 shadow-lg"
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-xs rounded-2xl disabled:opacity-50 shadow-lg shadow-indigo-500/20"
               >
                 {uploading ? t.uploading : t.publish}
               </button>
@@ -818,131 +773,8 @@ export default function HomeFeed() {
         </div>
       )}
 
-      {/* --- CELOOBRAZOVKOVÝ PROHLÍŽEČ STORIES --- */}
-      {activeStoryIndex !== null && stories[activeStoryIndex] && (
-        <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center">
-          <div className="relative w-full max-w-md h-full sm:h-[90vh] bg-neutral-900 sm:rounded-3xl overflow-hidden flex flex-col justify-between">
-            
-            {/* Progress bar nahoře */}
-            <div className="absolute top-3 left-3 right-3 z-10 flex gap-1">
-              {stories.map((_, idx) => (
-                <div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-white transition-all duration-300 ${
-                      idx === activeStoryIndex ? 'w-full animate-pulse' : idx < activeStoryIndex ? 'w-full' : 'w-0'
-                    }`}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Autor story */}
-            <div className="absolute top-7 left-4 z-10 flex items-center gap-2 text-white">
-              <div className="w-8 h-8 rounded-full bg-neutral-700 overflow-hidden border border-white/20">
-                {stories[activeStoryIndex].profiles?.avatar_url && (
-                  <img src={stories[activeStoryIndex].profiles.avatar_url} className="w-full h-full object-cover" alt="avatar" />
-                )}
-              </div>
-              <span className="text-xs font-bold">{stories[activeStoryIndex].profiles?.username}</span>
-            </div>
-
-            {/* Zavření */}
-            <button 
-              onClick={() => setActiveStoryIndex(null)}
-              className="absolute top-6 right-4 z-10 text-white text-lg w-8 h-8 flex items-center justify-center font-bold"
-            >
-              ✕
-            </button>
-
-            {/* Média + Overlay */}
-            <div className="w-full h-full flex items-center justify-center relative">
-              {stories[activeStoryIndex].media_type === 'video' ? (
-                <video src={stories[activeStoryIndex].media_url} autoPlay muted loop className="w-full h-full object-cover" />
-              ) : (
-                <img src={stories[activeStoryIndex].media_url} className="w-full h-full object-cover" alt="Story" />
-              )}
-
-              {stories[activeStoryIndex].text_overlay && (
-                <div className="absolute px-5 py-2.5 rounded-2xl backdrop-blur-md bg-black/50 text-white text-center font-black text-xl max-w-[80%]">
-                  {stories[activeStoryIndex].text_overlay}
-                </div>
-              )}
-            </div>
-
-            {/* Přepínací dotykové zóny (vlevo / vpravo) */}
-            <div 
-              onClick={() => setActiveStoryIndex(Math.max(0, activeStoryIndex - 1))}
-              className="absolute top-0 bottom-0 left-0 w-1/3 z-20"
-            />
-            <div 
-              onClick={() => {
-                if (activeStoryIndex < stories.length - 1) setActiveStoryIndex(activeStoryIndex + 1)
-                else setActiveStoryIndex(null)
-              }}
-              className="absolute top-0 bottom-0 right-0 w-2/3 z-20"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* --- MODÁLNÍ OKNO PRO KOMENTÁŘE --- */}
-      {activeCommentsPostId && (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
-          <div className="bg-white w-full max-w-lg h-[80vh] sm:h-[600px] rounded-t-[2.5rem] sm:rounded-3xl flex flex-col overflow-hidden border border-neutral-200 shadow-2xl">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-neutral-200">
-              <h3 className="font-bold text-sm">{t.comments}</h3>
-              <button onClick={() => setActiveCommentsPostId(null)} className="w-8 h-8 rounded-full bg-neutral-100 font-bold text-xs">✕</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {loadingComments ? (
-                <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-                </div>
-              ) : comments.length === 0 ? (
-                <p className="text-center text-neutral-400 text-xs py-10">{t.noComments}</p>
-              ) : (
-                comments.map((c) => (
-                  <div key={c.id} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-neutral-200 overflow-hidden flex-shrink-0">
-                      {c.profiles?.avatar_url && <img src={c.profiles.avatar_url} className="w-full h-full object-cover" alt="avatar" />}
-                    </div>
-                    <div className="flex-1 bg-neutral-50 p-3 rounded-2xl text-xs">
-                      <span className="font-bold mr-2">{c.profiles?.username || 'Uživatel'}</span>
-                      <span className="text-neutral-700">{c.content}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <form onSubmit={handleAddComment} className="p-4 border-t border-neutral-200 flex gap-2">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder={t.addComment}
-                className="flex-1 px-4 py-3 rounded-2xl bg-neutral-100 text-xs outline-none"
-              />
-              <button type="submit" className="px-5 py-3 bg-indigo-600 text-white font-bold text-xs rounded-2xl">
-                {t.send}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SPODNÍ PLOVOUCÍ NAVIGACE */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-md bg-white/85 backdrop-blur-2xl border border-neutral-200/80 rounded-[2.5rem] px-6 py-3.5 flex justify-around items-center shadow-2xl z-[100]">
-        <Link href="/domu" className="text-indigo-600 text-2xl hover:scale-110 transition-transform">🏠</Link>
-        <Link href="/map" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">🗺️</Link>
-        <button onClick={() => setIsPostModalOpen(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600 w-12 h-12 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30 -mt-10 border-4 border-white hover:scale-110 active:scale-95 transition-all">
-          ＋
-        </button>
-        <Link href="/chat" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">🐾</Link>
-        <Link href="/profile" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">👤</Link>
-      </nav>
-
+      {/* FIXED BOTTOM NAVIGATION */}
+      <BottomNav />
     </div>
   )
 }

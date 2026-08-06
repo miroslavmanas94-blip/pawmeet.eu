@@ -6,29 +6,33 @@ import { usePathname } from 'next/navigation'
 export default function BottomNav() {
   const pathname = usePathname()
 
+  // Cesty přesně odpovídají vašim složkám v app/
   const navItems = [
-    { label: 'Domů', icon: '🏠', href: '/domu' },
-    { label: 'Mapa', icon: '🗺️', href: '/mapa' },
-    { label: 'Smečka', icon: '🐾', href: '/smecka' },
-    { label: 'AI Radce', icon: '🤖', href: '/ai' },
-    { label: 'Profil', icon: '👤', href: '/profil' },
+    { href: '/domu', label: 'Domů', icon: '🏠' },
+    { href: '/search', label: 'Hledat', icon: '🔍' },
+    { href: '/map', label: 'Mapa', icon: '🗺️' },
+    { href: '/ai', label: 'AI', icon: '🤖' },
+    { href: '/chat', label: 'Chat', icon: '💬' },
+    { href: '/profile', label: 'Profil', icon: '👤' },
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 py-2 px-6 z-50">
-      <div className="max-w-md mx-auto flex justify-between items-center">
+    <nav className="fixed bottom-0 left-0 w-full z-[100] bg-white/95 backdrop-blur-xl border-t border-neutral-200/80 shadow-lg px-2 py-2">
+      <div className="w-full max-w-7xl mx-auto flex justify-around items-center">
         {navItems.map((item) => {
           const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center transition-all duration-200 ${
-                isActive ? 'scale-110 text-indigo-600 dark:text-indigo-400 font-black' : 'text-gray-400 hover:text-gray-600'
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-2xl transition-all ${
+                isActive
+                  ? 'text-indigo-600 font-bold scale-105'
+                  : 'text-neutral-500 hover:text-neutral-800'
               }`}
             >
-              <span className="text-2xl">{item.icon}</span>
-              <span className="text-[10px] mt-0.5 font-bold">{item.label}</span>
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-[10px] tracking-tight">{item.label}</span>
             </Link>
           )
         })}

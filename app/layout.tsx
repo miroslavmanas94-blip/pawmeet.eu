@@ -1,21 +1,19 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "PawMeet",
-  description: "Sociální síť pro milovníky mazlíčků",
-};
+// @ts-ignore: Allow side-effect CSS import without module declarations
+import './globals.css'
+import BottomNav from '@/components/BottomNav'
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="cs">
-      <body className="antialiased font-sans bg-gray-50 dark:bg-gray-900">
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pb-16">
         {children}
+        {/* Vložení spodní lišty pro celou aplikaci */}
+        <BottomNav />
       </body>
     </html>
-  );
+  )
 }
