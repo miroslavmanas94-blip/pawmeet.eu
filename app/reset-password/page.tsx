@@ -1,72 +1,115 @@
-import { updatePasswordAction } from './actions'
+'use client'
 
-export default async function ResetPasswordPage(props: {
-  searchParams: Promise<{ email?: string; error?: string }>
-}) {
-  const searchParams = await props.searchParams
-  const email = searchParams?.email
-  const error = searchParams?.error
+import { useState, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
+
+function ResetPasswordContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  
+  const [email, setEmail] = useState(searchParams.get('email') || '')
+  const [token, setToken] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+
+    // 1. Ověření OTP kódu z e-mailu
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery'
+    })
+
+    if (verifyError) {
+      setError('Neplatný nebo vypršený kód.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Nastavení nového hesla
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      alert('Heslo bylo úspěšně změněno!')
+      router.push('/login')
+    }
+    setLoading(false)
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 text-center relative overflow-hidden">
-        
-        <div className="text-4xl mb-4">🔐</div>
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-xl border border-neutral-100">
+        <h1 className="text-2xl font-bold mb-2">Obnovení hesla</h1>
+        <p className="text-sm text-neutral-500 mb-6">Zadejte kód z e-mailu a vaše nové heslo.</p>
 
-        <h1 className="text-2xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent mb-2">
-          Zadejte kód a nové heslo
-        </h1>
+        {error && <div className="p-3 mb-4 text-xs bg-red-50 text-red-600 rounded-xl">{error}</div>}
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">
-          Zadejte 6místný kód zaslaný na <br />
-          <strong className="text-indigo-600 dark:text-indigo-400">{email || 'váš e-mail'}</strong>.
-        </p>
-
-        {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
-            ⚠️ {decodeURIComponent(error)}
-          </div>
-        )}
-
-        <form action={updatePasswordAction} className="space-y-4 text-left">
-          <input type="hidden" name="email" value={email || ''} />
-
+        <form onSubmit={handleResetPassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1 text-center">
-              Ověřovací kód
-            </label>
+            <label className="text-xs font-semibold text-neutral-500 block mb-1">E-mail</label>
             <input
-              type="text"
-              name="code"
+              type="email"
               required
-              maxLength={6}
-              placeholder="123456"
-              className="w-full text-center text-3xl font-black tracking-[0.5em] py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">
-              Nové heslo
-            </label>
+            <label className="text-xs font-semibold text-neutral-500 block mb-1">6místný kód z e-mailu</label>
+            <input
+              type="text"
+              required
+              placeholder="123456"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none text-center font-mono text-lg tracking-widest"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-neutral-500 block mb-1">Nové heslo</label>
             <input
               type="password"
-              name="password"
               required
-              placeholder="Alespoň 6 znaků"
-              className="w-full px-5 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+              minLength={6}
+              placeholder="••••••••"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg transition-all mt-2"
+            disabled={loading}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all disabled:opacity-50"
           >
-            Uložit nové heslo 🐾
+            {loading ? 'Ukládám...' : 'Změnit heslo'}
           </button>
         </form>
-
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="text-center p-10">Načítám...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

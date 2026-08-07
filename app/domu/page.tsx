@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import BottomNav from '@/components/BottomNav'
 
@@ -166,7 +167,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     publish: 'Опублікувати',
     uploading: 'Завантаження...',
     comments: 'Коментарі',
-    addComment: 'Напишіть коментар...',
+    addComment: 'Надіслати',
     send: 'Надіслати',
     noComments: 'Поки немає коментарів. Будьте першим! 🐾',
     loadMore: 'Завантажити більше...',
@@ -177,6 +178,8 @@ const translations: Record<LangCode, Record<string, string>> = {
 }
 
 export default function HomeFeed() {
+  const router = useRouter()
+
   const [lang, setLang] = useState<LangCode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('lang') as LangCode
@@ -214,6 +217,14 @@ export default function HomeFeed() {
   const [petTag, setPetTag] = useState('')
 
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null)
+
+  const requireAuth = (action: () => void) => {
+    if (!currentUserId) {
+      router.push('/login')
+      return
+    }
+    action()
+  }
 
   const initFeed = async () => {
     const supabase = createClient()
@@ -329,8 +340,12 @@ export default function HomeFeed() {
     const supabase = createClient()
     const ext = file.name.split('.').pop()
     const path = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
-    const { error } = await supabase.storage.from('media').upload(path, file)
-    if (error) throw error
+    
+    const { error: uploadError } = await supabase.storage.from('media').upload(path, file)
+    if (uploadError) {
+      throw new Error(`Úložiště: ${uploadError.message}`)
+    }
+    
     const { data } = supabase.storage.from('media').getPublicUrl(path)
     return data.publicUrl
   }
@@ -344,7 +359,7 @@ export default function HomeFeed() {
       const mediaUrl = await uploadMediaToStorage(mediaFile)
       const supabase = createClient()
 
-      await supabase.from('posts').insert({
+      const { error: dbError } = await supabase.from('posts').insert({
         user_id: currentUserId,
         media_url: mediaUrl,
         media_type: mediaType,
@@ -356,6 +371,10 @@ export default function HomeFeed() {
         likes_count: 0
       })
 
+      if (dbError) {
+        throw new Error(`Databáze: ${dbError.message}`)
+      }
+
       setIsPostModalOpen(false)
       setMediaFile(null)
       setMediaPreview(null)
@@ -363,8 +382,9 @@ export default function HomeFeed() {
       setTextOverlay('')
       setLocation('')
       setPetTag('')
-    } catch (err) {
-      alert('Chyba při nahrávání příspěvku.')
+    } catch (err: any) {
+      console.error('Chyba při nahrávání příspěvku:', err)
+      alert(`Chyba při nahrávání příspěvku: ${err.message || err}`)
     } finally {
       setUploading(false)
     }
@@ -379,7 +399,7 @@ export default function HomeFeed() {
       const mediaUrl = await uploadMediaToStorage(mediaFile)
       const supabase = createClient()
 
-      await supabase.from('stories').insert({
+      const { error: dbError } = await supabase.from('stories').insert({
         user_id: currentUserId,
         media_url: mediaUrl,
         media_type: mediaType,
@@ -387,20 +407,29 @@ export default function HomeFeed() {
         pet_tag: petTag
       })
 
+      if (dbError) {
+        throw new Error(`Databáze: ${dbError.message}`)
+      }
+
       setIsStoryModalOpen(false)
       setMediaFile(null)
       setMediaPreview(null)
       setTextOverlay('')
       setPetTag('')
-    } catch (err) {
-      alert('Chyba při nahrávání příběhu.')
+    } catch (err: any) {
+      console.error('Chyba při nahrávání příběhu:', err)
+      alert(`Chyba při nahrávání příběhu: ${err.message || err}`)
     } finally {
       setUploading(false)
     }
   }
 
   const handleLike = async (postId: string, currentCount: number) => {
-    if (!currentUserId) return
+    if (!currentUserId) {
+      router.push('/login')
+      return
+    }
+
     const supabase = createClient()
     const isLiked = likedPosts[postId]
     const newLikedState = !isLiked
@@ -418,6 +447,10 @@ export default function HomeFeed() {
   }
 
   const handleBookmark = (postId: string) => {
+    if (!currentUserId) {
+      router.push('/login')
+      return
+    }
     setSavedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }))
   }
 
@@ -484,18 +517,18 @@ export default function HomeFeed() {
               )}
             </div>
 
-            <Link href="/chat" className="text-xl hover:scale-110 active:scale-90 transition-transform p-1">💬</Link>
+            <button onClick={() => requireAuth(() => router.push('/chat'))} className="text-xl hover:scale-110 active:scale-90 transition-transform p-1">💬</button>
           </div>
         </div>
       </header>
 
-      {/* HLAVNÍ OBSAH - FULL WIDTH S MAX-WIDTH PRO VELKÉ MONITORI */}
+      {/* HLAVNÍ OBSAH */}
       <main className="w-full px-4 sm:px-8 pt-4 max-w-7xl mx-auto">
         
         {/* STORIES */}
         <section className="flex gap-4 overflow-x-auto no-scrollbar pb-4 pt-1 border-b border-neutral-200/60 w-full">
           <div 
-            onClick={() => setIsStoryModalOpen(true)}
+            onClick={() => requireAuth(() => setIsStoryModalOpen(true))}
             className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
           >
             <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center border-2 border-dashed border-indigo-600 p-0.5 group-hover:scale-105 transition-transform">
@@ -528,7 +561,7 @@ export default function HomeFeed() {
 
         {/* VYTVOŘIT PŘÍSPĚVEK LIŠTA */}
         <div 
-          onClick={() => setIsPostModalOpen(true)}
+          onClick={() => requireAuth(() => setIsPostModalOpen(true))}
           className="my-4 p-4 bg-white rounded-2xl flex items-center gap-3 border border-neutral-200/60 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors w-full"
         >
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">🐾</div>

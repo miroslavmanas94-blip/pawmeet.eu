@@ -23,7 +23,6 @@ type Contact = Profile & {
   lastMessageTime?: string
 }
 
-// 1. Komponenta s logikou chatu
 function ChatContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -40,17 +39,48 @@ function ChatContent() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
 
+  // WebRTC / Hovory
+  const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
+  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const peerConnection = useRef<RTCPeerConnection | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // 1. OKAMŽITÉ NAČTENÍ AKTIVNÍHO PROFILU PODLE ID Z URL
+  useEffect(() => {
+    if (!activeUserId) {
+      setActiveProfile(null)
+      return
+    }
+
+    const fetchActiveProfile = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', activeUserId)
+        .single()
+
+      if (data) setActiveProfile(data)
+    }
+
+    fetchActiveProfile()
+  }, [activeUserId])
+
+  // 2. INICIALIZATE UŽIVATELE A KONTAKTŮ
   useEffect(() => {
     const initData = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      
+
       if (!user) {
         router.push('/login')
         return
@@ -69,7 +99,7 @@ function ChatContent() {
 
       if (msgs && profiles) {
         const contactMap = new Map<string, Contact>()
-        
+
         msgs.forEach((msg) => {
           const otherId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
           if (!contactMap.has(otherId)) {
@@ -97,24 +127,13 @@ function ChatContent() {
     initData()
   }, [activeUserId, router])
 
+  // 3. NAČTENÍ ZPRÁV AKTIVNÍHO CHATU
   useEffect(() => {
     if (!currentUserId || !activeUserId) return
 
-    const loadActiveChat = async () => {
+    const loadMessages = async () => {
       setLoadingMessages(true)
       const supabase = createClient()
-
-      const existingContact = contacts.find(c => c.id === activeUserId)
-      if (existingContact) {
-        setActiveProfile(existingContact)
-      } else {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .eq('id', activeUserId)
-          .single()
-        if (profile) setActiveProfile(profile)
-      }
 
       const { data: chatMsgs } = await supabase
         .from('messages')
@@ -127,14 +146,16 @@ function ChatContent() {
       scrollToBottom()
     }
 
-    loadActiveChat()
-  }, [activeUserId, currentUserId, contacts])
+    loadMessages()
+  }, [activeUserId, currentUserId])
 
+  // 4. SUPABASE REALTIME (ZPRÁVY + ONLINE PRESENCE + WEBRTC SIGNALIZACE)
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
 
-    const messageChannel = supabase.channel('chat-messages')
+    // Realtime Zprávy
+    const msgChannel = supabase.channel('global-chat')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new as Message
         if (
@@ -144,31 +165,20 @@ function ChatContent() {
           setMessages((prev) => [...prev, newMsg])
           scrollToBottom()
         }
-        
-        setContacts((prev) => {
-          const otherId = newMsg.sender_id === currentUserId ? newMsg.receiver_id : newMsg.sender_id
-          const updated = [...prev]
-          const index = updated.findIndex((c) => c.id === otherId)
-          if (index !== -1) {
-            updated[index].lastMessage = newMsg.content
-            updated[index].lastMessageTime = newMsg.created_at
-            const [moved] = updated.splice(index, 1)
-            updated.unshift(moved)
-          }
-          return updated
-        })
       })
       .subscribe()
 
-    const presenceChannel = supabase.channel('online-users', {
+    // Online Presence
+    const presenceChannel = supabase.channel('online-presence', {
       config: { presence: { key: currentUserId } }
     })
 
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState()
-        const activeIds = new Set(Object.keys(state))
-        setOnlineUsers(activeIds)
+        const onlineIds = new Set<string>()
+        Object.keys(state).forEach((key) => onlineIds.add(key))
+        setOnlineUsers(onlineIds)
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -176,12 +186,89 @@ function ChatContent() {
         }
       })
 
+    // WebRTC Signalizace pro hovory
+    const callChannel = supabase.channel(`user_call_${currentUserId}`)
+      .on('broadcast', { event: 'call-offer' }, async ({ payload }) => {
+        setCallType(payload.type)
+        setCallStatus('incoming')
+      })
+      .on('broadcast', { event: 'call-end' }, () => {
+        endCall()
+      })
+      .subscribe()
+
     return () => {
-      supabase.removeChannel(messageChannel)
+      supabase.removeChannel(msgChannel)
       supabase.removeChannel(presenceChannel)
+      supabase.removeChannel(callChannel)
     }
   }, [currentUserId, activeUserId])
 
+  // 5. INICIALIZACE WEBRTC A ZAHÁJENÍ HOVORU
+  const startCall = async (type: 'audio' | 'video') => {
+    if (!activeUserId || !currentUserId) return
+    setCallType(type)
+    setCallStatus('calling')
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: type === 'video',
+        audio: true
+      })
+      setLocalStream(stream)
+
+      if (localVideoRef.current && type === 'video') {
+        localVideoRef.current.srcObject = stream
+      }
+
+      const supabase = createClient()
+      supabase.channel(`user_call_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'call-offer',
+        payload: { from: currentUserId, type }
+      })
+    } catch (err) {
+      console.error('Kamera/mikrofon nedostupný:', err)
+      alert('Nepodařilo se přistoupit k mikrofonu nebo kameře.')
+      endCall()
+    }
+  }
+
+  const acceptCall = async () => {
+    setCallStatus('connected')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: callType === 'video',
+        audio: true
+      })
+      setLocalStream(stream)
+      if (localVideoRef.current && callType === 'video') {
+        localVideoRef.current.srcObject = stream
+      }
+    } catch (err) {
+      console.error(err)
+      endCall()
+    }
+  }
+
+  const endCall = () => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop())
+    }
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => track.stop())
+    }
+    setLocalStream(null)
+    setRemoteStream(null)
+    setCallStatus('idle')
+    setCallType(null)
+    if (peerConnection.current) {
+      peerConnection.current.close()
+      peerConnection.current = null
+    }
+  }
+
+  // Odeslání zprávy
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
@@ -208,7 +295,9 @@ function ChatContent() {
   )
 
   return (
-    <div className="flex w-full h-[calc(100vh-80px)] bg-white overflow-hidden max-w-[1400px] mx-auto border-x border-neutral-200/60 shadow-2xl">
+    <div className="flex w-full h-[calc(100vh-80px)] bg-white overflow-hidden max-w-[1400px] mx-auto border-x border-neutral-200/60 shadow-2xl relative">
+      
+      {/* SEZNAM KONTAKTŮ */}
       <div className={`w-full md:w-[350px] lg:w-[400px] flex-col border-r border-neutral-200 bg-neutral-50/50 ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-neutral-200 bg-white">
           <h1 className="text-xl font-black mb-4">Zprávy</h1>
@@ -219,7 +308,7 @@ function ChatContent() {
               placeholder="Hledat konverzaci..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-neutral-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-neutral-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
         </div>
@@ -228,9 +317,7 @@ function ChatContent() {
           {loadingContacts ? (
             <div className="text-center text-xs text-neutral-400 mt-10">Načítám zprávy...</div>
           ) : filteredContacts.length === 0 ? (
-            <div className="text-center text-xs text-neutral-400 mt-10">
-              Žádné konverzace. Najděte někoho v hledání!
-            </div>
+            <div className="text-center text-xs text-neutral-400 mt-10">Žádné konverzace.</div>
           ) : (
             filteredContacts.map((contact) => {
               const isActiveChat = contact.id === activeUserId
@@ -273,47 +360,70 @@ function ChatContent() {
         </div>
       </div>
 
+      {/* AKTIVNÍ CHAT */}
       <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
         {!activeUserId ? (
           <div className="text-center text-neutral-400 flex flex-col items-center">
             <div className="w-24 h-24 bg-neutral-50 rounded-full flex items-center justify-center text-4xl mb-4 border border-neutral-100">💬</div>
             <h2 className="text-lg font-bold text-neutral-700">Vaše zprávy</h2>
-            <p className="text-sm mt-1">Vyberte konverzaci z levého panelu.</p>
+            <p className="text-sm mt-1">Vyberte konverzaci ze seznamu.</p>
           </div>
         ) : (
           <>
-            <div className="h-[72px] px-4 border-b border-neutral-200/80 flex items-center gap-4 bg-white/95 backdrop-blur-sm z-10 shadow-sm">
-              <button onClick={() => router.push('/chat')} className="md:hidden w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center font-bold">
-                ←
-              </button>
-              
-              <div className="relative">
-                <div className="w-11 h-11 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
-                  {activeProfile?.avatar_url ? (
-                    <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-lg">🐾</span>
+            {/* HLAVIČKA CHATU S TLAČÍTKY HLASOVÉHO A VIDEO HOVORU */}
+            <div className="h-[72px] px-4 border-b border-neutral-200/80 flex items-center justify-between bg-white/95 backdrop-blur-sm z-10 shadow-sm">
+              <div className="flex items-center gap-3">
+                <button onClick={() => router.push('/chat')} className="md:hidden w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center font-bold">
+                  ←
+                </button>
+                
+                <div className="relative">
+                  <div className="w-11 h-11 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
+                    {activeProfile?.avatar_url ? (
+                      <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg">🐾</span>
+                    )}
+                  </div>
+                  {onlineUsers.has(activeProfile?.id || '') && (
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
                   )}
                 </div>
-                {onlineUsers.has(activeProfile?.id || '') && (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                )}
+
+                <div className="cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
+                  <h2 className="font-bold text-base leading-tight">
+                    {activeProfile?.username || 'Načítám jméno...'}
+                  </h2>
+                  <div className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5">
+                    {onlineUsers.has(activeProfile?.id || '') ? (
+                      <span className="text-green-500">Aktivní nyní</span>
+                    ) : (
+                      <span className="text-neutral-400">Offline</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex-1 cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
-                <h2 className="font-bold text-base leading-tight">
-                  {activeProfile?.username || 'Načítám...'}
-                </h2>
-                <div className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5">
-                  {onlineUsers.has(activeProfile?.id || '') ? (
-                    <span className="text-green-500">Aktivní nyní</span>
-                  ) : (
-                    <span className="text-neutral-400">Offline</span>
-                  )}
-                </div>
+              {/* TLAČÍTKA PRO HOVORY */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => startCall('audio')}
+                  className="w-10 h-10 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-base transition-all"
+                  title="Hlasový hovor"
+                >
+                  📞
+                </button>
+                <button
+                  onClick={() => startCall('video')}
+                  className="w-10 h-10 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-base transition-all"
+                  title="Video hovor"
+                >
+                  📹
+                </button>
               </div>
             </div>
 
+            {/* VÝPIS ZPRÁV */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa] relative">
               {loadingMessages ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#f8f9fa]/80 backdrop-blur-sm z-10">
@@ -353,6 +463,7 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* VKLÁDÁNÍ ZPRÁVY */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-neutral-200 flex items-center gap-3">
               <input
                 type="text"
@@ -364,7 +475,7 @@ function ChatContent() {
               <button
                 type="submit"
                 disabled={!newMessage.trim()}
-                className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white disabled:opacity-50 hover:bg-indigo-700 hover:scale-105 transition-all shadow-md active:scale-95"
+                className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white disabled:opacity-50 hover:bg-indigo-700 transition-all shadow-md"
               >
                 <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
               </button>
@@ -372,11 +483,51 @@ function ChatContent() {
           </>
         )}
       </div>
+
+      {/* OVERLAY PRO AUDIO / VIDEO HOVORY */}
+      {callStatus !== 'idle' && (
+        <div className="fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
+          <div className="text-center mt-6">
+            <h3 className="text-2xl font-bold mb-2">{activeProfile?.username || 'Uživatel'}</h3>
+            <p className="text-sm text-neutral-400">
+              {callStatus === 'calling' && 'Volám...'}
+              {callStatus === 'incoming' && 'Příchozí hovor...'}
+              {callStatus === 'connected' && 'Probíhá hovor'}
+            </p>
+          </div>
+
+          {/* VIDEO PROSTORY */}
+          {callType === 'video' && (
+            <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl">
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border border-white/20 object-cover" />
+            </div>
+          )}
+
+          {/* OVLÁDÁNÍ HOVORU */}
+          <div className="flex items-center gap-6 mb-8">
+            {callStatus === 'incoming' ? (
+              <>
+                <button onClick={acceptCall} className="w-16 h-16 rounded-full bg-green-500 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
+                  📞
+                </button>
+                <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
+                  ❌
+                </button>
+              </>
+            ) : (
+              <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
+                🛑
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
 
-// 2. Exportovaná stránka obalená v Suspense pro úspěšný build na Vercelu
 export default function ChatPage() {
   return (
     <Suspense fallback={<div className="flex h-screen items-center justify-center text-neutral-400 text-sm">Načítám chat...</div>}>

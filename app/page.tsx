@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { translations, languages } from '@/utils/translations'
 
 export default function LandingPage() {
@@ -40,12 +41,13 @@ export default function LandingPage() {
       
       {/* Hlavička */}
       <header className="w-full max-w-5xl flex justify-between items-center py-4 relative z-50">
-        {/* LOGO S OBRÁZKEM */}
         <Link href="/" className="flex items-center gap-2 font-black text-xl">
-          <img 
-            src="/logo.png" 
+          <Image 
+            src="/logo.jpg" 
             alt="PawMeet Logo" 
-            className="w-8 h-8 object-contain"
+            width={32}
+            height={32}
+            className="w-8 h-8 object-cover rounded-lg"
           />
           <span className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
             PawMeet
@@ -57,6 +59,9 @@ export default function LandingPage() {
           <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsLangOpen(!isLangOpen)}
+              aria-expanded={isLangOpen}
+              aria-haspopup="true"
+              aria-label="Výběr jazyka"
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 text-xs font-bold hover:scale-105 transition-transform shadow-sm border border-gray-200 dark:border-slate-700"
             >
               <span>{currentLangObj.flag}</span>
@@ -93,6 +98,19 @@ export default function LandingPage() {
 
       {/* Hero sekce */}
       <main className="flex flex-col items-center text-center max-w-3xl my-auto gap-6 w-full">
+        
+        {/* VÝRAZNÉ HLAVNÍ LOGO */}
+        <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-xl border border-gray-200/80 dark:border-slate-800 bg-black flex items-center justify-center transform hover:scale-105 transition-transform duration-300 relative">
+          <Image 
+            src="/logo.jpg" 
+            alt="PawMeet Logo" 
+            width={96}
+            height={96}
+            className="w-full h-full object-cover"
+            priority
+          />
+        </div>
+
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-semibold shadow-sm">
           {t.badgeDog}
         </div>
@@ -111,7 +129,13 @@ export default function LandingPage() {
             className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-500/25 transition-all text-center flex items-center justify-center gap-2"
           >
             <span>{t.join}</span>
-            <img src="/logo.png" alt="Logo" className="w-5 h-5 object-contain inline-block" />
+            <Image 
+              src="/logo.jpg" 
+              alt="Logo" 
+              width={20}
+              height={20}
+              className="w-5 h-5 object-cover rounded-md inline-block" 
+            />
           </Link>
           <Link 
             href="/login" 
