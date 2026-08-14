@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 // @ts-ignore: Allow side-effect CSS import without module declarations
 import './globals.css'
 import BottomNav from '@/components/BottomNav'
@@ -13,6 +14,8 @@ export default function RootLayout({
         {children}
         {/* Vložení spodní lišty pro celou aplikaci */}
         <BottomNav />
+        {/* Vercel Analytics pro měření návštěvnosti */}
+        <Analytics />
       </body>
     </html>
   )
