@@ -1,0 +1,41 @@
+<svg width="700" height="700" viewBox="0 0 700 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pawGradient" x1="130" y1="48" x2="544" y2="610" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#C072F0"/>
+      <stop offset="0.34" stop-color="#A754D8"/>
+      <stop offset="0.72" stop-color="#7E4BC6"/>
+      <stop offset="1" stop-color="#5E3CA6"/>
+    </linearGradient>
+    <filter id="pawShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="14" flood-color="#4D2B72" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#pawShadow)">
+    <g stroke="#3C2A52" stroke-width="18" stroke-linejoin="round" fill="url(#pawGradient)">
+      <circle cx="180" cy="160" r="90"/>
+      <circle cx="315" cy="74" r="96"/>
+      <circle cx="450" cy="160" r="90"/>
+      <circle cx="246" cy="292" r="106"/>
+      <circle cx="384" cy="292" r="106"/>
+
+      <path d="M88 350C90 272 168 202 232 245C289 283 319 371 306 434C295 491 255 547 194 563C130 580 73 543 58 488C41 426 56 390 88 350Z"/>
+      <path d="M452 350C448 272 378 202 312 245C256 283 224 371 239 434C250 491 290 547 352 563C416 580 474 543 488 488C505 426 492 390 452 350Z"/>
+      <path d="M250 380C300 355 400 355 450 380C496 404 522 463 520 524C518 589 471 628 403 631C369 633 332 625 301 605C257 577 216 538 212 488C206 435 217 398 250 380Z"/>
+    </g>
+
+    <g fill="#F4F0FF" stroke="#3C2A52" stroke-width="16" stroke-linejoin="round">
+      <path d="M256 290C285 267 321 267 349 293C384 323 393 381 379 434C365 487 327 528 279 530C228 531 184 495 172 445C154 375 196 319 256 290Z"/>
+    </g>
+
+    <g fill="#3F2A5B">
+      <path d="M291 407C318 390 356 392 380 414C395 428 405 449 404 474C402 510 378 535 344 540C306 546 264 522 258 487C252 452 267 427 291 407Z"/>
+    </g>
+
+    <g stroke="#3C2A52" stroke-width="12" stroke-linecap="round" fill="none">
+      <path d="M280 340C267 374 267 392 279 417"/>
+      <path d="M331 340C343 374 343 392 331 417"/>
+      <path d="M302 449C315 457 323 466 323 480"/>
+    </g>
+  </g>
+</svg>

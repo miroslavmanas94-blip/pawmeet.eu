@@ -187,13 +187,16 @@ export default function HomeFeed() {
     }
     return 'cs'
   })
-  
+
   const [isLangOpen, setIsLangOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [posts, setPosts] = useState<Post[]>([])
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasMorePosts, setHasMorePosts] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const [likedPosts, setLikedPosts] = useState<{ [key: string]: boolean }>({})
   const [savedPosts, setSavedPosts] = useState<{ [key: string]: boolean }>({})
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -202,11 +205,12 @@ export default function HomeFeed() {
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
 
   const [isPostModalOpen, setIsPostModalOpen] = useState(false)
   const [isStoryModalOpen, setIsStoryModalOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
-  
+
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
@@ -226,6 +230,17 @@ export default function HomeFeed() {
     action()
   }
 
+  const resetFormState = () => {
+    setMediaFile(null)
+    setMediaPreview(null)
+    setMediaType('image')
+    setCaption('')
+    setTextOverlay('')
+    setOverlayColor('#ffffff')
+    setLocation('')
+    setPetTag('')
+  }
+
   const initFeed = async () => {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -235,10 +250,11 @@ export default function HomeFeed() {
       .from('posts')
       .select('*, profiles(username, avatar_url)')
       .order('created_at', { ascending: false })
-      .range(0, 5)
+      .range(0, 4)
 
     if (postsData) {
       setPosts(postsData as any)
+      if (postsData.length < 5) setHasMorePosts(false)
 
       if (user) {
         const postIds = postsData.map((p: any) => p.id)
@@ -268,6 +284,45 @@ export default function HomeFeed() {
     }
 
     setLoading(false)
+  }
+
+  const handleLoadMorePosts = async () => {
+    if (loadingMore || !hasMorePosts) return
+    setLoadingMore(true)
+    const supabase = createClient()
+    const startRange = posts.length
+    const endRange = startRange + 4
+
+    const { data: newPosts } = await supabase
+      .from('posts')
+      .select('*, profiles(username, avatar_url)')
+      .order('created_at', { ascending: false })
+      .range(startRange, endRange)
+
+    if (newPosts && newPosts.length > 0) {
+      setPosts((prev) => [...prev, ...(newPosts as any)])
+      if (newPosts.length < 5) setHasMorePosts(false)
+
+      if (currentUserId) {
+        const postIds = newPosts.map((p: any) => p.id)
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', currentUserId)
+          .in('post_id', postIds)
+
+        if (likesData) {
+          setLikedPosts((prev) => {
+            const next = { ...prev }
+            likesData.forEach((l: any) => { next[l.post_id] = true })
+            return next
+          })
+        }
+      }
+    } else {
+      setHasMorePosts(false)
+    }
+    setLoadingMore(false)
   }
 
   useEffect(() => {
@@ -340,12 +395,12 @@ export default function HomeFeed() {
     const supabase = createClient()
     const ext = file.name.split('.').pop()
     const path = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
-    
+
     const { error: uploadError } = await supabase.storage.from('media').upload(path, file)
     if (uploadError) {
       throw new Error(`Úložiště: ${uploadError.message}`)
     }
-    
+
     const { data } = supabase.storage.from('media').getPublicUrl(path)
     return data.publicUrl
   }
@@ -376,12 +431,7 @@ export default function HomeFeed() {
       }
 
       setIsPostModalOpen(false)
-      setMediaFile(null)
-      setMediaPreview(null)
-      setCaption('')
-      setTextOverlay('')
-      setLocation('')
-      setPetTag('')
+      resetFormState()
     } catch (err: any) {
       console.error('Chyba při nahrávání příspěvku:', err)
       alert(`Chyba při nahrávání příspěvku: ${err.message || err}`)
@@ -412,10 +462,7 @@ export default function HomeFeed() {
       }
 
       setIsStoryModalOpen(false)
-      setMediaFile(null)
-      setMediaPreview(null)
-      setTextOverlay('')
-      setPetTag('')
+      resetFormState()
     } catch (err: any) {
       console.error('Chyba při nahrávání příběhu:', err)
       alert(`Chyba při nahrávání příběhu: ${err.message || err}`)
@@ -478,9 +525,36 @@ export default function HomeFeed() {
     setLoadingComments(false)
   }
 
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim() || !activeCommentsPostId || !currentUserId) return
+    setSubmittingComment(true)
+
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: activeCommentsPostId,
+        user_id: currentUserId,
+        content: newComment.trim()
+      })
+      .select('*, profiles(username, avatar_url)')
+      .single()
+
+    if (data && !error) {
+      setComments((prev) => [...prev, data as any])
+      setNewComment('')
+    } else if (error) {
+      alert(`Chyba při odesílání komentáře: ${error.message}`)
+    }
+    setSubmittingComment(false)
+  }
+
+  const activeStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/40 text-neutral-900 pb-24 selection:bg-indigo-500 selection:text-white">
-      
+
       {/* HLAVIČKA NA CELOU ŠÍŘKU */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-neutral-200/60 px-6 py-3.5 w-full">
         <div className="w-full flex justify-between items-center">
@@ -524,11 +598,11 @@ export default function HomeFeed() {
 
       {/* HLAVNÍ OBSAH */}
       <main className="w-full px-4 sm:px-8 pt-4 max-w-7xl mx-auto">
-        
+
         {/* STORIES */}
         <section className="flex gap-4 overflow-x-auto no-scrollbar pb-4 pt-1 border-b border-neutral-200/60 w-full">
           <div 
-            onClick={() => requireAuth(() => setIsStoryModalOpen(true))}
+            onClick={() => requireAuth(() => { resetFormState(); setIsStoryModalOpen(true); })}
             className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
           >
             <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center border-2 border-dashed border-indigo-600 p-0.5 group-hover:scale-105 transition-transform">
@@ -561,7 +635,7 @@ export default function HomeFeed() {
 
         {/* VYTVOŘIT PŘÍSPĚVEK LIŠTA */}
         <div 
-          onClick={() => requireAuth(() => setIsPostModalOpen(true))}
+          onClick={() => requireAuth(() => { resetFormState(); setIsPostModalOpen(true); })}
           className="my-4 p-4 bg-white rounded-2xl flex items-center gap-3 border border-neutral-200/60 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors w-full"
         >
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">🐾</div>
@@ -579,7 +653,7 @@ export default function HomeFeed() {
 
             return (
               <article key={post.id} id={`post-${post.id}`} className="bg-white rounded-3xl border border-neutral-200/60 overflow-hidden shadow-sm">
-                
+
                 <div className="flex justify-between items-center px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center text-sm overflow-hidden border border-neutral-200">
@@ -652,92 +726,335 @@ export default function HomeFeed() {
               </article>
             )
           })}
+
+          {/* TLAČÍTKO PRO NAČTENÍ DALŠÍCH PŘÍSPĚVKŮ */}
+          {hasMorePosts && (
+            <div className="text-center py-4">
+              <button
+                onClick={handleLoadMorePosts}
+                disabled={loadingMore}
+                className="px-6 py-2.5 rounded-full bg-white border border-neutral-200 text-xs font-bold text-neutral-700 hover:bg-neutral-50 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+              >
+                {loadingMore ? '...' : t.loadMore}
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* MODAL NOVÝ PŘÍSPĚVEK */}
-      {isPostModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-neutral-200">
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-neutral-200">
-              <h3 className="font-bold text-sm">{t.newPost}</h3>
-              <button onClick={() => setIsPostModalOpen(false)} className="w-8 h-8 rounded-full bg-neutral-100 font-bold text-xs">✕</button>
+      {/* OVERLAY PRO ZOBRAZENÍ PŘÍBĚHŮ (STORY VIEWER) */}
+      {activeStory && activeStoryIndex !== null && (
+        <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
+          <div className="relative w-full max-w-sm aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between">
+
+            {/* Progress bar */}
+            <div className="absolute top-3 left-3 right-3 z-10 flex gap-1">
+              {stories.map((s, idx) => (
+                <div key={s.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full bg-white transition-all duration-300 ${
+                      idx < activeStoryIndex ? 'w-full' : idx === activeStoryIndex ? 'w-full animate-pulse' : 'w-0'
+                    }`}
+                  />
+                </div>
+              ))}
             </div>
 
-            <form onSubmit={handleCreatePost} className="p-5 space-y-4">
-              <div className="relative aspect-square bg-neutral-100 rounded-2xl overflow-hidden border border-dashed border-neutral-300 flex items-center justify-center">
-                {mediaPreview ? (
-                  <>
-                    {mediaType === 'video' ? (
-                      <video src={mediaPreview} autoPlay muted loop className="w-full h-full object-cover" />
-                    ) : (
-                      <img src={mediaPreview} className="w-full h-full object-cover" alt="Preview" />
-                    )}
-                    {textOverlay && (
-                      <div 
-                        className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-center font-black text-lg max-w-[85%]"
-                        style={{ color: overlayColor }}
-                      >
-                        {textOverlay}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <label className="cursor-pointer flex flex-col items-center gap-2 p-4 text-center">
-                    <span className="text-3xl">📸</span>
-                    <span className="text-xs font-bold text-indigo-600">{t.selectFile}</span>
-                    <input type="file" accept="image/*,video/*" onChange={handleMediaSelect} className="hidden" required />
-                  </label>
-                )}
+            {/* Hlavička story */}
+            <div className="absolute top-6 left-4 right-4 z-10 flex justify-between items-center text-white">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-700 border border-white/20">
+                  {activeStory.profiles?.avatar_url ? (
+                    <img src={activeStory.profiles.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                  ) : (
+                    '🐶'
+                  )}
+                </div>
+                <span className="text-xs font-bold">{activeStory.profiles?.username || 'Uživatel'}</span>
+              </div>
+              <button 
+                onClick={() => setActiveStoryIndex(null)}
+                className="w-8 h-8 rounded-full bg-black/40 text-white font-bold flex items-center justify-center backdrop-blur-md"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Obsah story */}
+            <div className="w-full h-full relative flex items-center justify-center">
+              {activeStory.media_type === 'video' ? (
+                <video src={activeStory.media_url} autoPlay muted loop className="w-full h-full object-cover" />
+              ) : (
+                <img src={activeStory.media_url} className="w-full h-full object-cover" alt="Story content" />
+              )}
+
+              {activeStory.text_overlay && (
+                <div className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-white text-center font-black text-lg max-w-[85%] border border-white/20">
+                  {activeStory.text_overlay}
+                </div>
+              )}
+
+              {activeStory.pet_tag && (
+                <div className="absolute bottom-6 left-4 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">
+                  🐾 {activeStory.pet_tag}
+                </div>
+              )}
+            </div>
+
+            {/* Navigační klikací zóny */}
+            <div 
+              onClick={() => setActiveStoryIndex(activeStoryIndex > 0 ? activeStoryIndex - 1 : null)}
+              className="absolute left-0 top-16 bottom-0 w-1/3 z-0"
+            />
+            <div 
+              onClick={() => setActiveStoryIndex(activeStoryIndex < stories.length - 1 ? activeStoryIndex + 1 : null)}
+              className="absolute right-0 top-16 bottom-0 w-1/3 z-0"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KOMENTÁŘE */}
+      {activeCommentsPostId && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl h-[80vh] sm:h-[600px] flex flex-col overflow-hidden shadow-2xl">
+
+            {/* Header */}
+            <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-200">
+              <h3 className="font-bold text-sm text-neutral-800">{t.comments}</h3>
+              <button 
+                onClick={() => setActiveCommentsPostId(null)} 
+                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Seznam komentářů */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {loadingComments ? (
+                <div className="text-center py-10 text-neutral-400 text-xs">Načítám komentáře...</div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-10 text-neutral-400 text-xs">{t.noComments}</div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex gap-3 items-start">
+                    <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs overflow-hidden shrink-0">
+                      {comment.profiles?.avatar_url ? (
+                        <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                      ) : (
+                        '🐾'
+                      )}
+                    </div>
+                    <div className="flex-1 bg-neutral-50 p-3 rounded-2xl border border-neutral-100">
+                      <span className="text-xs font-bold text-neutral-800 block mb-0.5">
+                        {comment.profiles?.username || 'Uživatel'}
+                      </span>
+                      <p className="text-xs text-neutral-600 leading-relaxed">{comment.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Formulář pro přidání komentáře */}
+            <form onSubmit={handleAddComment} className="p-4 border-t border-neutral-200 flex gap-2 items-center bg-white">
+              <input
+                type="text"
+                placeholder={t.addComment}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                className="flex-1 text-xs px-4 py-2.5 rounded-full bg-neutral-100 border border-transparent focus:border-indigo-500 focus:bg-white focus:outline-none transition-all"
+              />
+              <button
+                type="submit"
+                disabled={submittingComment || !newComment.trim()}
+                className="px-4 py-2.5 bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {submittingComment ? '...' : t.send}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOVÝ PŘÍSPĚVEK */}
+      {isPostModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-neutral-900">{t.newPost}</h3>
+              <button
+                onClick={() => setIsPostModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.selectFile}</label>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleMediaSelect}
+                  className="w-full text-xs text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
               </div>
 
+              {mediaPreview && (
+                <div className="w-full aspect-video rounded-2xl overflow-hidden bg-neutral-100 relative border border-neutral-200">
+                  {mediaType === 'video' ? (
+                    <video src={mediaPreview} controls className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
+                  )}
+                  {textOverlay && (
+                    <div
+                      className="absolute inset-x-4 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-center font-black text-sm border border-white/20 shadow-2xl"
+                      style={{ color: overlayColor }}
+                    >
+                      {textOverlay}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
-                <label className="text-[11px] font-bold text-neutral-500 uppercase">{t.textOverlay}</label>
-                <div className="flex gap-2 mt-1">
+                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.caption}</label>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder={t.caption}
+                  rows={3}
+                  className="w-full text-xs p-3 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.textOverlay}</label>
                   <input
                     type="text"
                     value={textOverlay}
                     onChange={(e) => setTextOverlay(e.target.value)}
-                    placeholder="Napište text na fotku..."
-                    className="flex-1 px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
+                    placeholder={t.textOverlay}
+                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">Barva textu</label>
                   <input
                     type="color"
                     value={overlayColor}
                     onChange={(e) => setOverlayColor(e.target.value)}
-                    className="w-9 h-9 rounded-xl border-0 cursor-pointer"
+                    className="w-full h-9 p-1 rounded-xl bg-neutral-50 border border-neutral-200 cursor-pointer"
                   />
                 </div>
               </div>
 
-              <input
-                type="text"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder={t.caption}
-                className="w-full px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
-              />
               <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.location}</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder={t.location}
+                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.petName}</label>
+                  <input
+                    type="text"
+                    value={petTag}
+                    onChange={(e) => setPetTag(e.target.value)}
+                    placeholder={t.petName}
+                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={uploading || !mediaFile}
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-xs font-bold hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 shadow-md"
+              >
+                {uploading ? t.uploading : t.publish}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOVÝ PŘÍBĚH (STORY) */}
+      {isStoryModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-neutral-900">{t.newStory}</h3>
+              <button
+                onClick={() => setIsStoryModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStory} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.selectFile}</label>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleMediaSelect}
+                  className="w-full text-xs text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+              </div>
+
+              {mediaPreview && (
+                <div className="w-full aspect-[9/16] max-h-64 rounded-2xl overflow-hidden bg-neutral-100 relative border border-neutral-200 flex items-center justify-center mx-auto">
+                  {mediaType === 'video' ? (
+                    <video src={mediaPreview} controls className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
+                  )}
+                  {textOverlay && (
+                    <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-white text-center font-black text-sm border border-white/20">
+                      {textOverlay}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.textOverlay}</label>
                 <input
                   type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder={t.location}
-                  className="px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
+                  value={textOverlay}
+                  onChange={(e) => setTextOverlay(e.target.value)}
+                  placeholder={t.textOverlay}
+                  className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.petName}</label>
                 <input
                   type="text"
                   value={petTag}
                   onChange={(e) => setPetTag(e.target.value)}
                   placeholder={t.petName}
-                  className="px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
+                  className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={uploading || !mediaFile}
-                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-xs rounded-2xl disabled:opacity-50 shadow-lg shadow-indigo-500/20"
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-xs font-bold hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 shadow-md"
               >
                 {uploading ? t.uploading : t.publish}
               </button>
@@ -746,67 +1063,7 @@ export default function HomeFeed() {
         </div>
       )}
 
-      {/* MODAL NOVÝ PŘÍBĚH */}
-      {isStoryModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-neutral-200">
-            <div className="flex justify-between items-center px-5 py-3.5 border-b border-neutral-200">
-              <h3 className="font-bold text-sm">{t.newStory}</h3>
-              <button onClick={() => setIsStoryModalOpen(false)} className="w-8 h-8 rounded-full bg-neutral-100 font-bold text-xs">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateStory} className="p-5 space-y-4">
-              <div className="relative aspect-[9/16] max-h-[350px] bg-neutral-100 rounded-2xl overflow-hidden border border-dashed border-neutral-300 flex items-center justify-center mx-auto">
-                {mediaPreview ? (
-                  <>
-                    {mediaType === 'video' ? (
-                      <video src={mediaPreview} autoPlay muted loop className="w-full h-full object-cover" />
-                    ) : (
-                      <img src={mediaPreview} className="w-full h-full object-cover" alt="Preview" />
-                    )}
-                    {textOverlay && (
-                      <div className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-white text-center font-black text-lg max-w-[85%]">
-                        {textOverlay}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <label className="cursor-pointer flex flex-col items-center gap-2 p-4 text-center">
-                    <span className="text-3xl">🤳</span>
-                    <span className="text-xs font-bold text-indigo-600">{t.selectFile}</span>
-                    <input type="file" accept="image/*,video/*" onChange={handleMediaSelect} className="hidden" required />
-                  </label>
-                )}
-              </div>
-
-              <input
-                type="text"
-                value={textOverlay}
-                onChange={(e) => setTextOverlay(e.target.value)}
-                placeholder={t.textOverlay}
-                className="w-full px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
-              />
-              <input
-                type="text"
-                value={petTag}
-                onChange={(e) => setPetTag(e.target.value)}
-                placeholder={t.petName}
-                className="w-full px-3 py-2 bg-neutral-100 text-xs rounded-xl outline-none"
-              />
-
-              <button
-                type="submit"
-                disabled={uploading || !mediaFile}
-                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-xs rounded-2xl disabled:opacity-50 shadow-lg shadow-indigo-500/20"
-              >
-                {uploading ? t.uploading : t.publish}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* FIXED BOTTOM NAVIGATION */}
+      {/* SPODNÍ NAVIGACE */}
       <BottomNav />
     </div>
   )

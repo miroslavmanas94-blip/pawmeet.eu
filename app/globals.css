@@ -1,3 +1,124 @@
 @tailwind base;
+
 @tailwind components;
+
 @tailwind utilities;
+
+
+
+/* ==================== GOOGLE TRANSLATE STYLES ==================== */
+
+
+
+/* Skryje horní lištu Google Translate, která posouvá stránku */
+
+.goog-te-banner-frame.skiptranslate {
+
+  display: none !important;
+
+}
+
+
+
+body {
+
+  top: 0px !important;
+
+}
+
+
+
+/* Skryje nepotřebný text Google v rozevíracím menu */
+
+.goog-te-gadget {
+
+  font-family: inherit !important;
+
+  color: transparent !important;
+
+}
+
+
+
+.goog-te-gadget span {
+
+  display: none !important;
+
+}
+
+
+
+/* Stylování samotného tlačítka pro výběr jazyka */
+
+.goog-te-gadget-simple {
+
+  background-color: rgba(255, 255, 255, 0.8) !important;
+
+  backdrop-filter: blur(8px);
+
+  border: 1px solid #e2e8f0 !important;
+
+  padding: 6px 12px !important;
+
+  border-radius: 9999px !important;
+
+  font-size: 14px !important;
+
+  font-weight: 500 !important;
+
+  color: #1f2937 !important;
+
+  display: inline-flex !important;
+
+  align-items: center !important;
+
+  gap: 4px !important;
+
+  cursor: pointer !important;
+
+  transition: all 0.2s ease-in-out;
+
+}
+
+
+
+.goog-te-gadget-simple:hover {
+
+  background-color: #ffffff !important;
+
+  border-color: #cbd5e1 !important;
+
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+}
+
+
+
+/* Skrytí ikonky Google */
+
+.goog-te-gadget-icon {
+
+  display: none !important;
+
+}
+
+
+
+/* Vzhled textu vybraného jazyka */
+
+.goog-te-menu-value {
+
+  color: #374151 !important;
+
+}
+
+
+
+.goog-te-menu-value span {
+
+  color: #374151 !important;
+
+  border: none !important;
+
+} 
+

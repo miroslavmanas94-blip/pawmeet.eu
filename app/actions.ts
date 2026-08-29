@@ -13,3 +13,6 @@ export { signupAction as registerUser } from "./register/actions";
 
 // verify email – máš resendVerificationAction
 export { resendVerificationAction } from "./verify-email/actions";
+
+// posts & stories – příspěvky, příběhy a ukládání
+export { createPostAction, createStoryAction, toggleSaveAction } from "./posts/new/actions";
