@@ -2,1069 +2,1402 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import BottomNav from '@/components/BottomNav'
 
-// --- DATOVÉ TYPY ---
-type Comment = {
+// ==========================================
+// TYPES & INTERFACES
+// ==========================================
+
+type MediaType = 'image' | 'video' | 'carousel'
+type CreateTab = 'post' | 'story' | 'reel'
+
+interface Profile {
   id: string
-  content: string
-  created_at: string
-  profiles: { username: string; avatar_url: string }
+  username: string
+  full_name?: string
+  avatar_url: string
+  is_verified?: boolean
+  has_story?: boolean
 }
 
-type Post = {
+interface CommentReply {
   id: string
+  user: Profile
+  text: string
   created_at: string
-  caption: string
-  media_url: string
-  media_type: 'image' | 'video'
-  text_overlay?: string
-  overlay_color?: string
-  location?: string
-  pet_tag?: string
   likes_count: number
-  user_id: string
-  profiles: { username: string; avatar_url: string }
+  is_liked: boolean
 }
 
-type Story = {
+interface Comment {
   id: string
+  user: Profile
+  text: string
   created_at: string
-  media_url: string
-  media_type: 'image' | 'video'
-  text_overlay?: string
-  pet_tag?: string
+  likes_count: number
+  is_liked: boolean
+  replies?: CommentReply[]
+}
+
+interface PostMedia {
+  url: string
+  type: 'image' | 'video'
+}
+
+interface Post {
+  id: string
   user_id: string
-  profiles: { username: string; avatar_url: string }
+  user: Profile
+  media: PostMedia[]
+  caption: string
+  location?: string
+  audio_title?: string
+  likes_count: number
+  comments_count: number
+  shares_count: number
+  is_liked: boolean
+  is_saved: boolean
+  is_muted?: boolean
+  comments: Comment[]
+  created_at: string
 }
 
-// --- JAZYKOVÉ SLOVNÍKY ---
-const languages = [
-  { code: 'cs', label: 'Čeština', flag: '🇨🇿' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'pl', label: 'Polski', flag: '🇵🇱' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'sk', label: 'Slovenčina', flag: '🇸🇰' },
-  { code: 'ua', label: 'Українська', flag: '🇺🇦' }
-] as const
-
-type LangCode = typeof languages[number]['code']
-
-const translations: Record<LangCode, Record<string, string>> = {
-  cs: {
-    myStory: 'Váš příběh',
-    shareExp: 'Sdílejte zážitek svého mazlíčka...',
-    newPost: 'Nový příspěvek',
-    newStory: 'Nový příběh',
-    caption: 'Napište popisek...',
-    textOverlay: 'Text přímo na fotce/videu',
-    location: 'Lokalita (např. Park)',
-    petName: 'Jméno mazlíčka',
-    publish: 'Zveřejnit',
-    uploading: 'Nahrávám...',
-    comments: 'Komentáře',
-    addComment: 'Napište komentář...',
-    send: 'Odeslat',
-    noComments: 'Zatím žádné komentáře. Buďte první! 🐾',
-    loadMore: 'Načíst další příspěvky...',
-    likes: 'lajků',
-    selectFile: 'Vybrat fotku nebo video',
-    saved: 'Uloženo'
-  },
-  en: {
-    myStory: 'Your Story',
-    shareExp: "Share your pet's moment...",
-    newPost: 'New Post',
-    newStory: 'New Story',
-    caption: 'Write a caption...',
-    textOverlay: 'Text directly on photo/video',
-    location: 'Location (e.g., Park)',
-    petName: "Pet's name",
-    publish: 'Publish',
-    uploading: 'Uploading...',
-    comments: 'Comments',
-    addComment: 'Write a comment...',
-    send: 'Send',
-    noComments: 'No comments yet. Be the first! 🐾',
-    loadMore: 'Load more posts...',
-    likes: 'likes',
-    selectFile: 'Select photo or video',
-    saved: 'Saved'
-  },
-  pl: {
-    myStory: 'Twoja relacja',
-    shareExp: 'Podziel się chwilą pupila...',
-    newPost: 'Nowy post',
-    newStory: 'Nowa relacja',
-    caption: 'Napisz podpis...',
-    textOverlay: 'Tekst na zdjęciu/wideo',
-    location: 'Lokalizacja (np. Park)',
-    petName: 'Imię pupila',
-    publish: 'Opublikuj',
-    uploading: 'Przesyłanie...',
-    comments: 'Komentarze',
-    addComment: 'Napisz komentarz...',
-    send: 'Wyślij',
-    noComments: 'Brak komentarzy. Bądź pierwszy! 🐾',
-    loadMore: 'Załaduj więcej...',
-    likes: 'polubień',
-    selectFile: 'Wybierz zdjęcie lub wideo',
-    saved: 'Zapisano'
-  },
-  de: {
-    myStory: 'Deine Story',
-    shareExp: 'Teile das Erlebnis deines Haustiers...',
-    newPost: 'Neuer Beitrag',
-    newStory: 'Neue Story',
-    caption: 'Bildunterschrift schreiben...',
-    textOverlay: 'Text direkt auf Foto/Video',
-    location: 'Ort (z. B. Park)',
-    petName: 'Name des Haustiers',
-    publish: 'Veröffentlichen',
-    uploading: 'Wird hochgeladen...',
-    comments: 'Kommentare',
-    addComment: 'Schreibe einen Kommentar...',
-    send: 'Senden',
-    noComments: 'Noch keine Kommentare. Sei der Erste! 🐾',
-    loadMore: 'Mehr Beiträge laden...',
-    likes: 'Gefällt mir',
-    selectFile: 'Foto oder Video auswählen',
-    saved: 'Gespeichert'
-  },
-  sk: {
-    myStory: 'Váš príbeh',
-    shareExp: 'Zdieľajte zážitok svojho miláčika...',
-    newPost: 'Nový príspevok',
-    newStory: 'Nový príbeh',
-    caption: 'Napíšte popisok...',
-    textOverlay: 'Text priamo na fotke/videu',
-    location: 'Lokalita (napr. Park)',
-    petName: 'Meno miláčika',
-    publish: 'Zverejniť',
-    uploading: 'Nahrávam...',
-    comments: 'Komentáre',
-    addComment: 'Napíšte komentár...',
-    send: 'Odoslať',
-    noComments: 'Zatiaľ žiadne komentáre. Buďte prvý! 🐾',
-    loadMore: 'Načítať ďalšie príspevky...',
-    likes: 'páči sa mi to',
-    selectFile: 'Vybrať fotku alebo video',
-    saved: 'Uložené'
-  },
-  ua: {
-    myStory: 'Ваша історія',
-    shareExp: 'Поділіться моментом вашого улюбленця...',
-    newPost: 'Новий допис',
-    newStory: 'Нова історія',
-    caption: 'Напишіть підпис...',
-    textOverlay: 'Текст прямо на фото/відео',
-    location: 'Локація (напр., Парк)',
-    petName: 'Ім’я улюбленця',
-    publish: 'Опублікувати',
-    uploading: 'Завантаження...',
-    comments: 'Коментарі',
-    addComment: 'Надіслати',
-    send: 'Надіслати',
-    noComments: 'Поки немає коментарів. Будьте першим! 🐾',
-    loadMore: 'Завантажити більше...',
-    likes: 'вподобань',
-    selectFile: 'Вибрати фото або відео',
-    saved: 'Збережено'
-  }
+interface StoryItem {
+  id: string
+  media_url: string
+  type: 'image' | 'video'
+  duration: number
+  created_at: string
 }
 
-export default function HomeFeed() {
+interface UserStories {
+  user: Profile
+  stories: StoryItem[]
+  has_unseen: boolean
+}
+
+interface NotificationItem {
+  id: string
+  user: Profile
+  type: 'like' | 'comment' | 'follow' | 'mention'
+  post_media?: string
+  created_at: string
+  is_read: boolean
+}
+
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
+export default function InstagramHomeFull() {
   const router = useRouter()
+  const supabase = createClient()
 
-  const [lang, setLang] = useState<LangCode>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('lang') as LangCode
-      if (saved && translations[saved]) return saved
-    }
-    return 'cs'
-  })
-
-  const [isLangOpen, setIsLangOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
+  // State: Data
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
-  const [stories, setStories] = useState<Story[]>([])
-  const [loading, setLoading] = useState(true)
-  const [hasMorePosts, setHasMorePosts] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [storiesList, setStoriesList] = useState<UserStories[]>([])
+  const [suggestions, setSuggestions] = useState<Profile[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const [likedPosts, setLikedPosts] = useState<{ [key: string]: boolean }>({})
-  const [savedPosts, setSavedPosts] = useState<{ [key: string]: boolean }>({})
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  // State: UI & Navigation Modals
+  const [activeTab, setActiveTab] = useState<'feed' | 'reels'>('feed')
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(3)
+  const [activePostMenu, setActivePostMenu] = useState<Post | null>(null)
+  const [activeShareModal, setActiveShareModal] = useState<Post | null>(null)
+  const [activeCommentsModal, setActiveCommentsModal] = useState<Post | null>(null)
+  
+  // State: Story Viewer
+  const [activeStoryGroupIndex, setActiveStoryGroupIndex] = useState<number | null>(null)
+  const [activeStoryItemIndex, setActiveStoryItemIndex] = useState<number>(0)
+  const [storyProgress, setStoryProgress] = useState<number>(0)
+  const [isStoryPaused, setIsStoryPaused] = useState<boolean>(false)
 
-  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [newComment, setNewComment] = useState('')
-  const [loadingComments, setLoadingComments] = useState(false)
-  const [submittingComment, setSubmittingComment] = useState(false)
+  // State: Create Content Modal
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createTab, setCreateTab] = useState<CreateTab>('post')
+  const [uploadFiles, setUploadFiles] = useState<File[]>([])
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [createCaption, setCreateCaption] = useState('')
+  const [createLocation, setCreateLocation] = useState('')
+  const [createAudioTitle, setCreateAudioTitle] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState<Record<string, number>>({})
 
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false)
-  const [isStoryModalOpen, setIsStoryModalOpen] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  // State: Interactive Elements
+  const [commentInput, setCommentInput] = useState<Record<string, string>>({})
+  const [modalCommentInput, setModalCommentInput] = useState('')
+  const [doubleTapHeartPostId, setDoubleTapHeartPostId] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [volumeMuted, setVolumeMuted] = useState<boolean>(true)
 
-  const [mediaFile, setMediaFile] = useState<File | null>(null)
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
-  const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
-  const [caption, setCaption] = useState('')
-  const [textOverlay, setTextOverlay] = useState('')
-  const [overlayColor, setOverlayColor] = useState('#ffffff')
-  const [location, setLocation] = useState('')
-  const [petTag, setPetTag] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null)
+  // ------------------------------------------
+  // INITIAL DATA FETCHING (SUPABASE)
+  // ------------------------------------------
 
-  const requireAuth = (action: () => void) => {
-    if (!currentUserId) {
-      router.push('/login')
-      return
-    }
-    action()
-  }
-
-  const resetFormState = () => {
-    setMediaFile(null)
-    setMediaPreview(null)
-    setMediaType('image')
-    setCaption('')
-    setTextOverlay('')
-    setOverlayColor('#ffffff')
-    setLocation('')
-    setPetTag('')
-  }
-
-  const initFeed = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) setCurrentUserId(user.id)
-
-    const { data: postsData } = await supabase
-      .from('posts')
-      .select('*, profiles(username, avatar_url)')
-      .order('created_at', { ascending: false })
-      .range(0, 4)
-
-    if (postsData) {
-      setPosts(postsData as any)
-      if (postsData.length < 5) setHasMorePosts(false)
-
-      if (user) {
-        const postIds = postsData.map((p: any) => p.id)
-        const { data: likesData } = await supabase
-          .from('likes')
-          .select('post_id')
-          .eq('user_id', user.id)
-          .in('post_id', postIds)
-
-        if (likesData) {
-          const likedMap: { [key: string]: boolean } = {}
-          likesData.forEach((l: any) => { likedMap[l.post_id] = true })
-          setLikedPosts(likedMap)
-        }
+  const fetchFeedData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      // 1. Fetch authenticated user
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      let profileData: Profile = {
+        id: authUser?.id || 'guest',
+        username: authUser?.user_metadata?.username || authUser?.email?.split('@')[0] || 'moj_profil',
+        full_name: authUser?.user_metadata?.full_name || 'Uživatel PawMeet',
+        avatar_url: authUser?.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        is_verified: true
       }
-    }
+      setCurrentUser(profileData)
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { data: storiesData } = await supabase
-      .from('stories')
-      .select('*, profiles(username, avatar_url)')
-      .gte('created_at', twentyFourHoursAgo)
-      .order('created_at', { ascending: false })
+      // 2. Fetch Posts from Supabase
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          user_id,
+          media_url,
+          media_type,
+          caption,
+          location,
+          audio_title,
+          likes_count,
+          comments_count,
+          created_at,
+          profiles ( id, username, full_name, avatar_url, is_verified ),
+          comments (
+            id,
+            text,
+            created_at,
+            likes_count,
+            profiles ( id, username, avatar_url )
+          ),
+          likes ( user_id ),
+          saved_posts ( user_id )
+        `)
+        .order('created_at', { ascending: false })
 
-    if (storiesData) {
-      setStories(storiesData as any)
-    }
+      if (!postsError && postsData && postsData.length > 0) {
+        const formattedPosts: Post[] = postsData.map((p: any) => {
+          let mediaArr: PostMedia[] = []
+          try {
+            const parsed = JSON.parse(p.media_url)
+            mediaArr = Array.isArray(parsed) ? parsed : [{ url: p.media_url, type: p.media_type || 'image' }]
+          } catch {
+            mediaArr = [{ url: p.media_url, type: p.media_type || 'image' }]
+          }
 
-    setLoading(false)
-  }
+          return {
+            id: p.id,
+            user_id: p.user_id,
+            user: {
+              id: p.profiles?.id || p.user_id,
+              username: p.profiles?.username || 'user',
+              full_name: p.profiles?.full_name || '',
+              avatar_url: p.profiles?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+              is_verified: p.profiles?.is_verified || false
+            },
+            media: mediaArr,
+            caption: p.caption || '',
+            location: p.location,
+            audio_title: p.audio_title || 'Originální zvuk',
+            likes_count: p.likes_count || p.likes?.length || 0,
+            comments_count: p.comments_count || p.comments?.length || 0,
+            shares_count: Math.floor(Math.random() * 45),
+            is_liked: authUser ? p.likes?.some((l: any) => l.user_id === authUser.id) : false,
+            is_saved: authUser ? p.saved_posts?.some((s: any) => s.user_id === authUser.id) : false,
+            comments: p.comments?.map((c: any) => ({
+              id: c.id,
+              user: {
+                id: c.profiles?.id,
+                username: c.profiles?.username || 'anonym',
+                avatar_url: c.profiles?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'
+              },
+              text: c.text,
+              created_at: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              likes_count: c.likes_count || 0,
+              is_liked: false
+            })) || [],
+            created_at: getRelativeTime(p.created_at)
+          }
+        })
+        setPosts(formattedPosts)
+      } else {
+        // Fallback Mock Feed (Instagram standard visuals)
+        setPosts(getMockPosts(profileData))
+      }
 
-  const handleLoadMorePosts = async () => {
-    if (loadingMore || !hasMorePosts) return
-    setLoadingMore(true)
-    const supabase = createClient()
-    const startRange = posts.length
-    const endRange = startRange + 4
+      // 3. Fetch Stories from Supabase
+      const { data: storiesData } = await supabase
+        .from('stories')
+        .select(`
+          id,
+          media_url,
+          media_type,
+          created_at,
+          profiles ( id, username, avatar_url )
+        `)
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
 
-    const { data: newPosts } = await supabase
-      .from('posts')
-      .select('*, profiles(username, avatar_url)')
-      .order('created_at', { ascending: false })
-      .range(startRange, endRange)
-
-    if (newPosts && newPosts.length > 0) {
-      setPosts((prev) => [...prev, ...(newPosts as any)])
-      if (newPosts.length < 5) setHasMorePosts(false)
-
-      if (currentUserId) {
-        const postIds = newPosts.map((p: any) => p.id)
-        const { data: likesData } = await supabase
-          .from('likes')
-          .select('post_id')
-          .eq('user_id', currentUserId)
-          .in('post_id', postIds)
-
-        if (likesData) {
-          setLikedPosts((prev) => {
-            const next = { ...prev }
-            likesData.forEach((l: any) => { next[l.post_id] = true })
-            return next
+      if (storiesData && storiesData.length > 0) {
+        // Group stories by user
+        const groupedMap = new Map<string, UserStories>()
+        storiesData.forEach((s: any) => {
+          const uid = s.profiles?.id || 'unknown'
+          if (!groupedMap.has(uid)) {
+            groupedMap.set(uid, {
+              user: {
+                id: uid,
+                username: s.profiles?.username || 'Uživatel',
+                avatar_url: s.profiles?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
+              },
+              stories: [],
+              has_unseen: true
+            })
+          }
+          groupedMap.get(uid)?.stories.push({
+            id: s.id,
+            media_url: s.media_url,
+            type: s.media_type || 'image',
+            duration: 5,
+            created_at: s.created_at
           })
-        }
+        })
+        setStoriesList(Array.from(groupedMap.values()))
+      } else {
+        setStoriesList(getMockStories())
       }
-    } else {
-      setHasMorePosts(false)
+
+      // 4. Mock Suggestions & Notifications
+      setSuggestions(getMockSuggestions())
+      setNotifications(getMockNotifications())
+
+    } catch (err) {
+      console.error("Supabase fetch error:", err)
+    } finally {
+      setIsLoading(false)
     }
-    setLoadingMore(false)
-  }
+  }, [supabase])
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsLangOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
+    fetchFeedData()
+  }, [fetchFeedData])
 
-    initFeed()
-
-    const supabase = createClient()
+  // Realtime Subscription to New Posts
+  useEffect(() => {
     const channel = supabase
-      .channel('home-feed-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, async (payload) => {
-        const { data } = await supabase
-          .from('posts')
-          .select('*, profiles(username, avatar_url)')
-          .eq('id', payload.new.id)
-          .single()
-        if (data) setPosts((prev) => [data as Post, ...prev])
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stories' }, async (payload) => {
-        const { data } = await supabase
-          .from('stories')
-          .select('*, profiles(username, avatar_url)')
-          .eq('id', payload.new.id)
-          .single()
-        if (data) setStories((prev) => [data as Story, ...prev])
+      .channel('public:posts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, payload => {
+        showToast('🔥 Nový příspěvek byl právě publikován!')
+        fetchFeedData()
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
-      document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [])
+  }, [supabase, fetchFeedData])
 
-  useEffect(() => {
-    if (activeStoryIndex === null) return
-    const timer = setTimeout(() => {
-      if (activeStoryIndex < stories.length - 1) {
-        setActiveStoryIndex(activeStoryIndex + 1)
+  // Helper Toast
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 3000)
+  }
+
+  // ------------------------------------------
+  // INTERACTION HANDLERS
+  // ------------------------------------------
+
+  const handleToggleLike = async (postId: string) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const nextState = !post.is_liked
+        return {
+          ...post,
+          is_liked: nextState,
+          likes_count: nextState ? post.likes_count + 1 : Math.max(0, post.likes_count - 1)
+        }
+      }
+      return post
+    }))
+
+    if (currentUser && currentUser.id !== 'guest') {
+      const target = posts.find(p => p.id === postId)
+      if (target?.is_liked) {
+        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', currentUser.id)
       } else {
-        setActiveStoryIndex(null)
+        await supabase.from('likes').insert({ post_id: postId, user_id: currentUser.id })
       }
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [activeStoryIndex, stories.length])
-
-  const selectLanguage = (code: LangCode) => {
-    setLang(code)
-    localStorage.setItem('lang', code)
-    setIsLangOpen(false)
+    }
   }
 
-  const t = translations[lang]
-  const currentLangObj = languages.find((l) => l.code === lang) || languages[0]
-
-  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setMediaFile(file)
-    setMediaType(file.type.startsWith('video') ? 'video' : 'image')
-    setMediaPreview(URL.createObjectURL(file))
+  const handleDoubleTap = (postId: string) => {
+    const post = posts.find(p => p.id === postId)
+    if (post && !post.is_liked) {
+      handleToggleLike(postId)
+    }
+    setDoubleTapHeartPostId(postId)
+    setTimeout(() => setDoubleTapHeartPostId(null), 900)
   }
 
-  const uploadMediaToStorage = async (file: File) => {
-    const supabase = createClient()
-    const ext = file.name.split('.').pop()
-    const path = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`
+  const handleToggleSave = async (postId: string) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        const nextSaved = !p.is_saved
+        showToast(nextSaved ? 'Příspěvek uložen do sbírky' : 'Příspěvek odebrán z uložených')
+        return { ...p, is_saved: nextSaved }
+      }
+      return p
+    }))
 
-    const { error: uploadError } = await supabase.storage.from('media').upload(path, file)
-    if (uploadError) {
-      throw new Error(`Úložiště: ${uploadError.message}`)
+    if (currentUser && currentUser.id !== 'guest') {
+      const target = posts.find(p => p.id === postId)
+      if (target?.is_saved) {
+        await supabase.from('saved_posts').delete().eq('post_id', postId).eq('user_id', currentUser.id)
+      } else {
+        await supabase.from('saved_posts').insert({ post_id: postId, user_id: currentUser.id })
+      }
+    }
+  }
+
+  const handleAddComment = async (postId: string, textOverride?: string) => {
+    const text = textOverride || commentInput[postId]?.trim()
+    if (!text || !currentUser) return
+
+    const newCommentObj: Comment = {
+      id: `temp_${Date.now()}`,
+      user: currentUser,
+      text,
+      created_at: 'Právě teď',
+      likes_count: 0,
+      is_liked: false
     }
 
-    const { data } = supabase.storage.from('media').getPublicUrl(path)
-    return data.publicUrl
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: [...p.comments, newCommentObj],
+          comments_count: p.comments_count + 1
+        }
+      }
+      return p
+    }))
+
+    setCommentInput(prev => ({ ...prev, [postId]: '' }))
+    setModalCommentInput('')
+
+    if (currentUser.id !== 'guest') {
+      await supabase.from('comments').insert({
+        post_id: postId,
+        user_id: currentUser.id,
+        text
+      })
+    }
   }
 
-  const handleCreatePost = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!mediaFile || !currentUserId) return
-    setUploading(true)
+  // Carousel navigation
+  const nextCarouselMedia = (postId: string, max: number) => {
+    setCurrentCarouselIndex(prev => ({
+      ...prev,
+      [postId]: Math.min((prev[postId] || 0) + 1, max - 1)
+    }))
+  }
 
+  const prevCarouselMedia = (postId: string) => {
+    setCurrentCarouselIndex(prev => ({
+      ...prev,
+      [postId]: Math.max((prev[postId] || 0) - 1, 0)
+    }))
+  }
+
+  // File Upload Handlers
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setUploadFiles(files)
+    const urls = files.map(file => URL.createObjectURL(file))
+    setPreviewUrls(urls)
+  }
+
+  const handlePublishContent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!previewUrls.length) return
+
+    setIsUploading(true)
     try {
-      const mediaUrl = await uploadMediaToStorage(mediaFile)
-      const supabase = createClient()
+      const uploadedMediaUrls: PostMedia[] = []
 
-      const { error: dbError } = await supabase.from('posts').insert({
-        user_id: currentUserId,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        caption,
-        text_overlay: textOverlay,
-        overlay_color: overlayColor,
-        location,
-        pet_tag: petTag,
-        likes_count: 0
-      })
+      // Upload to Supabase Storage if files exist
+      for (const file of uploadFiles) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+        const bucketName = createTab === 'story' ? 'stories' : 'posts'
 
-      if (dbError) {
-        throw new Error(`Databáze: ${dbError.message}`)
+        const { error: uploadError } = await supabase.storage
+          .from(bucketName)
+          .upload(fileName, file)
+
+        if (!uploadError) {
+          const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName)
+          uploadedMediaUrls.push({
+            url: data.publicUrl,
+            type: file.type.startsWith('video') ? 'video' : 'image'
+          })
+        }
       }
 
-      setIsPostModalOpen(false)
-      resetFormState()
-    } catch (err: any) {
-      console.error('Chyba při nahrávání příspěvku:', err)
-      alert(`Chyba při nahrávání příspěvku: ${err.message || err}`)
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleCreateStory = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!mediaFile || !currentUserId) return
-    setUploading(true)
-
-    try {
-      const mediaUrl = await uploadMediaToStorage(mediaFile)
-      const supabase = createClient()
-
-      const { error: dbError } = await supabase.from('stories').insert({
-        user_id: currentUserId,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        text_overlay: textOverlay,
-        pet_tag: petTag
-      })
-
-      if (dbError) {
-        throw new Error(`Databáze: ${dbError.message}`)
+      // Fallback if direct blob preview was used without file selection
+      if (!uploadedMediaUrls.length && previewUrls.length) {
+        previewUrls.forEach(url => uploadedMediaUrls.push({ url, type: 'image' }))
       }
 
-      setIsStoryModalOpen(false)
-      resetFormState()
+      if (createTab === 'story') {
+        // Insert into Stories
+        const { error } = await supabase.from('stories').insert({
+          user_id: currentUser?.id,
+          media_url: uploadedMediaUrls[0].url,
+          media_type: uploadedMediaUrls[0].type
+        })
+        if (error) throw error
+
+        showToast('🎉 Příběh byl přidán!')
+      } else {
+        // Insert into Posts
+        const { data: newPostData, error } = await supabase.from('posts').insert({
+          user_id: currentUser?.id,
+          media_url: JSON.stringify(uploadedMediaUrls),
+          media_type: uploadedMediaUrls.length > 1 ? 'carousel' : uploadedMediaUrls[0].type,
+          caption: createCaption,
+          location: createLocation || null,
+          audio_title: createAudioTitle || 'Původní zvuk'
+        }).select().single()
+
+        if (error) throw error
+        showToast('✨ Příspěvek byl úspěšně sdílen!')
+      }
+
+      // Reset state & close
+      setIsCreateOpen(false)
+      setUploadFiles([])
+      setPreviewUrls([])
+      setCreateCaption('')
+      setCreateLocation('')
+      setCreateAudioTitle('')
+      fetchFeedData()
     } catch (err: any) {
-      console.error('Chyba při nahrávání příběhu:', err)
-      alert(`Chyba při nahrávání příběhu: ${err.message || err}`)
+      showToast(`Chyba při nahrávání: ${err.message || 'Nepodařilo se publikovat'}`)
     } finally {
-      setUploading(false)
+      setIsUploading(false)
     }
   }
 
-  const handleLike = async (postId: string, currentCount: number) => {
-    if (!currentUserId) {
-      router.push('/login')
-      return
-    }
+  // STORY TIMER AUTO-ADVANCE
+  useEffect(() => {
+    if (activeStoryGroupIndex === null || isStoryPaused) return
 
-    const supabase = createClient()
-    const isLiked = likedPosts[postId]
-    const newLikedState = !isLiked
-    const newCount = newLikedState ? currentCount + 1 : Math.max(0, currentCount - 1)
-
-    setLikedPosts((prev) => ({ ...prev, [postId]: newLikedState }))
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes_count: newCount } : p)))
-
-    if (newLikedState) {
-      await supabase.from('likes').insert({ user_id: currentUserId, post_id: postId })
-    } else {
-      await supabase.from('likes').delete().eq('user_id', currentUserId).eq('post_id', postId)
-    }
-    await supabase.from('posts').update({ likes_count: newCount }).eq('id', postId)
-  }
-
-  const handleBookmark = (postId: string) => {
-    if (!currentUserId) {
-      router.push('/login')
-      return
-    }
-    setSavedPosts((prev) => ({ ...prev, [postId]: !prev[postId] }))
-  }
-
-  const handleShare = async (postId: string) => {
-    const url = `${window.location.origin}/domu#post-${postId}`
-    if (navigator.share) {
-      await navigator.share({ title: 'PawMeet', url })
-    } else {
-      await navigator.clipboard.writeText(url)
-      alert(t.saved)
-    }
-  }
-
-  const openComments = async (postId: string) => {
-    setActiveCommentsPostId(postId)
-    setLoadingComments(true)
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('comments')
-      .select('*, profiles(username, avatar_url)')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true })
-
-    if (data) setComments(data as any)
-    setLoadingComments(false)
-  }
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newComment.trim() || !activeCommentsPostId || !currentUserId) return
-    setSubmittingComment(true)
-
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({
-        post_id: activeCommentsPostId,
-        user_id: currentUserId,
-        content: newComment.trim()
+    const timer = setInterval(() => {
+      setStoryProgress(prev => {
+        if (prev >= 100) {
+          // Advance to next story item or group
+          const currentGroup = storiesList[activeStoryGroupIndex]
+          if (activeStoryItemIndex < currentGroup.stories.length - 1) {
+            setActiveStoryItemIndex(i => i + 1)
+            return 0
+          } else if (activeStoryGroupIndex < storiesList.length - 1) {
+            setActiveStoryGroupIndex(g => g + 1)
+            setActiveStoryItemIndex(0)
+            return 0
+          } else {
+            setActiveStoryGroupIndex(null)
+            return 0
+          }
+        }
+        return prev + 2
       })
-      .select('*, profiles(username, avatar_url)')
-      .single()
+    }, 100)
 
-    if (data && !error) {
-      setComments((prev) => [...prev, data as any])
-      setNewComment('')
-    } else if (error) {
-      alert(`Chyba při odesílání komentáře: ${error.message}`)
-    }
-    setSubmittingComment(false)
-  }
+    return () => clearInterval(timer)
+  }, [activeStoryGroupIndex, activeStoryItemIndex, isStoryPaused, storiesList])
 
-  const activeStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null
+  // ------------------------------------------
+  // RENDER UI
+  // ------------------------------------------
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/40 text-neutral-900 pb-24 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen w-screen bg-black text-white font-sans antialiased selection:bg-pink-500 selection:text-white flex justify-center">
 
-      {/* HLAVIČKA NA CELOU ŠÍŘKU */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-neutral-200/60 px-6 py-3.5 w-full">
-        <div className="w-full flex justify-between items-center">
-          <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-            PawMeet
-          </h1>
-
-          <div className="flex gap-4 items-center">
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-bold hover:scale-105 transition-transform shadow-sm border border-neutral-200"
-              >
-                <span>{currentLangObj.flag}</span>
-                <span className="uppercase">{currentLangObj.code}</span>
-                <span className={`text-[10px] transition-transform ${isLangOpen ? 'rotate-180' : ''}`}>▼</span>
-              </button>
-
-              {isLangOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white border border-neutral-200 shadow-xl overflow-hidden py-1.5 z-50">
-                  {languages.map((item) => (
-                    <button
-                      key={item.code}
-                      onClick={() => selectLanguage(item.code)}
-                      className={`w-full flex items-center gap-3 px-4 py-2 text-xs font-medium text-left hover:bg-indigo-50 transition-colors ${
-                        lang === item.code ? 'bg-indigo-50/90 text-indigo-600 font-bold' : 'text-neutral-700'
-                      }`}
-                    >
-                      <span className="text-base">{item.flag}</span>
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </div>
+      {/* MAIN CONTAINER (FULLSCREEN RESPONSIVE MAX-WIDTH GRID) */}
+      <div className="w-full max-w-[1280px] min-h-screen flex flex-col md:flex-row justify-between">
+        
+        {/* ================================================= */}
+        {/* LEFT SIDEBAR NAVIGATION (DESKTOP) & TOP HEADER (MOBILE) */}
+        {/* ================================================= */}
+        
+        {/* MOBILE TOP HEADER */}
+        <header className="md:hidden sticky top-0 z-40 w-full bg-black/90 backdrop-blur-md border-b border-neutral-800 px-4 py-3 flex justify-between items-center">
+          <Link href="/" className="text-2xl font-black tracking-tighter bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 bg-clip-text text-transparent">
+            Instagram
+          </Link>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setIsCreateOpen(true)} className="hover:opacity-70 transition">
+              <PlusSquareIcon className="w-6 h-6" />
+            </button>
+            <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="relative hover:opacity-70 transition">
+              <HeartIcon className="w-6 h-6" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-600 text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {unreadNotificationsCount}
+                </span>
               )}
-            </div>
-
-            <button onClick={() => requireAuth(() => router.push('/chat'))} className="text-xl hover:scale-110 active:scale-90 transition-transform p-1">💬</button>
+            </button>
+            <button onClick={() => router.push('/chat')} className="hover:opacity-70 transition">
+              <DirectIcon className="w-6 h-6" />
+            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* HLAVNÍ OBSAH */}
-      <main className="w-full px-4 sm:px-8 pt-4 max-w-7xl mx-auto">
+        {/* DESKTOP LEFT SIDEBAR */}
+        <aside className="hidden md:flex flex-col w-[240px] xl:w-[280px] h-screen sticky top-0 border-r border-neutral-800 px-4 py-6 justify-between z-30 bg-black">
+          <div className="flex flex-col gap-8">
+            <Link href="/" className="px-3 pt-2">
+              <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600 bg-clip-text text-transparent">
+                Instagram
+              </h1>
+            </Link>
 
-        {/* STORIES */}
-        <section className="flex gap-4 overflow-x-auto no-scrollbar pb-4 pt-1 border-b border-neutral-200/60 w-full">
-          <div 
-            onClick={() => requireAuth(() => { resetFormState(); setIsStoryModalOpen(true); })}
-            className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-          >
-            <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center border-2 border-dashed border-indigo-600 p-0.5 group-hover:scale-105 transition-transform">
-              <div className="bg-indigo-50 w-full h-full rounded-full flex items-center justify-center text-lg text-indigo-600 font-bold">＋</div>
-            </div>
-            <span className="text-[11px] font-semibold text-neutral-600">{t.myStory}</span>
+            <nav className="flex flex-col gap-1">
+              <NavItem icon={<HomeIcon className="w-6 h-6" />} label="Domů" active />
+              <NavItem icon={<SearchIcon className="w-6 h-6" />} label="Hledat" />
+              <NavItem icon={<ExploreIcon className="w-6 h-6" />} label="Objevovat" />
+              <NavItem icon={<ReelsIcon className="w-6 h-6" />} label="Reels" />
+              <NavItem icon={<DirectIcon className="w-6 h-6" />} label="Zprávy" badge={4} />
+              <NavItem
+                icon={<HeartIcon className="w-6 h-6" />}
+                label="Upozornění"
+                badge={unreadNotificationsCount}
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              />
+              <NavItem
+                icon={<PlusSquareIcon className="w-6 h-6" />}
+                label="Vytvořit"
+                onClick={() => setIsCreateOpen(true)}
+              />
+              <NavItem
+                icon={
+                  <img src={currentUser?.avatar_url} className="w-6 h-6 rounded-full object-cover border border-neutral-700" />
+                }
+                label="Profil"
+              />
+            </nav>
           </div>
 
-          {stories.map((story, idx) => (
-            <div 
-              key={story.id} 
-              onClick={() => setActiveStoryIndex(idx)}
-              className="flex flex-col items-center gap-1.5 flex-shrink-0 cursor-pointer group"
-            >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-purple-600 p-0.5 group-hover:scale-105 transition-transform">
-                <div className="bg-white w-full h-full rounded-full flex items-center justify-center overflow-hidden border-2 border-white">
-                  {story.profiles?.avatar_url ? (
-                    <img src={story.profiles.avatar_url} className="w-full h-full object-cover" alt="avatar" />
-                  ) : (
-                    '🐶'
-                  )}
+          <div className="flex flex-col gap-2">
+            <NavItem icon={<MenuIcon className="w-6 h-6" />} label="Více" />
+          </div>
+        </aside>
+
+        {/* ================================================= */}
+        {/* CENTER FEED CONTENT */}
+        {/* ================================================= */}
+        <main className="flex-1 max-w-[630px] mx-auto w-full pt-2 pb-20 md:pb-8 px-0 sm:px-4">
+          
+          {/* STORIES BAR */}
+          <section className="bg-black border-b border-neutral-800 md:border md:rounded-2xl p-4 mb-4 overflow-x-auto no-scrollbar">
+            <div className="flex gap-4 items-center min-w-max">
+              {/* Add Story Button */}
+              <div
+                onClick={() => { setCreateTab('story'); setIsCreateOpen(true); }}
+                className="flex flex-col items-center gap-1.5 cursor-pointer group"
+              >
+                <div className="relative w-16 h-16 rounded-full border-2 border-dashed border-rose-500 flex items-center justify-center bg-neutral-900 group-hover:scale-105 transition-transform">
+                  <img src={currentUser?.avatar_url} className="w-full h-full rounded-full object-cover opacity-60" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="bg-indigo-600 text-white rounded-full p-1 shadow-lg">+</span>
+                  </div>
                 </div>
+                <span className="text-[11px] font-medium text-neutral-400 truncate max-w-[72px]">Váš příběh</span>
               </div>
-              <span className="text-[11px] font-semibold text-neutral-600 truncate max-w-[64px]">
-                {story.profiles?.username || 'User'}
-              </span>
+
+              {/* Stories List */}
+              {storiesList.map((storyGroup, gIndex) => (
+                <div
+                  key={storyGroup.user.id}
+                  onClick={() => {
+                    setActiveStoryGroupIndex(gIndex)
+                    setActiveStoryItemIndex(0)
+                    setStoryProgress(0)
+                  }}
+                  className="flex flex-col items-center gap-1.5 cursor-pointer group"
+                >
+                  <div className={`p-[2.5px] rounded-full transition-transform group-hover:scale-105 ${
+                    storyGroup.has_unseen ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600' : 'bg-neutral-800'
+                  }`}>
+                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-black bg-neutral-900">
+                      <img src={storyGroup.user.avatar_url} alt={storyGroup.user.username} className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-neutral-300 truncate max-w-[72px]">
+                    {storyGroup.user.username}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
+          </section>
 
-        {/* VYTVOŘIT PŘÍSPĚVEK LIŠTA */}
-        <div 
-          onClick={() => requireAuth(() => { resetFormState(); setIsPostModalOpen(true); })}
-          className="my-4 p-4 bg-white rounded-2xl flex items-center gap-3 border border-neutral-200/60 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors w-full"
-        >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">🐾</div>
-          <span className="flex-1 text-neutral-400 text-sm font-medium">
-            {t.shareExp}
-          </span>
-          <span className="text-xl hover:scale-110 transition-transform">📸</span>
-        </div>
+          {/* MAIN POSTS FEED */}
+          {isLoading ? (
+            <div className="flex flex-col gap-6 py-8">
+              {[1, 2].map(n => (
+                <div key={n} className="bg-neutral-900/50 rounded-2xl p-4 border border-neutral-800 animate-pulse h-[500px]" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {posts.map(post => {
+                const carouselIdx = currentCarouselIndex[post.id] || 0
+                const currentMedia = post.media[carouselIdx] || post.media[0]
 
-        {/* FEED PŘÍSPĚVKŮ */}
-        <div className="flex flex-col gap-6 max-w-2xl mx-auto mt-4">
-          {posts.map((post) => {
-            const isLiked = likedPosts[post.id]
-            const isSaved = savedPosts[post.id]
+                return (
+                  <article key={post.id} className="bg-black sm:bg-neutral-950 sm:border sm:border-neutral-800/80 sm:rounded-2xl overflow-hidden">
+                    
+                    {/* Post Header */}
+                    <div className="flex justify-between items-center p-3.5 border-b border-neutral-900">
+                      <div className="flex items-center gap-3">
+                        <div className="p-[2px] rounded-full bg-gradient-to-tr from-amber-500 to-purple-600">
+                          <img src={post.user.avatar_url} alt={post.user.username} className="w-8 h-8 rounded-full object-cover border border-black" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-white hover:underline cursor-pointer">{post.user.username}</span>
+                            {post.user.is_verified && <VerifiedBadge className="w-3.5 h-3.5 text-blue-500" />}
+                            <span className="text-neutral-500 text-xs">• {post.created_at}</span>
+                          </div>
+                          {post.location && (
+                            <span className="text-[10px] text-neutral-400 block -mt-0.5">{post.location}</span>
+                          )}
+                        </div>
+                      </div>
 
-            return (
-              <article key={post.id} id={`post-${post.id}`} className="bg-white rounded-3xl border border-neutral-200/60 overflow-hidden shadow-sm">
+                      <button onClick={() => setActivePostMenu(post)} className="text-neutral-400 hover:text-white p-1">
+                        <DotsHorizontalIcon className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                <div className="flex justify-between items-center px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center text-sm overflow-hidden border border-neutral-200">
-                      {post.profiles?.avatar_url ? (
-                        <img src={post.profiles.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                    {/* Post Media Viewer */}
+                    <div
+                      className="relative bg-neutral-950 aspect-square w-full overflow-hidden select-none flex items-center justify-center cursor-pointer group"
+                      onDoubleClick={() => handleDoubleTap(post.id)}
+                    >
+                      {currentMedia?.type === 'video' ? (
+                        <video
+                          src={currentMedia.url}
+                          autoPlay
+                          loop
+                          muted={volumeMuted}
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        '🐾'
+                        <img src={currentMedia?.url} alt="Media" className="w-full h-full object-cover" />
+                      )}
+
+                      {/* Double Tap Heart Animation Overlay */}
+                      {doubleTapHeartPostId === post.id && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] animate-ping">
+                          <HeartIcon className="w-28 h-28 text-rose-500 fill-rose-500 drop-shadow-2xl" />
+                        </div>
+                      )}
+
+                      {/* Carousel Controls */}
+                      {post.media.length > 1 && (
+                        <>
+                          {carouselIdx > 0 && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); prevCarouselMedia(post.id); }}
+                              className="absolute left-3 bg-black/60 hover:bg-black text-white p-1.5 rounded-full backdrop-blur-md"
+                            >
+                              ‹
+                            </button>
+                          )}
+                          {carouselIdx < post.media.length - 1 && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); nextCarouselMedia(post.id, post.media.length); }}
+                              className="absolute right-3 bg-black/60 hover:bg-black text-white p-1.5 rounded-full backdrop-blur-md"
+                            >
+                              ›
+                            </button>
+                          )}
+                          {/* Carousel Dots Indicator */}
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                            {post.media.map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                  idx === carouselIdx ? 'bg-white w-3' : 'bg-white/40'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Video Sound Toggle */}
+                      {currentMedia?.type === 'video' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setVolumeMuted(!volumeMuted); }}
+                          className="absolute bottom-3 right-3 bg-black/70 p-2 rounded-full text-white text-xs"
+                        >
+                          {volumeMuted ? '🔇' : '🔊'}
+                        </button>
                       )}
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold tracking-tight">{post.profiles?.username || 'Uživatel'}</h4>
-                      {post.location && <p className="text-[10px] text-indigo-600 font-semibold">📍 {post.location}</p>}
+
+                    {/* Post Action Buttons */}
+                    <div className="p-3.5">
+                      <div className="flex justify-between items-center mb-2.5">
+                        <div className="flex items-center gap-4">
+                          <button onClick={() => handleToggleLike(post.id)} className="transition-transform active:scale-125">
+                            <HeartIcon className={`w-6 h-6 ${post.is_liked ? 'text-rose-500 fill-rose-500' : 'text-white'}`} />
+                          </button>
+                          <button onClick={() => setActiveCommentsModal(post)} className="hover:opacity-75">
+                            <CommentIcon className="w-6 h-6 text-white" />
+                          </button>
+                          <button onClick={() => setActiveShareModal(post)} className="hover:opacity-75">
+                            <DirectIcon className="w-6 h-6 text-white" />
+                          </button>
+                        </div>
+                        <button onClick={() => handleToggleSave(post.id)} className="hover:opacity-75">
+                          <BookmarkIcon className={`w-6 h-6 ${post.is_saved ? 'text-white fill-white' : 'text-white'}`} />
+                        </button>
+                      </div>
+
+                      {/* Likes count */}
+                      <div className="text-xs font-bold text-white mb-1.5">
+                        {post.likes_count.toLocaleString()} to se líbí
+                      </div>
+
+                      {/* Caption */}
+                      <div className="text-xs text-neutral-200 leading-normal mb-2">
+                        <span className="font-bold text-white mr-2">{post.user.username}</span>
+                        <span>{post.caption}</span>
+                      </div>
+
+                      {/* Comments Preview Link */}
+                      {post.comments_count > 0 && (
+                        <button
+                          onClick={() => setActiveCommentsModal(post)}
+                          className="text-xs text-neutral-500 font-medium mb-2 block hover:underline"
+                        >
+                          Zobrazit všech {post.comments_count} komentářů
+                        </button>
+                      )}
+
+                      {/* Recent Comment Preview */}
+                      {post.comments.slice(-2).map(c => (
+                        <div key={c.id} className="text-xs text-neutral-300 flex justify-between items-start mb-1">
+                          <div>
+                            <span className="font-bold mr-2 text-white">{c.user.username}</span>
+                            <span>{c.text}</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Sound Badge */}
+                      {post.audio_title && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-neutral-400 mt-2">
+                          <span>🎵</span>
+                          <span className="truncate">{post.audio_title}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <button className="text-neutral-400 hover:text-neutral-600 font-bold px-2">•••</button>
-                </div>
 
-                <div className="w-full aspect-[4/5] bg-neutral-100 relative overflow-hidden flex items-center justify-center">
-                  {post.media_type === 'video' ? (
-                    <video src={post.media_url} autoPlay muted loop className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={post.media_url} className="w-full h-full object-cover" alt="Post media" />
-                  )}
-
-                  {post.text_overlay && (
-                    <div 
-                      className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-center font-black text-lg max-w-[85%] border border-white/20 shadow-2xl animate-in zoom-in-95"
-                      style={{ color: post.overlay_color || '#ffffff' }}
-                    >
-                      {post.text_overlay}
+                    {/* Quick Add Comment Box */}
+                    <div className="border-t border-neutral-900 px-3.5 py-2.5 flex items-center gap-3">
+                      <input
+                        type="text"
+                        placeholder="Přidat komentář..."
+                        value={commentInput[post.id] || ''}
+                        onChange={e => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
+                        onKeyDown={e => e.key === 'Enter' && handleAddComment(post.id)}
+                        className="flex-1 bg-transparent text-xs text-white placeholder-neutral-500 focus:outline-none"
+                      />
+                      {commentInput[post.id]?.trim() && (
+                        <button
+                          onClick={() => handleAddComment(post.id)}
+                          className="text-xs font-bold text-indigo-500 hover:text-indigo-400"
+                        >
+                          Zveřejnit
+                        </button>
+                      )}
                     </div>
-                  )}
 
-                  {post.pet_tag && (
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold px-3 py-1 rounded-full border border-white/10 shadow-lg">
-                      🐾 {post.pet_tag}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-between items-center px-4 pt-3 pb-1">
-                  <div className="flex gap-4 text-2xl items-center">
-                    <button onClick={() => handleLike(post.id, post.likes_count)} className="hover:scale-125 active:scale-90 transition-transform">
-                      {isLiked ? '❤️' : '🤍'}
-                    </button>
-                    <button onClick={() => openComments(post.id)} className="hover:scale-125 active:scale-90 transition-transform">
-                      💬
-                    </button>
-                    <button onClick={() => handleShare(post.id)} className="hover:scale-125 active:scale-90 transition-transform">
-                      ↗️
-                    </button>
-                  </div>
-                  <button onClick={() => handleBookmark(post.id)} className="text-2xl hover:scale-125 active:scale-90 transition-transform">
-                    {isSaved ? '🏷️' : '🔖'}
-                  </button>
-                </div>
-
-                <div className="px-4 pb-4 pt-1 flex flex-col gap-1">
-                  <span className="text-xs font-bold tracking-tight">{post.likes_count} {t.likes}</span>
-                  {post.caption && (
-                    <p className="text-xs leading-relaxed">
-                      <span className="font-bold mr-2">{post.profiles?.username}</span>
-                      {post.caption}
-                    </p>
-                  )}
-                  <button onClick={() => openComments(post.id)} className="text-neutral-400 text-[11px] font-medium text-left mt-1 hover:underline">
-                    {t.comments}
-                  </button>
-                </div>
-              </article>
-            )
-          })}
-
-          {/* TLAČÍTKO PRO NAČTENÍ DALŠÍCH PŘÍSPĚVKŮ */}
-          {hasMorePosts && (
-            <div className="text-center py-4">
-              <button
-                onClick={handleLoadMorePosts}
-                disabled={loadingMore}
-                className="px-6 py-2.5 rounded-full bg-white border border-neutral-200 text-xs font-bold text-neutral-700 hover:bg-neutral-50 active:scale-95 transition-all shadow-sm disabled:opacity-50"
-              >
-                {loadingMore ? '...' : t.loadMore}
-              </button>
+                  </article>
+                )
+              })}
             </div>
           )}
+        </main>
+
+        {/* ================================================= */}
+        {/* RIGHT SIDEBAR (SUGGESTIONS & PROFILE - DESKTOP) */}
+        {/* ================================================= */}
+        <aside className="hidden lg:block w-[320px] xl:w-[350px] p-6 sticky top-0 h-screen">
+          {/* User Profile Switcher */}
+          {currentUser && (
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <img src={currentUser.avatar_url} className="w-12 h-12 rounded-full object-cover border border-neutral-800" />
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1">
+                    {currentUser.username}
+                    <VerifiedBadge className="w-3.5 h-3.5 text-blue-500" />
+                  </div>
+                  <div className="text-xs text-neutral-500">{currentUser.full_name}</div>
+                </div>
+              </div>
+              <button className="text-xs font-bold text-indigo-500 hover:text-white transition">Přepnout</button>
+            </div>
+          )}
+
+          {/* Suggestions Header */}
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-xs font-bold text-neutral-400">Návrhy pro vás</span>
+            <button className="text-xs font-bold text-white hover:text-neutral-400">Zobrazit vše</button>
+          </div>
+
+          {/* Suggestions List */}
+          <div className="flex flex-col gap-3">
+            {suggestions.map(user => (
+              <div key={user.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src={user.avatar_url} className="w-9 h-9 rounded-full object-cover" />
+                  <div>
+                    <div className="text-xs font-bold text-white hover:underline cursor-pointer">{user.username}</div>
+                    <div className="text-[10px] text-neutral-500">Sleduje uživatel alex + 3 další</div>
+                  </div>
+                </div>
+                <button className="text-xs font-bold text-indigo-500 hover:text-white transition">Sledovat</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Instagram Footer Links */}
+          <footer className="mt-8 text-[11px] text-neutral-600 flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
+              <span>Informace</span> • <span>Nápověda</span> • <span>Tisk</span> • <span>API</span> • <span>Kariéra</span> • <span>Soukromí</span> • <span>Smluvní podmínky</span>
+            </div>
+            <div>© 2026 INSTAGRAM CLONE FROM PAWMEET</div>
+          </footer>
+        </aside>
+
+      </div>
+
+      {/* ================================================= */}
+      {/* MODALS & OVERLAYS */}
+      {/* ================================================= */}
+
+      {/* 1. NOTIFICATIONS FLYOUT */}
+      {isNotificationsOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[380px] bg-neutral-950 border-l border-neutral-800 p-4 shadow-2xl flex flex-col">
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-3 mb-4">
+            <h3 className="text-base font-bold">Upozornění</h3>
+            <button onClick={() => setIsNotificationsOpen(false)} className="text-neutral-400 hover:text-white">✕</button>
+          </div>
+          <div className="flex-1 overflow-y-auto flex flex-col gap-4">
+            {notifications.map(n => (
+              <div key={n.id} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <img src={n.user.avatar_url} className="w-9 h-9 rounded-full object-cover" />
+                  <div>
+                    <span className="font-bold text-white mr-1">{n.user.username}</span>
+                    <span className="text-neutral-300">
+                      {n.type === 'like' && 'to se líbí váš příspěvek.'}
+                      {n.type === 'comment' && 'přidal komentář k příspěvku.'}
+                      {n.type === 'follow' && 'vás začal sledovat.'}
+                    </span>
+                    <span className="text-neutral-500 block text-[10px]">{n.created_at}</span>
+                  </div>
+                </div>
+                {n.post_media && <img src={n.post_media} className="w-9 h-9 rounded object-cover" />}
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+      )}
 
-      {/* OVERLAY PRO ZOBRAZENÍ PŘÍBĚHŮ (STORY VIEWER) */}
-      {activeStory && activeStoryIndex !== null && (
-        <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-          <div className="relative w-full max-w-sm aspect-[9/16] bg-neutral-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col justify-between">
-
-            {/* Progress bar */}
-            <div className="absolute top-3 left-3 right-3 z-10 flex gap-1">
-              {stories.map((s, idx) => (
+      {/* 2. STORY FULLSCREEN VIEWER */}
+      {activeStoryGroupIndex !== null && (
+        <div className="fixed inset-0 z-50 bg-neutral-950 flex flex-col justify-between items-center p-4">
+          {/* Progress Bar Header */}
+          <div className="w-full max-w-md flex flex-col gap-2 z-10 pt-2">
+            <div className="flex gap-1 w-full">
+              {storiesList[activeStoryGroupIndex].stories.map((s, idx) => (
                 <div key={s.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-white transition-all duration-300 ${
-                      idx < activeStoryIndex ? 'w-full' : idx === activeStoryIndex ? 'w-full animate-pulse' : 'w-0'
-                    }`}
+                  <div
+                    className="h-full bg-white transition-all duration-100 ease-linear"
+                    style={{
+                      width: idx === activeStoryItemIndex ? `${storyProgress}%` : idx < activeStoryItemIndex ? '100%' : '0%'
+                    }}
                   />
                 </div>
               ))}
             </div>
 
-            {/* Hlavička story */}
-            <div className="absolute top-6 left-4 right-4 z-10 flex justify-between items-center text-white">
+            <div className="flex justify-between items-center text-white">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-700 border border-white/20">
-                  {activeStory.profiles?.avatar_url ? (
-                    <img src={activeStory.profiles.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
-                  ) : (
-                    '🐶'
-                  )}
-                </div>
-                <span className="text-xs font-bold">{activeStory.profiles?.username || 'Uživatel'}</span>
+                <img src={storiesList[activeStoryGroupIndex].user.avatar_url} className="w-8 h-8 rounded-full border border-white object-cover" />
+                <span className="text-xs font-bold">{storiesList[activeStoryGroupIndex].user.username}</span>
               </div>
-              <button 
-                onClick={() => setActiveStoryIndex(null)}
-                className="w-8 h-8 rounded-full bg-black/40 text-white font-bold flex items-center justify-center backdrop-blur-md"
-              >
-                ✕
-              </button>
+              <button onClick={() => setActiveStoryGroupIndex(null)} className="text-white text-xl p-2 font-bold">✕</button>
             </div>
+          </div>
 
-            {/* Obsah story */}
-            <div className="w-full h-full relative flex items-center justify-center">
-              {activeStory.media_type === 'video' ? (
-                <video src={activeStory.media_url} autoPlay muted loop className="w-full h-full object-cover" />
-              ) : (
-                <img src={activeStory.media_url} className="w-full h-full object-cover" alt="Story content" />
-              )}
-
-              {activeStory.text_overlay && (
-                <div className="absolute px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-white text-center font-black text-lg max-w-[85%] border border-white/20">
-                  {activeStory.text_overlay}
-                </div>
-              )}
-
-              {activeStory.pet_tag && (
-                <div className="absolute bottom-6 left-4 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">
-                  🐾 {activeStory.pet_tag}
-                </div>
-              )}
+          {/* Media Content */}
+          <div className="relative flex-1 w-full max-w-md my-auto flex items-center justify-center overflow-hidden rounded-2xl">
+            <img
+              src={storiesList[activeStoryGroupIndex].stories[activeStoryItemIndex]?.media_url}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 flex">
+              <div
+                className="w-1/2 h-full"
+                onClick={() => {
+                  if (activeStoryItemIndex > 0) setActiveStoryItemIndex(i => i - 1)
+                }}
+              />
+              <div
+                className="w-1/2 h-full"
+                onClick={() => {
+                  if (activeStoryItemIndex < storiesList[activeStoryGroupIndex].stories.length - 1) {
+                    setActiveStoryItemIndex(i => i + 1)
+                  } else {
+                    setActiveStoryGroupIndex(null)
+                  }
+                }}
+              />
             </div>
-
-            {/* Navigační klikací zóny */}
-            <div 
-              onClick={() => setActiveStoryIndex(activeStoryIndex > 0 ? activeStoryIndex - 1 : null)}
-              className="absolute left-0 top-16 bottom-0 w-1/3 z-0"
-            />
-            <div 
-              onClick={() => setActiveStoryIndex(activeStoryIndex < stories.length - 1 ? activeStoryIndex + 1 : null)}
-              className="absolute right-0 top-16 bottom-0 w-1/3 z-0"
-            />
           </div>
         </div>
       )}
 
-      {/* MODAL KOMENTÁŘE */}
-      {activeCommentsPostId && (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl h-[80vh] sm:h-[600px] flex flex-col overflow-hidden shadow-2xl">
-
+      {/* 3. CREATE CONTENT MODAL (POST / STORY / REEL) */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border border-neutral-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            
             {/* Header */}
-            <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-200">
-              <h3 className="font-bold text-sm text-neutral-800">{t.comments}</h3>
-              <button 
-                onClick={() => setActiveCommentsPostId(null)} 
-                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center transition-colors"
-              >
-                ✕
-              </button>
+            <div className="px-5 py-3.5 border-b border-neutral-800 flex justify-between items-center">
+              <div className="flex gap-4">
+                {(['post', 'story', 'reel'] as CreateTab[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setCreateTab(tab)}
+                    className={`text-xs font-bold capitalize pb-1 ${
+                      createTab === tab ? 'text-white border-b-2 border-indigo-500' : 'text-neutral-500'
+                    }`}
+                  >
+                    {tab === 'post' ? 'Příspěvek' : tab === 'story' ? 'Příběh' : 'Reel'}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setIsCreateOpen(false)} className="text-neutral-400 hover:text-white">✕</button>
             </div>
 
-            {/* Seznam komentářů */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {loadingComments ? (
-                <div className="text-center py-10 text-neutral-400 text-xs">Načítám komentáře...</div>
-              ) : comments.length === 0 ? (
-                <div className="text-center py-10 text-neutral-400 text-xs">{t.noComments}</div>
+            {/* Form */}
+            <form onSubmit={handlePublishContent} className="p-5 flex flex-col gap-4">
+              {previewUrls.length > 0 ? (
+                <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-black border border-neutral-800">
+                  <img src={previewUrls[0]} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { setPreviewUrls([]); setUploadFiles([]); }}
+                    className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1.5 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
               ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3 items-start">
-                    <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center text-xs overflow-hidden shrink-0">
-                      {comment.profiles?.avatar_url ? (
-                        <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
-                      ) : (
-                        '🐾'
-                      )}
-                    </div>
-                    <div className="flex-1 bg-neutral-50 p-3 rounded-2xl border border-neutral-100">
-                      <span className="text-xs font-bold text-neutral-800 block mb-0.5">
-                        {comment.profiles?.username || 'Uživatel'}
-                      </span>
-                      <p className="text-xs text-neutral-600 leading-relaxed">{comment.content}</p>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-neutral-700 hover:border-indigo-500 rounded-2xl p-10 text-center cursor-pointer bg-neutral-950 hover:bg-neutral-900 transition flex flex-col items-center justify-center gap-2"
+                >
+                  <span className="text-4xl">📸</span>
+                  <span className="text-xs font-semibold text-neutral-300">Přetáhněte sem fotky nebo videa</span>
+                  <span className="text-[10px] text-neutral-500">Vyberte ze zařízení</span>
+                </div>
+              )}
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                multiple={createTab === 'post'}
+                accept="image/*,video/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {createTab !== 'story' && (
+                <>
+                  <textarea
+                    placeholder="Napište popisek..."
+                    value={createCaption}
+                    onChange={e => setCreateCaption(e.target.value)}
+                    rows={3}
+                    className="w-full bg-neutral-950 text-xs p-3 rounded-xl border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 resize-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Přidat místo..."
+                    value={createLocation}
+                    onChange={e => setCreateLocation(e.target.value)}
+                    className="w-full bg-neutral-950 text-xs p-3 rounded-xl border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Název zvuku (volitelné)..."
+                    value={createAudioTitle}
+                    onChange={e => setCreateAudioTitle(e.target.value)}
+                    className="w-full bg-neutral-950 text-xs p-3 rounded-xl border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </>
+              )}
+
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:bg-neutral-800"
+                >
+                  Zrušit
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploading || !previewUrls.length}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 shadow-lg"
+                >
+                  {isUploading ? 'Publikuji...' : 'Sdílet'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4. COMMENTS MODAL */}
+      {activeCommentsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-neutral-950 border border-neutral-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[85vh]">
+            <div className="w-full md:w-1/2 bg-black flex items-center justify-center">
+              <img src={activeCommentsModal.media[0]?.url} className="w-full h-full object-cover max-h-[400px] md:max-h-full" />
+            </div>
+
+            <div className="w-full md:w-1/2 flex flex-col justify-between p-4">
+              <div className="flex justify-between items-center border-b border-neutral-900 pb-3">
+                <div className="flex items-center gap-2">
+                  <img src={activeCommentsModal.user.avatar_url} className="w-7 h-7 rounded-full object-cover" />
+                  <span className="text-xs font-bold">{activeCommentsModal.user.username}</span>
+                </div>
+                <button onClick={() => setActiveCommentsModal(null)} className="text-neutral-400 hover:text-white">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-3 max-h-[300px]">
+                {activeCommentsModal.comments.map(c => (
+                  <div key={c.id} className="flex gap-3 text-xs">
+                    <img src={c.user.avatar_url} className="w-7 h-7 rounded-full object-cover" />
+                    <div>
+                      <span className="font-bold mr-2">{c.user.username}</span>
+                      <span>{c.text}</span>
+                      <div className="text-[10px] text-neutral-500 mt-1">{c.created_at}</div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* Formulář pro přidání komentáře */}
-            <form onSubmit={handleAddComment} className="p-4 border-t border-neutral-200 flex gap-2 items-center bg-white">
-              <input
-                type="text"
-                placeholder={t.addComment}
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="flex-1 text-xs px-4 py-2.5 rounded-full bg-neutral-100 border border-transparent focus:border-indigo-500 focus:bg-white focus:outline-none transition-all"
-              />
-              <button
-                type="submit"
-                disabled={submittingComment || !newComment.trim()}
-                className="px-4 py-2.5 bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {submittingComment ? '...' : t.send}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NOVÝ PŘÍSPĚVEK */}
-      {isPostModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-neutral-900">{t.newPost}</h3>
-              <button
-                onClick={() => setIsPostModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePost} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.selectFile}</label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleMediaSelect}
-                  className="w-full text-xs text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
+                ))}
               </div>
 
-              {mediaPreview && (
-                <div className="w-full aspect-video rounded-2xl overflow-hidden bg-neutral-100 relative border border-neutral-200">
-                  {mediaType === 'video' ? (
-                    <video src={mediaPreview} controls className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
-                  )}
-                  {textOverlay && (
-                    <div
-                      className="absolute inset-x-4 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-center font-black text-sm border border-white/20 shadow-2xl"
-                      style={{ color: overlayColor }}
-                    >
-                      {textOverlay}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.caption}</label>
-                <textarea
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder={t.caption}
-                  rows={3}
-                  className="w-full text-xs p-3 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.textOverlay}</label>
-                  <input
-                    type="text"
-                    value={textOverlay}
-                    onChange={(e) => setTextOverlay(e.target.value)}
-                    placeholder={t.textOverlay}
-                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">Barva textu</label>
-                  <input
-                    type="color"
-                    value={overlayColor}
-                    onChange={(e) => setOverlayColor(e.target.value)}
-                    className="w-full h-9 p-1 rounded-xl bg-neutral-50 border border-neutral-200 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.location}</label>
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder={t.location}
-                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 mb-1">{t.petName}</label>
-                  <input
-                    type="text"
-                    value={petTag}
-                    onChange={(e) => setPetTag(e.target.value)}
-                    placeholder={t.petName}
-                    className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={uploading || !mediaFile}
-                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-xs font-bold hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 shadow-md"
-              >
-                {uploading ? t.uploading : t.publish}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL NOVÝ PŘÍBĚH (STORY) */}
-      {isStoryModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-neutral-900">{t.newStory}</h3>
-              <button
-                onClick={() => setIsStoryModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 font-bold text-xs flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateStory} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.selectFile}</label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleMediaSelect}
-                  className="w-full text-xs text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-              </div>
-
-              {mediaPreview && (
-                <div className="w-full aspect-[9/16] max-h-64 rounded-2xl overflow-hidden bg-neutral-100 relative border border-neutral-200 flex items-center justify-center mx-auto">
-                  {mediaType === 'video' ? (
-                    <video src={mediaPreview} controls className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
-                  )}
-                  {textOverlay && (
-                    <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl backdrop-blur-md bg-black/40 text-white text-center font-black text-sm border border-white/20">
-                      {textOverlay}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.textOverlay}</label>
+              <div className="border-t border-neutral-900 pt-3 flex gap-2">
                 <input
                   type="text"
-                  value={textOverlay}
-                  onChange={(e) => setTextOverlay(e.target.value)}
-                  placeholder={t.textOverlay}
-                  className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
+                  placeholder="Komentovat..."
+                  value={modalCommentInput}
+                  onChange={e => setModalCommentInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddComment(activeCommentsModal.id, modalCommentInput)}
+                  className="flex-1 bg-neutral-900 text-xs text-white px-3 py-2 rounded-xl border border-neutral-800 focus:outline-none"
                 />
+                <button
+                  onClick={() => handleAddComment(activeCommentsModal.id, modalCommentInput)}
+                  className="text-xs font-bold text-indigo-500"
+                >
+                  Odeslat
+                </button>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 mb-1">{t.petName}</label>
-                <input
-                  type="text"
-                  value={petTag}
-                  onChange={(e) => setPetTag(e.target.value)}
-                  placeholder={t.petName}
-                  className="w-full text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={uploading || !mediaFile}
-                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-xs font-bold hover:opacity-95 active:scale-[0.99] transition-all disabled:opacity-50 shadow-md"
-              >
-                {uploading ? t.uploading : t.publish}
-              </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* SPODNÍ NAVIGACE */}
+      {/* TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-xs px-5 py-3 rounded-full border border-neutral-700 shadow-2xl animate-bounce">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
       <BottomNav />
     </div>
   )
+}
+
+// ==========================================
+// SVG ICON COMPONENTS
+// ==========================================
+
+function HomeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  )
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  )
+}
+
+function ExploreIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+function ReelsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
+function DirectIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  )
+}
+
+function HeartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.684a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+  )
+}
+
+function PlusSquareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+function MenuIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
+function CommentIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+    </svg>
+  )
+}
+
+function BookmarkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  )
+}
+
+function DotsHorizontalIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="1.5" /><circle cx="6" cy="12" r="1.5" /><circle cx="18" cy="12" r="1.5" />
+    </svg>
+  )
+}
+
+function VerifiedBadge({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+    </svg>
+  )
+}
+
+function NavItem({ icon, label, active, badge, onClick }: { icon: React.ReactNode; label: string; active?: boolean; badge?: number; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-4 p-3 rounded-xl transition hover:bg-neutral-900 w-full text-left relative ${
+        active ? 'font-bold text-white' : 'text-neutral-300'
+      }`}
+    >
+      <div className="relative">
+        {icon}
+        {badge && badge > 0 ? (
+          <span className="absolute -top-1 -right-1 bg-rose-600 text-[10px] font-bold text-white rounded-full w-4 h-4 flex items-center justify-center">
+            {badge}
+          </span>
+        ) : null}
+      </div>
+      <span className="text-sm">{label}</span>
+    </button>
+  )
+}
+
+// ==========================================
+// MOCK DATA GENERATORS (FALLBACKS)
+// ==========================================
+
+function getRelativeTime(dateStr: string) {
+  return '2 H'
+}
+
+function getMockPosts(user: Profile): Post[] {
+  return [
+    {
+      id: 'mock_1',
+      user_id: 'user_1',
+      user: {
+        id: 'user_1',
+        username: 'luna_golden_retriever',
+        avatar_url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=300&q=80',
+        is_verified: true
+      },
+      media: [
+        { url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80', type: 'image' },
+        { url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80', type: 'image' }
+      ],
+      caption: 'Odpolední procházka v parku! 🐾☀️ #goldenretriever #doglife #pawmeet',
+      location: 'Stromovka, Praha',
+      audio_title: 'Original Audio - luna_golden',
+      likes_count: 1420,
+      comments_count: 32,
+      shares_count: 12,
+      is_liked: false,
+      is_saved: false,
+      comments: [
+        {
+          id: 'c1',
+          user: { id: 'u2', username: 'max_husky', avatar_url: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=150&q=80' },
+          text: 'Super fotka! Příště se musíme potkat 🐺',
+          created_at: '1h',
+          likes_count: 3,
+          is_liked: false
+        }
+      ],
+      created_at: '2 h'
+    },
+    {
+      id: 'mock_2',
+      user_id: 'user_2',
+      user: {
+        id: 'user_2',
+        username: 'corgi_charlie',
+        avatar_url: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=300&q=80',
+        is_verified: false
+      },
+      media: [
+        { url: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=800&q=80', type: 'image' }
+      ],
+      caption: 'Nová hračka z PawMeet obchodu 🎉🐶',
+      location: 'Brno',
+      audio_title: 'Happy Dog Music',
+      likes_count: 890,
+      comments_count: 14,
+      shares_count: 5,
+      is_liked: true,
+      is_saved: true,
+      comments: [],
+      created_at: '5 h'
+    }
+  ]
+}
+
+function getMockStories(): UserStories[] {
+  return [
+    {
+      user: {
+        id: 's1',
+        username: 'max_husky',
+        avatar_url: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=150&q=80'
+      },
+      stories: [
+        { id: 'st1', media_url: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=600&q=80', type: 'image', duration: 5, created_at: '1h' }
+      ],
+      has_unseen: true
+    },
+    {
+      user: {
+        id: 's2',
+        username: 'bella_cat',
+        avatar_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80'
+      },
+      stories: [
+        { id: 'st2', media_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80', type: 'image', duration: 5, created_at: '3h' }
+      ],
+      has_unseen: true
+    }
+  ]
+}
+
+function getMockSuggestions(): Profile[] {
+  return [
+    { id: 'sug1', username: 'frenchie_rocky', avatar_url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=150&q=80' },
+    { id: 'sug2', username: 'shiba_ken', avatar_url: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&w=150&q=80' },
+    { id: 'sug3', username: 'poodle_coco', avatar_url: 'https://images.unsplash.com/photo-1534361960057-19889db9875e?auto=format&fit=crop&w=150&q=80' }
+  ]
+}
+
+function getMockNotifications(): NotificationItem[] {
+  return [
+    {
+      id: 'n1',
+      user: { id: 'u1', username: 'max_husky', avatar_url: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=150&q=80' },
+      type: 'like',
+      post_media: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=150&q=80',
+      created_at: 'před 15 min',
+      is_read: false
+    },
+    {
+      id: 'n2',
+      user: { id: 'u2', username: 'bella_cat', avatar_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=150&q=80' },
+      type: 'comment',
+      created_at: 'před 2 hod',
+      is_read: false
+    }
+  ]
 }

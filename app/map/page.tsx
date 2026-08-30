@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
 type UserLocation = {
@@ -16,8 +16,9 @@ type UserLocation = {
   profiles: {
     username: string
     avatar_url: string
-    dog_name: string
-    dog_gender: 'kluk' | 'holka'
+    pet_name: string
+    pet_type: string
+    pet_gender: 'kluk' | 'holka'
   }
 }
 
@@ -42,27 +43,39 @@ function formatDistance(distKm: number) {
   return `${distKm.toFixed(1)} km`
 }
 
-export default function RealtimeMapPage() {
-  const [mapMode, setMapMode] = useState<'light' | 'dark' | 'satellite'>('light')
-  const [isLocationActive, setIsLocationActive] = useState(false)
+export default function PetMapPage() {
+  const router = useRouter()
+  const [hasMounted, setHasMounted] = useState(false)
+  const [mapMode, setMapMode] = useState<'map' | 'satellite'>('map')
+  const [isLiveTracking, setIsLiveTracking] = useState(false)
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [usersLocations, setUsersLocations] = useState<UserLocation[]>([])
-  const [maxRadius, setMaxRadius] = useState<number>(5) // 0 az 20 km (step 0.1)
+  const [maxRadius, setMaxRadius] = useState<number>(5)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileLayerRef = useRef<any>(null)
+  const labelLayerRef = useRef<any>(null)
   const markersRef = useRef<{ [key: string]: any }>({})
+  const myLocationMarkerRef = useRef<any>(null)
   const radiusCircleRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
 
   useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hasMounted) return
+
     const supabase = createClient()
-    
+
     const fetchCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         setCurrentUserId(user.id)
         const { data: loc } = await supabase
@@ -71,11 +84,9 @@ export default function RealtimeMapPage() {
           .eq('user_id', user.id)
           .single()
 
-        if (loc?.is_active) {
-          setIsLocationActive(true)
-          if (loc.latitude && loc.longitude) {
-            setCurrentCoords({ lat: loc.latitude, lng: loc.longitude })
-          }
+        if (loc?.is_active && loc.latitude && loc.longitude) {
+          setCurrentCoords({ lat: loc.latitude, lng: loc.longitude })
+          setIsLiveTracking(true)
         }
       }
     }
@@ -84,7 +95,7 @@ export default function RealtimeMapPage() {
     fetchLocations()
 
     const channel = supabase
-      .channel('realtime-locations')
+      .channel('realtime-pet-map')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_locations' }, () => {
         fetchLocations()
       })
@@ -92,15 +103,17 @@ export default function RealtimeMapPage() {
 
     return () => {
       supabase.removeChannel(channel)
-      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+      }
     }
-  }, [])
+  }, [hasMounted])
 
   const fetchLocations = async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('user_locations')
-      .select('*, profiles(username, avatar_url, dog_name, dog_gender)')
+      .select('*, profiles(username, avatar_url, pet_name, pet_type, pet_gender)')
       .eq('is_active', true)
 
     if (data) {
@@ -108,9 +121,9 @@ export default function RealtimeMapPage() {
     }
   }
 
-  // Inicializace Leaflet Mapy
+  // Inicializace Leaflet mapy
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (!hasMounted || typeof window === 'undefined') return
 
     if (!document.getElementById('leaflet-css')) {
       const link = document.createElement('link')
@@ -120,13 +133,37 @@ export default function RealtimeMapPage() {
       document.head.appendChild(link)
     }
 
+    if (!document.getElementById('map-pet-styles')) {
+      const style = document.createElement('style')
+      style.id = 'map-pet-styles'
+      style.innerHTML = `
+        @keyframes gps-pulse {
+          0% { transform: scale(0.6); opacity: 0.9; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        .gps-pulse-ring {
+          animation: gps-pulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        .leaflet-container {
+          background-color: #f1f5f9 !important;
+          font-family: inherit;
+        }
+        .leaflet-popup-content-wrapper {
+          border-radius: 1.25rem;
+          box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.18);
+          padding: 4px;
+        }
+      `
+      document.head.appendChild(style)
+    }
+
     import('leaflet').then((L) => {
       if (!mapContainerRef.current) return
 
       if (!mapInstanceRef.current) {
         const map = L.map(mapContainerRef.current, {
           zoomControl: false,
-          attributionControl: false
+          attributionControl: false,
         }).setView([50.0755, 14.4378], 13)
 
         mapInstanceRef.current = map
@@ -135,126 +172,45 @@ export default function RealtimeMapPage() {
       if (tileLayerRef.current) {
         mapInstanceRef.current.removeLayer(tileLayerRef.current)
       }
-
-      let tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-      if (mapMode === 'dark') {
-        tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      } else if (mapMode === 'satellite') {
-        tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      if (labelLayerRef.current) {
+        mapInstanceRef.current.removeLayer(labelLayerRef.current)
+        labelLayerRef.current = null
       }
 
-      const newTileLayer = L.tileLayer(tileUrl, { maxZoom: 19 })
-      newTileLayer.addTo(mapInstanceRef.current)
-      tileLayerRef.current = newTileLayer
+      if (mapMode === 'map') {
+        tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+        }).addTo(mapInstanceRef.current)
+      } else {
+        tileLayerRef.current = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19 }
+        ).addTo(mapInstanceRef.current)
+
+        labelLayerRef.current = L.tileLayer(
+          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+          { maxZoom: 19, subdomains: 'abcd' }
+        ).addTo(mapInstanceRef.current)
+      }
     })
-  }, [mapMode])
+  }, [mapMode, hasMounted])
 
-  // Vykreslení kruhu okruhu & Špendlíků
-  useEffect(() => {
-    if (!mapInstanceRef.current || typeof window === 'undefined') return
-
-    import('leaflet').then((L) => {
-      const map = mapInstanceRef.current
-
-      // Promazání starých špendlíků
-      Object.values(markersRef.current).forEach((marker: any) => map.removeLayer(marker))
-      markersRef.current = {}
-
-      // Nakreslení/Aktualizace VIZUÁLNÍHO KRUHU VZDÁLENOSTI
-      if (radiusCircleRef.current) {
-        map.removeLayer(radiusCircleRef.current)
-        radiusCircleRef.current = null
-      }
-
-      if (currentCoords && isLocationActive) {
-        radiusCircleRef.current = L.circle([currentCoords.lat, currentCoords.lng], {
-          radius: maxRadius * 1000,
-          color: '#6366f1',
-          fillColor: '#818cf8',
-          fillOpacity: 0.15,
-          weight: 2,
-          dashArray: '6, 8'
-        }).addTo(map)
-      }
-
-      // Vykreslení uživatelů
-      usersLocations.forEach((loc) => {
-        const isMe = loc.user_id === currentUserId
-        let dist = 0
-
-        if (currentCoords) {
-          dist = getDistanceKm(currentCoords.lat, currentCoords.lng, loc.latitude, loc.longitude)
-          if (dist > maxRadius && !isMe) return
-        }
-
-        const genderSymbol = loc.profiles?.dog_gender === 'holka' ? '♀️' : '♂️'
-        const genderBg = loc.profiles?.dog_gender === 'holka' ? 'bg-pink-500' : 'bg-blue-500'
-
-        const customIcon = L.divIcon({
-          className: 'custom-map-pin',
-          html: `
-            <div class="relative group cursor-pointer">
-              ${isMe ? `
-                <div class="absolute -inset-2 bg-indigo-500 rounded-full blur-sm opacity-60 animate-ping"></div>
-              ` : ''}
-              <div class="w-12 h-12 rounded-full border-4 ${isMe ? 'border-indigo-600 ring-4 ring-indigo-300' : 'border-white'} shadow-2xl overflow-hidden bg-white relative z-10">
-                ${loc.profiles?.avatar_url 
-                  ? `<img src="${loc.profiles.avatar_url}" class="w-full h-full object-cover" />`
-                  : `<div class="w-full h-full flex items-center justify-center bg-indigo-100 text-lg">🐶</div>`
-                }
-              </div>
-              <div class="absolute -bottom-1 -right-1 ${genderBg} text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white shadow z-20">
-                ${genderSymbol}
-              </div>
-              ${isMe ? `
-                <div class="absolute -top-7 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-md whitespace-nowrap z-20">
-                  VY
-                </div>
-              ` : ''}
-            </div>
-          `,
-          iconSize: [48, 48],
-          iconAnchor: [24, 24]
-        })
-
-        const popupContent = `
-          <div style="font-family: sans-serif; padding: 4px; min-width: 170px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-              <strong style="font-size: 14px; color: #111;">${loc.profiles?.dog_name || 'Pejsek'}</strong>
-              <span style="font-size: 13px;">${genderSymbol}</span>
-            </div>
-            <div style="font-size: 11px; color: #555; line-height: 1.4;">
-              👤 <strong>@${loc.profiles?.username || 'uživatel'}</strong><br/>
-              📍 ${loc.address || 'Souřadnice vyhledány'}<br/>
-              ${currentCoords && !isMe ? `📏 <strong>${formatDistance(dist)}</strong> od vás` : ''}
-              ${isMe ? `<span style="color:#6366f1; font-weight:bold;">📍 Vaše aktuální pozice</span>` : ''}
-            </div>
-          </div>
-        `
-
-        const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon })
-          .bindPopup(popupContent)
-          .addTo(map)
-
-        markersRef.current[loc.user_id] = marker
-      })
-    })
-  }, [usersLocations, currentCoords, maxRadius, currentUserId, isLocationActive])
-
-  // Zapnutí / Vypnutí Polohy
-  const toggleLocation = async () => {
+  // Funkce pro zapnutí / vypnutí sdílení polohy
+  const toggleLiveTracking = async () => {
     if (!currentUserId) {
       alert('Pro sdílení polohy musíte být přihlášeni.')
       return
     }
 
     const supabase = createClient()
-    const nextState = !isLocationActive
-    setIsLocationActive(nextState)
+    const nextState = !isLiveTracking
+    setIsLiveTracking(nextState)
 
     if (nextState) {
+      // Zapnutí polohy
       if (!navigator.geolocation) {
         alert('Váš prohlížeč nepodporuje geolokaci.')
+        setIsLiveTracking(false)
         return
       }
 
@@ -264,11 +220,12 @@ export default function RealtimeMapPage() {
           const lng = position.coords.longitude
           setCurrentCoords({ lat, lng })
 
-          let addressName = 'Neznámá adresa'
+          let addressName = 'Živá poloha'
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
             const geoData = await res.json()
-            addressName = geoData.address?.suburb || geoData.address?.city || geoData.address?.road || 'Aktuální poloha'
+            addressName =
+              geoData.address?.suburb || geoData.address?.city || geoData.address?.road || 'Aktuální poloha'
           } catch (e) {}
 
           await supabase.from('user_locations').upsert({
@@ -277,42 +234,206 @@ export default function RealtimeMapPage() {
             longitude: lng,
             address: addressName,
             is_active: true,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
 
           if (mapInstanceRef.current && !currentCoords) {
-            mapInstanceRef.current.flyTo([lat, lng], 15)
+            mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 })
           }
         },
         () => {
-          alert('Nelze získat vaši polohu. Povolte přístup k GPS.')
-          setIsLocationActive(false)
+          alert('Nelze získat GPS polohu. Zkontrolujte oprávnění v prohlížeči.')
+          setIsLiveTracking(false)
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       )
     } else {
+      // Vypnutí polohy
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
       }
+
+      setCurrentCoords(null)
+
+      // Aktualizace stavu v databázi (is_active = false)
       await supabase.from('user_locations').update({ is_active: false }).eq('user_id', currentUserId)
-      if (radiusCircleRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeLayer(radiusCircleRef.current)
+
+      // Odstranění mé modré tečky a okruhu z mapy
+      if (mapInstanceRef.current) {
+        if (myLocationMarkerRef.current) {
+          mapInstanceRef.current.removeLayer(myLocationMarkerRef.current)
+          myLocationMarkerRef.current = null
+        }
+        if (radiusCircleRef.current) {
+          mapInstanceRef.current.removeLayer(radiusCircleRef.current)
+          radiusCircleRef.current = null
+        }
       }
     }
   }
+
+  // Vykreslení modré tečky uživatele a ostatních na mapě
+  useEffect(() => {
+    if (!mapInstanceRef.current || !hasMounted || typeof window === 'undefined') return
+
+    import('leaflet').then((L) => {
+      const map = mapInstanceRef.current
+
+      // Odstranění starých markerů ostatních uživatelů
+      Object.values(markersRef.current).forEach((marker: any) => map.removeLayer(marker))
+      markersRef.current = {}
+
+      // Odstranění vlastního indikátoru
+      if (myLocationMarkerRef.current) {
+        map.removeLayer(myLocationMarkerRef.current)
+        myLocationMarkerRef.current = null
+      }
+      if (radiusCircleRef.current) {
+        map.removeLayer(radiusCircleRef.current)
+        radiusCircleRef.current = null
+      }
+
+      // 1. Vaše živá pozice (modrá tečka s pulzujícím efektem)
+      if (currentCoords && isLiveTracking) {
+        radiusCircleRef.current = L.circle([currentCoords.lat, currentCoords.lng], {
+          radius: maxRadius * 1000,
+          color: '#2563eb',
+          fillColor: '#3b82f6',
+          fillOpacity: 0.1,
+          weight: 1.5,
+          dashArray: '4, 6',
+        }).addTo(map)
+
+        const myDotIcon = L.divIcon({
+          className: 'my-gps-dot',
+          html: `
+            <div class="relative flex items-center justify-center w-8 h-8">
+              <div class="absolute w-8 h-8 bg-blue-500/40 rounded-full gps-pulse-ring"></div>
+              <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg"></div>
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        })
+
+        myLocationMarkerRef.current = L.marker([currentCoords.lat, currentCoords.lng], {
+          icon: myDotIcon,
+          zIndexOffset: 1000,
+        })
+          .bindPopup(`
+            <div style="font-family: sans-serif; padding: 4px; text-align: center;">
+              <strong style="font-size: 13px; color: #2563eb;">📍 Vaše aktuální poloha</strong>
+              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Sdílení polohy je aktivní</div>
+            </div>
+          `)
+          .addTo(map)
+      }
+
+      // 2. Vykreslení ostatních aktivních uživatelů a jejich mazlíčků
+      usersLocations.forEach((loc) => {
+        if (loc.user_id === currentUserId) return
+
+        let dist = 0
+        if (currentCoords) {
+          dist = getDistanceKm(currentCoords.lat, currentCoords.lng, loc.latitude, loc.longitude)
+          if (dist > maxRadius) return
+        }
+
+        const genderSymbol = loc.profiles?.pet_gender === 'holka' ? '♀️ Holka' : '♂️ Kluk'
+        const genderBg = loc.profiles?.pet_gender === 'holka' ? 'bg-pink-500' : 'bg-blue-500'
+        const petType = loc.profiles?.pet_type || 'Mazlíček'
+
+        const customIcon = L.divIcon({
+          className: 'other-user-pin',
+          html: `
+            <div class="relative flex items-center justify-center cursor-pointer">
+              <div class="relative w-11 h-11 rounded-full p-0.5 bg-white shadow-md border border-slate-200 hover:scale-110 transition-transform">
+                <div class="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
+                  ${
+                    loc.profiles?.avatar_url
+                      ? `<img src="${loc.profiles.avatar_url}" class="w-full h-full object-cover" />`
+                      : `<span class="text-base">🐾</span>`
+                  }
+                </div>
+              </div>
+              <div class="absolute -bottom-1 -right-1 ${genderBg} text-white text-[9px] px-1 rounded-full flex items-center justify-center font-bold border border-white shadow">
+                ${loc.profiles?.pet_gender === 'holka' ? '♀' : '♂'}
+              </div>
+            </div>
+          `,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        })
+
+        const popupContent = document.createElement('div')
+        popupContent.className = 'p-2 font-sans'
+        popupContent.innerHTML = `
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
+              ${
+                loc.profiles?.avatar_url
+                  ? `<img src="${loc.profiles.avatar_url}" class="w-full h-full object-cover" />`
+                  : `<div class="w-full h-full flex items-center justify-center text-xl">🐾</div>`
+              }
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 leading-tight">${loc.profiles?.pet_name || 'Bez jména'}</h3>
+              <p class="text-xs text-slate-500 font-medium">Páníček: <span class="text-slate-800 font-semibold">@${
+                loc.profiles?.username || 'uživatel'
+              }</span></p>
+            </div>
+          </div>
+
+          <div class="space-y-1 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3">
+            <div>🐾 <strong>Druh:</strong> ${petType}</div>
+            <div><span>${genderSymbol}</span></div>
+            ${currentCoords ? `<div>📏 <strong>Vzdálenost:</strong> ${formatDistance(dist)}</div>` : ''}
+          </div>
+
+          <button id="btn-profile-${loc.user_id}" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors text-center block">
+            Zobrazit profil ➔
+          </button>
+        `
+
+        const marker = L.marker([loc.latitude, loc.longitude], { icon: customIcon })
+          .bindPopup(popupContent)
+          .addTo(map)
+
+        marker.on('popupopen', () => {
+          const btn = document.getElementById(`btn-profile-${loc.user_id}`)
+          if (btn) {
+            btn.onclick = () => router.push(`/profile/${loc.user_id}`)
+          }
+        })
+
+        marker.on('click', () => {
+          if (marker.isPopupOpen()) {
+            router.push(`/profile/${loc.user_id}`)
+          }
+        })
+
+        markersRef.current[loc.user_id] = marker
+      })
+    })
+  }, [usersLocations, currentCoords, maxRadius, currentUserId, isLiveTracking, hasMounted, router])
 
   const recenterMap = () => {
     if (currentCoords && mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([currentCoords.lat, currentCoords.lng], 15)
+      mapInstanceRef.current.flyTo([currentCoords.lat, currentCoords.lng], 16, { duration: 1 })
     } else {
-      alert('Nejprve zapněte svoji polohu pro vycentrování.')
+      alert('Nejprve zapněte sdílení polohy.')
     }
   }
 
-  // Filtr a řazení podle nejbližších
+  if (!hasMounted) {
+    return <div className="w-full h-screen bg-slate-100" />
+  }
+
   const sortedUsers = [...usersLocations]
     .filter((u) => {
-      if (!currentCoords || u.user_id === currentUserId) return true
+      if (u.user_id === currentUserId) return false
+      if (!currentCoords) return true
       const d = getDistanceKm(currentCoords.lat, currentCoords.lng, u.latitude, u.longitude)
       return d <= maxRadius
     })
@@ -324,116 +445,111 @@ export default function RealtimeMapPage() {
     })
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-neutral-900 select-none font-sans">
-      
-      {/* MAPA */}
+    <div className="relative w-full h-screen overflow-hidden bg-slate-100 select-none font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-      {/* HORNÍ REŽIMY MAPY */}
+      {/* HORNÍ LIŠTA – VLEVO MAPA/SATELIT, VPRAVO TLAČÍTKO POLOHY A VYCENTROVÁNÍ */}
       <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-center pointer-events-none">
-        <div className="pointer-events-auto bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl flex gap-1 border border-neutral-200/80">
+        {/* Přepínač vrstev vlevo */}
+        <div className="pointer-events-auto bg-white/90 backdrop-blur-md p-1 rounded-2xl border border-slate-200 shadow-lg flex gap-1">
           <button
-            onClick={() => setMapMode('light')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'light' ? 'bg-indigo-600 text-white shadow' : 'text-neutral-600 hover:bg-neutral-100'
+            onClick={() => setMapMode('map')}
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              mapMode === 'map' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            ☀️ Světlá
-          </button>
-          <button
-            onClick={() => setMapMode('dark')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'dark' ? 'bg-indigo-600 text-white shadow' : 'text-neutral-600 hover:bg-neutral-100'
-            }`}
-          >
-            🌙 Tmavá
+            🗺️ Mapa
           </button>
           <button
             onClick={() => setMapMode('satellite')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'satellite' ? 'bg-indigo-600 text-white shadow' : 'text-neutral-600 hover:bg-neutral-100'
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              mapMode === 'satellite' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             🛰️ Satelit
           </button>
         </div>
 
-        <button
-          onClick={recenterMap}
-          className="pointer-events-auto bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-neutral-200 text-xl hover:scale-110 active:scale-95 transition-transform"
-          title="Vycentrovat na moji polohu"
-        >
-          🎯
-        </button>
+        {/* Ovládací prvky polohy vpravo (Přepínač ON/OFF + Vycentrování) */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={toggleLiveTracking}
+            className={`h-10 px-3.5 rounded-2xl font-bold text-xs shadow-lg flex items-center gap-2.5 border backdrop-blur-md transition-all active:scale-95 ${
+              isLiveTracking
+                ? 'bg-emerald-600 text-white border-emerald-500'
+                : 'bg-white/90 text-slate-700 border-slate-200 hover:bg-white'
+            }`}
+          >
+            <div
+              className={`w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center ${
+                isLiveTracking ? 'bg-emerald-800' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-3 h-3 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                  isLiveTracking ? 'translate-x-3' : 'translate-x-0'
+                }`}
+              />
+            </div>
+            <span>{isLiveTracking ? 'Poloha ZAP' : 'Poloha VYP'}</span>
+          </button>
+
+          <button
+            onClick={recenterMap}
+            className="bg-white/90 backdrop-blur-md w-10 h-10 rounded-2xl border border-slate-200 shadow-lg flex items-center justify-center text-slate-700 hover:bg-white active:scale-95 transition-all"
+            title="Vycentrovat na moji polohu"
+          >
+            🎯
+          </button>
+        </div>
       </div>
 
-      {/* TLAČÍTKO ZAPNOUT / VYPNOUT GPS */}
-      <div className="absolute top-20 left-4 z-10">
-        <button
-          onClick={toggleLocation}
-          className={`px-4 py-2.5 rounded-2xl font-bold text-xs shadow-2xl flex items-center gap-2 border transition-all ${
-            isLocationActive
-              ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse'
-              : 'bg-white/90 text-neutral-800 border-neutral-200 hover:bg-white'
-          }`}
-        >
-          <span className={`w-2.5 h-2.5 rounded-full ${isLocationActive ? 'bg-white' : 'bg-rose-500'}`} />
-          {isLocationActive ? 'Poloha AKTIVNÍ' : 'Zapnout moji polohu'}
-        </button>
-      </div>
-
-      {/* SPODNÍ ZASOUVACÍ PANEL */}
+      {/* VYSUVACÍ LIST SEZNAMU */}
       <div
-        className={`absolute bottom-20 left-0 right-0 z-20 bg-white/95 backdrop-blur-2xl rounded-t-[2.5rem] border-t border-neutral-200/80 shadow-2xl transition-all duration-300 ease-in-out ${
-          isDrawerOpen ? 'h-[65vh]' : 'h-24'
+        className={`absolute bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-xl rounded-t-[2rem] border-t border-slate-200 shadow-2xl transition-all duration-300 ease-out ${
+          isDrawerOpen ? 'h-[60vh]' : 'h-20'
         }`}
       >
-        <div 
+        <div
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          className="w-full py-3 flex flex-col items-center cursor-pointer group"
+          className="w-full py-2.5 flex flex-col items-center cursor-pointer group"
         >
-          <div className="w-12 h-1.5 bg-neutral-300 rounded-full group-hover:bg-neutral-400 transition-colors" />
+          <div className="w-10 h-1 bg-slate-300 rounded-full group-hover:bg-slate-400 transition-colors" />
           <div className="flex justify-between items-center w-full px-6 pt-2">
-            <span className="text-xs font-extrabold text-neutral-800 tracking-tight">
-              🐾 Pejskaři v okruhu ({sortedUsers.length})
-            </span>
-            <span className="text-xs font-bold text-indigo-600">
-              {isDrawerOpen ? 'Zavřít ✕' : 'Zobrazit seznam ▲'}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-900">Uživatelé a zvířata v okolí</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-extrabold text-[10px]">
+                {sortedUsers.length}
+              </span>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {isDrawerOpen ? 'Skrýt ✕' : 'Zobrazit seznam ▲'}
             </span>
           </div>
         </div>
 
         <div className="px-6 pb-20 overflow-y-auto h-[calc(100%-3rem)] space-y-4">
-          
-          {/* POSUVNÍK 0.0 km až 20.0 km (krok po 100 m) */}
-          <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200/60 shadow-inner">
-            <div className="flex justify-between items-center text-xs font-bold mb-2">
-              <span className="text-neutral-600">Okruh viditelnosti:</span>
-              <span className="text-indigo-600 font-black text-sm">{formatDistance(maxRadius)}</span>
+          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+            <div className="flex justify-between items-center text-xs font-semibold mb-1.5 text-slate-600">
+              <span>Okruh vyhledávání:</span>
+              <span className="text-blue-600 font-bold">{formatDistance(maxRadius)}</span>
             </div>
             <input
               type="range"
-              min="0"
+              min="0.5"
               max="20"
-              step="0.1"
+              step="0.5"
               value={maxRadius}
               onChange={(e) => setMaxRadius(parseFloat(e.target.value))}
-              className="w-full accent-indigo-600 cursor-pointer h-2 bg-neutral-200 rounded-lg"
+              className="w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
             />
-            <div className="flex justify-between text-[10px] text-neutral-400 mt-1 font-semibold">
-              <span>0 m</span>
-              <span>10 km</span>
-              <span>20 km</span>
-            </div>
           </div>
 
-          {/* SEZNAM UŽIVATELŮ V OKOLÍ */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {sortedUsers.length === 0 ? (
-              <p className="text-center text-xs text-neutral-400 py-6">V tomto okruhu se nenachází žádný aktivní pejskař. 🐾</p>
+              <p className="text-center text-xs text-slate-400 py-6">V tomto okruhu nikdo další není. 🐾</p>
             ) : (
               sortedUsers.map((user) => {
-                const isMe = user.user_id === currentUserId
                 const dist = currentCoords
                   ? getDistanceKm(currentCoords.lat, currentCoords.lng, user.latitude, user.longitude)
                   : null
@@ -443,42 +559,51 @@ export default function RealtimeMapPage() {
                     key={user.user_id}
                     onClick={() => {
                       if (mapInstanceRef.current) {
-                        mapInstanceRef.current.flyTo([user.latitude, user.longitude], 16)
+                        mapInstanceRef.current.flyTo([user.latitude, user.longitude], 16, { duration: 1 })
                         if (markersRef.current[user.user_id]) {
                           markersRef.current[user.user_id].openPopup()
                         }
                       }
                     }}
-                    className={`p-3.5 bg-white rounded-2xl border flex items-center justify-between cursor-pointer hover:border-indigo-400 transition-all shadow-sm ${
-                      isMe ? 'border-indigo-200 bg-indigo-50/30' : 'border-neutral-200/70'
-                    }`}
+                    className="p-3 bg-white rounded-2xl border border-slate-200 flex items-center justify-between cursor-pointer hover:border-blue-300 transition-all shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="relative w-11 h-11 rounded-full bg-neutral-100 overflow-hidden border border-neutral-200">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0">
                         {user.profiles?.avatar_url ? (
                           <img src={user.profiles.avatar_url} className="w-full h-full object-cover" alt="avatar" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-base">🐶</div>
+                          <div className="w-full h-full flex items-center justify-center text-sm">🐾</div>
                         )}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-bold text-neutral-900">{user.profiles?.dog_name || 'Pejsek'}</h4>
+                          <h4 className="text-xs font-bold text-slate-900">{user.profiles?.pet_name || 'Bez jména'}</h4>
                           <span className="text-[10px]">
-                            {user.profiles?.dog_gender === 'holka' ? '♀️' : '♂️'}
+                            {user.profiles?.pet_gender === 'holka' ? '♀️' : '♂️'}
                           </span>
-                          {isMe && <span className="text-[9px] bg-indigo-600 text-white font-black px-1.5 py-0.5 rounded-md">VY</span>}
                         </div>
-                        <p className="text-[11px] text-neutral-500 font-medium">@{user.profiles?.username || 'uživatel'}</p>
-                        <p className="text-[10px] text-neutral-400">📍 {user.address}</p>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Páníček: @{user.profiles?.username} • {user.profiles?.pet_type || 'Zvíře'}
+                        </p>
                       </div>
                     </div>
 
-                    {dist !== null && !isMe && (
-                      <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl">
-                        {formatDistance(dist)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {dist !== null && (
+                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-xl">
+                          {formatDistance(dist)}
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/profile/${user.user_id}`)
+                        }}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                      >
+                        Profil
+                      </button>
+                    </div>
                   </div>
                 )
               })
@@ -486,18 +611,6 @@ export default function RealtimeMapPage() {
           </div>
         </div>
       </div>
-
-      {/* NAVIGACE */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-md bg-white/85 backdrop-blur-2xl border border-neutral-200/80 rounded-[2.5rem] px-6 py-3.5 flex justify-around items-center shadow-2xl z-[100]">
-        <Link href="/domu" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">🏠</Link>
-        <Link href="/map" className="text-indigo-600 text-2xl hover:scale-110 transition-transform">🗺️</Link>
-        <Link href="/domu" className="bg-gradient-to-r from-indigo-600 to-purple-600 w-12 h-12 rounded-full flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30 -mt-10 border-4 border-white hover:scale-110 active:scale-95 transition-all">
-          ＋
-        </Link>
-        <Link href="/chat" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">🐾</Link>
-        <Link href="/profile" className="text-neutral-400 hover:text-neutral-600 text-2xl hover:scale-110 transition-transform">👤</Link>
-      </nav>
-
     </div>
   )
 }

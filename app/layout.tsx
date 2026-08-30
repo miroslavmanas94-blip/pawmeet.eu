@@ -19,16 +19,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="cs" suppressHydrationWarning>
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white">
+      <body className="min-h-screen bg-white text-slate-900 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white m-0 p-0">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
-
           <BottomNav />
+          <main className="min-h-screen w-full md:pl-[240px] xl:md:pl-[260px] transition-all duration-300">
+            {children}
+          </main>
           <Analytics />
         </ThemeProvider>
       </body>

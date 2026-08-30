@@ -27,7 +27,7 @@ export function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
     <img 
       src="/logo.png" 
       alt="PawMeet Logo" 
-      className={`rounded-[22%] shadow-md object-cover shrink-0 ${className}`}
+      className={`rounded-2xl shadow-xl shadow-purple-500/10 object-cover shrink-0 border border-purple-500/20 ${className}`}
     />
   )
 }
@@ -40,15 +40,11 @@ export default function LandingPage() {
   const [modalContent, setModalContent] = useState<ModalType>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Příznak pro bezpečné renderování na klientovi
   const [mounted, setMounted] = useState(false)
-
-  // Hodnocení a Reálné Recenze
-  const [rating, setRating] = useState<number>(3.7)
+  const [rating, setRating] = useState<number>(4.5)
   const [reviewText, setReviewText] = useState<string>('')
   const [submitted, setSubmitted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
-  
   const [reviewsList, setReviewsList] = useState<Review[]>([])
 
   useEffect(() => {
@@ -85,7 +81,7 @@ export default function LandingPage() {
   const totalRatingCount = reviewsList.length
   const averageRating = totalRatingCount > 0 
     ? (reviewsList.reduce((acc, curr) => acc + curr.rating, 0) / totalRatingCount).toFixed(1)
-    : '0.0'
+    : '5.0'
 
   const selectLanguage = (code: typeof languages[number]['code']) => {
     setLang(code)
@@ -132,21 +128,21 @@ export default function LandingPage() {
       desc: 'Sdílejte radostné momenty ze života vašich mazlíčků, objevujte příběhy ze sousedství a sbírejte paculky od komunity.',
       mockupHeader: 'Přidáno před 15 minutami • Praha 4',
       mockupContent: (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 p-0.5 shadow-md">
-              <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-sm font-bold">🐶</div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 via-indigo-500 to-pink-500 p-0.5 shadow-md">
+              <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-sm font-bold">🐶</div>
             </div>
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">Buddy & Max</p>
-              <p className="text-[10px] text-slate-500">Zlatý retrívr • 2 roky</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Zlatý retrívr • 2 roky</p>
             </div>
           </div>
-          <div className="h-36 rounded-2xl bg-gradient-to-tr from-purple-500/10 via-indigo-500/10 to-pink-500/10 border border-purple-200/50 dark:border-purple-800/40 flex items-center justify-center text-purple-900 dark:text-purple-200 text-xs font-bold shadow-inner">
+          <div className="h-40 rounded-2xl bg-gradient-to-br from-purple-500/10 via-indigo-500/10 to-pink-500/10 border border-purple-500/20 flex items-center justify-center text-purple-700 dark:text-purple-300 text-xs font-bold shadow-inner">
             🏞️ Procházka v parku Stromovka
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
-            <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold">❤️ 142 paculek</span>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
+            <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400 font-bold">❤️ 142 paculek</span>
             <span>💬 18 komentářů</span>
           </div>
         </div>
@@ -159,18 +155,20 @@ export default function LandingPage() {
       desc: 'Sledujte na živé mapě bezpečné výběhy, psí parky a přátele, kteří jsou zrovna venku na venčení.',
       mockupHeader: 'Aktivní venčitelé ve vašem okolí',
       mockupContent: (
-        <div className="space-y-3">
-          <div className="h-36 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 relative overflow-hidden flex items-center justify-center shadow-inner">
-            <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:12px_12px] opacity-30" />
-            <div className="relative z-10 flex flex-col items-center gap-1">
-              <span className="px-3.5 py-1.5 rounded-full bg-purple-600 text-white text-[11px] font-extrabold shadow-lg shadow-purple-500/30 animate-bounce">
+        <div className="space-y-3.5">
+          <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 relative overflow-hidden flex items-center justify-center shadow-inner">
+            <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:14px_14px] opacity-30" />
+            <div className="relative z-10 flex flex-col items-center gap-2">
+              <span className="px-4 py-2 rounded-full bg-purple-600 text-white text-xs font-extrabold shadow-lg shadow-purple-500/30 animate-bounce">
                 📍 3 psí kamarádi v dosahu 500m
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-900/50 text-xs font-semibold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs font-semibold">
             <span className="text-slate-700 dark:text-slate-300">Park Riegrovy sady</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">🟢 Rušno (8 psů)</span>
+            <span className="text-emerald-500 font-extrabold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> Rušno (8 psů)
+            </span>
           </div>
         </div>
       )
@@ -182,14 +180,14 @@ export default function LandingPage() {
       desc: 'Domlouvejte si společné srazy, zakládejte lokální smečky a komunikujte bezpečně s ostatními páníčky.',
       mockupHeader: 'Skupina: Vršovičtí hafané 🐾',
       mockupContent: (
-        <div className="space-y-2.5">
-          <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 max-w-[85%] font-medium shadow-sm">
+        <div className="space-y-3">
+          <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/90 text-xs text-slate-800 dark:text-slate-200 max-w-[85%] font-medium shadow-sm">
             Ahoj všichni! Jde dneska někdo kolem 17:00 venčit na Havlíčkovy sady? 🦮
           </div>
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs max-w-[85%] ml-auto font-medium shadow-md shadow-purple-500/20">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs max-w-[85%] ml-auto font-medium shadow-lg shadow-purple-500/20">
             My s Lunou vyrážíme! Potkáme se u altánku 👋
           </div>
-          <div className="text-[10px] text-center text-slate-400 font-semibold pt-1">
+          <div className="text-[11px] text-center text-slate-400 font-semibold pt-1">
             2 uživatelé píší zprávu...
           </div>
         </div>
@@ -202,15 +200,15 @@ export default function LandingPage() {
       desc: 'Okamžité odpovědi 24/7 na otázky k výživě, výchově, zdraví i chování vašich mazlíčků.',
       mockupHeader: 'PawAI • Asistent výživy a zdraví',
       mockupContent: (
-        <div className="space-y-2.5">
-          <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
+        <div className="space-y-3">
+          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
             ❓ Kolik granulí by měl denně dostat 15kg pes?
           </div>
-          <div className="p-3 rounded-xl bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/60 dark:to-indigo-950/60 border border-purple-200/60 dark:border-purple-800/50 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
-            <p className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+          <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
+            <p className="font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
               <span>🐾</span> AI Odpověď:
             </p>
-            <p>Pro 15kg dospělého psa se doporučuje cca 200–250g kvalitních krmiv denně rozdělených do 2 porcí...</p>
+            <p className="text-slate-600 dark:text-slate-300">Pro 15kg dospělého psa se doporučuje cca 200–250g kvalitních krmiv denně rozdělených do 2 porcí...</p>
           </div>
         </div>
       )
@@ -225,38 +223,42 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 overflow-x-hidden selection:bg-purple-500 selection:text-white">
+      
+      {/* Background Glows */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-purple-600/20 via-indigo-500/20 to-pink-500/20 blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-purple-500/10 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-[75%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/10 blur-[150px] pointer-events-none rounded-full" />
 
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-tr from-purple-500/20 via-indigo-500/15 to-pink-500/20 dark:from-purple-900/40 dark:via-indigo-950/50 blur-[140px] pointer-events-none rounded-full" />
-
-      <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-b border-purple-100/60 dark:border-slate-800/80 transition-all">
-        <div className="max-w-6xl mx-auto px-5 h-16 sm:h-20 flex justify-between items-center">
-
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-white/70 dark:bg-slate-950/75 border-b border-slate-200/60 dark:border-slate-800/80 transition-all">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 group">
-            <PawLogo className="w-9 h-9 sm:w-10 sm:h-10 group-hover:scale-105" />
-            <span className="font-black text-xl tracking-tight bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-500 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
+            <PawLogo className="w-10 h-10 transition-transform group-hover:scale-105" />
+            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 dark:from-purple-400 dark:via-indigo-300 dark:to-pink-400 bg-clip-text text-transparent">
               PawMeet
             </span>
           </Link>
 
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-3">
+            {/* Language Selector */}
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-all border border-slate-200/80 dark:border-slate-700/80 shadow-sm backdrop-blur-md"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-all border border-slate-200/80 dark:border-slate-800 shadow-sm backdrop-blur-md"
               >
                 <span>{currentLangObj.flag}</span>
-                <span className="uppercase">{currentLangObj.code}</span>
-                <span className={`text-[8px] transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`}>▼</span>
+                <span className="uppercase tracking-wider">{currentLangObj.code}</span>
+                <span className={`text-[9px] transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`}>▼</span>
               </button>
 
               {isLangOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden py-2 z-50 backdrop-blur-xl">
                   {languages.map((item) => (
                     <button
                       key={item.code}
                       onClick={() => selectLanguage(item.code)}
-                      className={`w-full flex items-center gap-3 px-4 py-2 text-xs font-medium text-left hover:bg-purple-50 dark:hover:bg-purple-950/50 transition-colors ${
-                        lang === item.code ? 'bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 font-bold' : 'text-slate-700 dark:text-slate-300'
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-left transition-colors ${
+                        lang === item.code ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                       }`}
                     >
                       <span className="text-base">{item.flag}</span>
@@ -269,37 +271,37 @@ export default function LandingPage() {
 
             <Link 
               href="/login" 
-              className="px-4 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 backdrop-blur-md"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-xs sm:text-sm shadow-sm backdrop-blur-md"
             >
-              <span>🔐</span>
-              <span>{t?.login || 'Přihlásit se'}</span>
+              {t?.login || 'Přihlásit se'}
             </Link>
 
             <Link 
               href="/register" 
-              className="hidden sm:flex px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-95 text-xs sm:text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.02] items-center gap-1.5"
+              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-xs sm:text-sm font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.02] items-center gap-2"
             >
-              <span>🚀</span>
               <span>{t?.join || 'Registrace'}</span>
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="relative max-w-5xl mx-auto px-5 pt-12 sm:pt-16 pb-20 flex flex-col items-center text-center">
-
-        <div className="relative mb-8 transform hover:scale-105 transition-transform duration-300">
-          <PawLogo className="w-28 h-28 sm:w-36 sm:h-36 shadow-2xl shadow-purple-500/30" />
+      {/* HERO SECTION */}
+      <main className="relative max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 flex flex-col items-center text-center">
+        
+        <div className="relative mb-8 group cursor-pointer">
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-600 to-pink-500 blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
+          <PawLogo className="relative w-28 h-28 sm:w-36 sm:h-36 shadow-2xl" />
         </div>
 
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-100/90 dark:bg-purple-950/70 border border-purple-200 dark:border-purple-800/60 text-purple-700 dark:text-purple-300 text-xs font-extrabold mb-6 shadow-sm backdrop-blur-md">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-300 text-xs font-extrabold mb-8 backdrop-blur-md">
           <span>✨</span>
           <span>{t?.badgeDog || 'Komunita pro vašeho psa & kočku'}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.12] max-w-3xl mb-6">
+        <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.15] max-w-4xl mb-6">
           {t?.welcome || 'Vítejte v'}{' '}
-          <span className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-500 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-purple-600 via-indigo-500 to-pink-500 dark:from-purple-400 dark:via-indigo-300 dark:to-pink-400 bg-clip-text text-transparent">
             PawMeet
           </span>
         </h1>
@@ -308,7 +310,7 @@ export default function LandingPage() {
           {t?.subtitle || 'Místo, kde se setkávají milovníci zvířat, sdílí své příběhy, plánují venčení a využívají chytré nástroje pro péči o mazlíčky.'}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mb-8">
           <Link 
             href="/register" 
             className="flex-1 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-purple-500/25 transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-center text-sm sm:text-base"
@@ -328,20 +330,20 @@ export default function LandingPage() {
 
         <Link 
           href="/domu" 
-          className="text-xs sm:text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-2 py-2 px-5 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors mb-16 border border-transparent hover:border-purple-200/50"
+          className="text-xs sm:text-sm font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-2 py-2.5 px-6 rounded-xl hover:bg-purple-500/10 transition-colors mb-20 border border-transparent hover:border-purple-500/20"
         >
           <span>🧭</span>
           <span>{t?.browse || 'Procházet aplikaci bez přihlášení'}</span>
         </Link>
 
-        {/* ZÁLOŽKY */}
-        <section className="w-full max-w-4xl mb-20">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl sm:text-3xl font-black mb-2">Vše pro vašeho parťáka na jednom místě</h2>
-            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Přepínejte mezi moduly a prohlédněte si funkcionalitu.</p>
+        {/* INTERACTIVE MODULE TABS */}
+        <section className="w-full max-w-4xl mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-4xl font-black mb-3">Vše pro vašeho parťáka na jednom místě</h2>
+            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Přepínejte mezi moduly a prohlédněte si funkčnost aplikace.</p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-white/70 dark:bg-slate-900/70 border border-purple-100 dark:border-slate-800 backdrop-blur-xl mb-8 shadow-sm">
+          <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 backdrop-blur-xl mb-8 shadow-md">
             {(Object.keys(tabData) as TabType[]).map((key) => {
               const tab = tabData[key]
               const isActive = activeTab === key
@@ -349,25 +351,25 @@ export default function LandingPage() {
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                     isActive 
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 scale-[1.02]' 
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25 scale-[1.02]' 
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
                   }`}
                 >
-                  <span className="text-base">{tab.icon}</span>
+                  <span className="text-lg">{tab.icon}</span>
                   <span>{tab.title}</span>
                 </button>
               )
             })}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center text-left bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-xl backdrop-blur-xl">
-            <div className="md:col-span-6 space-y-4">
-              <span className="inline-block px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 text-xs font-extrabold border border-purple-200 dark:border-purple-800">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+            <div className="md:col-span-6 space-y-5">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 text-xs font-extrabold border border-purple-500/20">
                 {tabData[activeTab].badge}
               </span>
-              <h3 className="text-2xl font-black flex items-center gap-2">
+              <h3 className="text-2xl sm:text-3xl font-black flex items-center gap-2.5">
                 <span>{tabData[activeTab].icon}</span>
                 <span>{tabData[activeTab].title}</span>
               </h3>
@@ -383,39 +385,35 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="md:col-span-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 p-4 shadow-inner">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400">
+            <div className="md:col-span-6 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 p-5 shadow-inner">
+              <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400">
                 <span>{tabData[activeTab].mockupHeader}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               {tabData[activeTab].mockupContent}
             </div>
           </div>
         </section>
 
-        {/* HODNOCENÍ - PRECIZNÍ DÍLČÍ VYPLŇOVÁNÍ HVĚZD (0.1 až 5.0) */}
-        <section className="w-full max-w-4xl mb-16">
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-purple-200/80 dark:border-purple-900/50 shadow-xl space-y-6 text-center sm:text-left">
-
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        {/* REVIEWS & RATING SECTION */}
+        <section className="w-full max-w-4xl mb-20">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-8 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-200/80 dark:border-slate-800">
               <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2.5">
                   <span>⭐</span> Jak se vám líbí PawMeet?
                 </h3>
-                <p 
-                  suppressHydrationWarning
-                  className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium"
-                >
+                <p suppressHydrationWarning className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
                   Ohodnoťte aplikaci v reálném čase.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 shadow-sm">
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-sm">
                   <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{averageRating}</span>
                   <div className="text-left">
                     <div className="text-amber-400 text-xs font-bold">★ {averageRating} / 5.0</div>
-                    <div className="text-[10px] text-slate-500 font-bold" suppressHydrationWarning>
+                    <div className="text-[11px] text-slate-500 font-bold" suppressHydrationWarning>
                       {loading ? 'Načítám...' : `${totalRatingCount} ${totalRatingCount === 1 ? 'recenze' : totalRatingCount >= 2 && totalRatingCount <= 4 ? 'recenze' : 'recenzí'}`}
                     </div>
                   </div>
@@ -423,7 +421,7 @@ export default function LandingPage() {
 
                 <button
                   onClick={() => setModalContent('reviews')}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200/80 dark:border-slate-700"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
                 >
                   💬 Zobrazit recenze ({totalRatingCount})
                 </button>
@@ -431,30 +429,24 @@ export default function LandingPage() {
             </div>
 
             {!submitted ? (
-              <form onSubmit={handleRatingSubmit} className="space-y-4">
-                
-                <div className="space-y-3 w-full max-w-xs mx-auto sm:mx-0">
+              <form onSubmit={handleRatingSubmit} className="space-y-6">
+                <div className="space-y-4 w-full max-w-sm mx-auto sm:mx-0">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       Vyberte hodnocení:
                     </span>
-                    <span className="text-sm font-black text-amber-500 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <span className="text-sm font-black text-amber-500 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
                       ★ {rating.toFixed(1)} / 5.0
                     </span>
                   </div>
 
-                  {/* 5 Hvězd s dynamickým ořezem pro každou zvlášť */}
-                  <div className="space-y-2">
-                    <div className="flex justify-center gap-1 text-3xl select-none">
+                  <div className="space-y-3">
+                    <div className="flex justify-center gap-1.5 text-3xl select-none">
                       {[1, 2, 3, 4, 5].map((starIndex) => {
                         const fillPercentage = Math.max(0, Math.min(100, (rating - (starIndex - 1)) * 100))
-
                         return (
-                          <div key={starIndex} className="relative">
-                            {/* Šedá podkladová hvězda */}
+                          <div key={starIndex} className="relative cursor-pointer">
                             <span className="text-slate-300 dark:text-slate-700">★</span>
-                            
-                            {/* Zlatá vrchní hvězda oříznutá podle přesné hodnoty */}
                             <div 
                               className="absolute top-0 left-0 overflow-hidden text-amber-400 pointer-events-none transition-all duration-75"
                               style={{ width: `${fillPercentage}%` }}
@@ -466,7 +458,6 @@ export default function LandingPage() {
                       })}
                     </div>
 
-                    {/* Slider pro výběr 0.1 - 5.0 */}
                     <input
                       type="range"
                       min="0.1"
@@ -474,11 +465,10 @@ export default function LandingPage() {
                       step="0.1"
                       value={rating}
                       onChange={(e) => setRating(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
                     />
                   </div>
 
-                  {/* Škála min / max */}
                   <div className="flex justify-between text-[10px] font-bold text-slate-400 px-1">
                     <span>0.1 (Nejhorší)</span>
                     <span>2.5</span>
@@ -491,7 +481,7 @@ export default function LandingPage() {
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
                     placeholder="Napište svoji reálnou zkušenost..."
-                    className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none h-20"
+                    className="w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all resize-none h-24"
                   />
                 </div>
 
@@ -499,9 +489,9 @@ export default function LandingPage() {
                   <button
                     type="submit"
                     disabled={rating === 0}
-                    className={`px-6 py-2.5 rounded-xl font-extrabold text-xs transition-all ${
+                    className={`px-6 py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
                       rating > 0 
-                        ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md cursor-pointer hover:scale-105' 
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 cursor-pointer hover:scale-[1.02]' 
                         : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                     }`}
                   >
@@ -510,53 +500,52 @@ export default function LandingPage() {
                 </div>
               </form>
             ) : (
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-center sm:text-left text-xs sm:text-sm font-bold flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🎉</span>
+              <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-center sm:text-left text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">🎉</span>
                   <div>
-                    <p>Děkujeme za vaše hodnocení ({rating.toFixed(1)} ★)!</p>
-                    <p className="text-[11px] font-normal opacity-90">Vaše hodnocení bylo úspěšně uloženo do databáze.</p>
+                    <p className="text-base font-extrabold">Děkujeme za vaše hodnocení ({rating.toFixed(1)} ★)!</p>
+                    <p className="text-xs font-normal opacity-90 mt-0.5">Vaše hodnocení bylo úspěšně uloženo.</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setModalContent('reviews')}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shrink-0"
                 >
                   Zobrazit v seznamu
                 </button>
               </div>
             )}
-
           </div>
         </section>
 
-        {/* INFORMAČNÍ SEKCE */}
-        <section className="w-full max-w-4xl text-left space-y-8 pt-10 border-t border-slate-200/80 dark:border-slate-800">
+        {/* INFO CARDS */}
+        <section className="w-full max-w-4xl text-left space-y-8 pt-12 border-t border-slate-200/80 dark:border-slate-800">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-purple-100/80 dark:border-slate-800 shadow-sm space-y-2 hover:border-purple-200 transition-colors">
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">💡 {t?.aboutTitle || 'O projektu'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.aboutText || 'PawMeet je komunita vytvořená pro majitele mazlíčků, kteří chtějí snadno nacházet nové přátele, bezpečné výběhy a radostné zážitky.'}</p>
             </div>
 
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-purple-100/80 dark:border-slate-800 shadow-sm space-y-2 hover:border-purple-200 transition-colors">
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🛡️ {t?.safetyTitle || 'Bezpečnost'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.safetyText || 'Vaše soukromí je naší prioritou. Přesná poloha se nikdy nezobrazuje a vy sami rozhodujete, s kým se propojíte.'}</p>
             </div>
 
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-purple-100/80 dark:border-slate-800 shadow-sm space-y-2 hover:border-purple-200 transition-colors">
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">📜 {t?.termsTitle || 'Podmínky použití'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                {t?.termsText || 'Užíváním PawMeet souhlasíte s dodržováním pravidel komunity a uctivým chováním.'}
+                {t?.termsText || 'Užíváním PawMeet souhlasíte s dodržováním pravidlech komunity a uctivým chováním.'}
               </p>
               <button 
                 onClick={() => setModalContent('terms')}
                 className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block"
               >
-                Zobrazit podmínky
+                Zobrazit podmínky →
               </button>
             </div>
 
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-purple-100/80 dark:border-slate-800 shadow-sm space-y-2 hover:border-purple-200 transition-colors">
+            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🔒 {t?.privacyTitle || 'Ochrana soukromí'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 {t?.privacyText || 'Vaše osobní údaje chráníme podle standardů GDPR.'}
@@ -565,24 +554,24 @@ export default function LandingPage() {
                 onClick={() => setModalContent('privacy')}
                 className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block"
               >
-                Zásady soukromí
+                Zásady soukromí →
               </button>
             </div>
           </div>
         </section>
 
-        {/* FAQ SEKCE */}
-        <section className="w-full max-w-4xl pt-10 mt-8 border-t border-slate-200/80 dark:border-slate-800 text-left">
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-8">Často kladené otázky</h2>
+        {/* FAQ SECTION */}
+        <section className="w-full max-w-4xl pt-12 mt-10 border-t border-slate-200/80 dark:border-slate-800 text-left">
+          <h2 className="text-2xl sm:text-3xl font-black text-center mb-10">Často kladené otázky</h2>
           <div className="space-y-4">
             {faqs.map((faq, index) => (
               <div 
                 key={index}
-                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-purple-100/80 dark:border-slate-800 overflow-hidden shadow-sm"
+                className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full p-5 text-left font-bold text-sm sm:text-base flex justify-between items-center gap-4 text-slate-900 dark:text-white hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                  className="w-full p-6 text-left font-bold text-sm sm:text-base flex justify-between items-center gap-4 text-slate-900 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors"
                 >
                   <span>{faq.q}</span>
                   <span className={`transition-transform duration-200 text-purple-600 dark:text-purple-400 font-extrabold ${openFaq === index ? 'rotate-180' : ''}`}>
@@ -590,7 +579,7 @@ export default function LandingPage() {
                   </span>
                 </button>
                 {openFaq === index && (
-                  <div className="px-5 pb-5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60 pt-3 leading-relaxed">
+                  <div className="px-6 pb-6 text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60 pt-4 leading-relaxed">
                     {faq.a}
                   </div>
                 )}
@@ -601,83 +590,182 @@ export default function LandingPage() {
 
       </main>
 
-      {/* MODÁLNÍ OKNO PRO RECENZE / PODMÍNKY */}
-      {modalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-            
-            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="font-black text-base sm:text-lg flex items-center gap-2">
-                {modalContent === 'reviews' && '💬 Recenze uživatelů'}
-                {modalContent === 'terms' && '📜 Podmínky použití'}
-                {modalContent === 'privacy' && '🔒 Ochrana soukromí'}
-              </h3>
-              <button 
-                onClick={() => setModalContent(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
+      {/* FOOTER */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-10 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+        <p>© {new Date().getFullYear()} PawMeet. Všechna práva vyhrazena.</p>
+      </footer>
 
-            <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              {modalContent === 'reviews' && (
-                <div className="space-y-3">
-                  {reviewsList.length === 0 ? (
-                    <p className="text-center py-8 text-slate-400 font-medium">Zatím nebyly přidány žádné recenze.</p>
-                  ) : (
-                    reviewsList.map((rev) => (
-                      <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-900 dark:text-white">{rev.author}</span>
-                          <span className="text-amber-500 font-black">★ {Number(rev.rating).toFixed(1)}</span>
+      {/* MODAL DIALOG */}
+      {modalContent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setModalContent(null)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition-colors"
+            >
+              ✕
+            </button>
+
+            {/* EXPANDED TERMS OF USE */}
+            {modalContent === 'terms' && (
+              <div className="space-y-6 text-left">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📜</span> Podmínky použití
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Poslední aktualizace: 2026
+                  </p>
+                </div>
+
+                <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">1. Přijetí podmínek</h4>
+                    <p>
+                      Registrací nebo používáním služby PawMeet vyjadřujete bezvýhradný souhlas s těmito podmínkami použití. Pokud s těmito podmínkami nesouhlasíte, aplikaci prosím nepoužívejte.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">2. Pravidla chování v komunitě</h4>
+                    <p>
+                      PawMeet je bezpečný prostor pro všechny chovatele. Zákaz platí pro:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 mt-1 pl-2 text-slate-500 dark:text-slate-400">
+                      <li>Urážlivý, nenávistný nebo diskriminační obsah.</li>
+                      <li>Propagaci týrání zvířat nebo jakéhokoliv neetického zacházení.</li>
+                      <li>Spam, nevyžádané obchodní nabídky a klamavé informace.</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">3. Odpovědnost za domácí mazlíčky</h4>
+                    <p>
+                      Uživatelé jsou plně právně a finančně odpovědní za své domácí mazlíčky při osobních setkáních domluvených skrze aplikaci PawMeet. Aplikace PawMeet nenesou žádnou odpovědnost za případná zranění, škody na majetku či jiné incidenty vzniklé mezi uživateli.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">4. Používání živé mapy a GPS</h4>
+                    <p>
+                      Funkce živé mapy slouží pro usnadnění setkávání. Uživatel bere na vědomí, že sdílení své polohy aktivuje dobrovolně a může ho kdykoliv v nastavení aplikace vypnout.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">5. AI Poradce (PawAI)</h4>
+                    <p>
+                      Doporučení poskytovaná modulům AI mají pouze informativní a vzdělávací charakter. Nenahrazují odbornou veterinární péči ani diagnostiku kvalifikovaným veterinářem.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">6. Zrušení účtu</h4>
+                    <p>
+                      Vyhrazujeme si právo pozastavit nebo zrušit účet každému uživateli, který opakovaně nebo závažným způsobem porušuje tato pravidla.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* EXPANDED PRIVACY POLICY */}
+            {modalContent === 'privacy' && (
+              <div className="space-y-6 text-left">
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🔒</span> Ochrana soukromí (GDPR)
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Informace o zpracování a ochraně osobních údajů
+                  </p>
+                </div>
+
+                <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">1. Správce osobních údajů</h4>
+                    <p>
+                      Správcem vašich osobních údajů je provozovatel platformy PawMeet. Vaše data zpracováváme v souladu s Nařízením Evropského parlamentu a Rady (EU) 2016/679 (GDPR).
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">2. Jaké údaje sbíráme?</h4>
+                    <ul className="list-disc list-inside space-y-1 mt-1 pl-2 text-slate-500 dark:text-slate-400">
+                      <li><strong>Registrační údaje:</strong> E-mailová adresa, uživatelské jméno, heslo (šifrované).</li>
+                      <li><strong>Profilové údaje:</strong> Fotografie, informace o vašich mazlíčcích (plemeno, věk, jméno).</li>
+                      <li><strong>Lokalizační data:</strong> Přibližná nebo přesná GPS poloha (pouze v případě, že k tomu udělíte výslovný souhlas v aplikaci).</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">3. Jak s daty nakládáme?</h4>
+                    <p>
+                      Vaše data využíváme výhradně k provozu služby, k umožnění interakcí mezi uživateli na mapě a v chatu a k personalizaci AI poradce. **Vaše osobní údaje nikdy neprodáváme třetím stranám** pro marketingové účely.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">4. Bezpečnost a uchovávání</h4>
+                    <p>
+                      Veškerá data jsou bezpečně uložena na šifrovaných cloudových serverech (Supabase). Přesná poloha na mapě je automaticky zaokrouhlována, aby bylo znemožněno přesné sledování vašeho domova.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">5. Vaše práva</h4>
+                    <p>
+                      Máte právo kdykoliv požádat o přístup ke svým osobním údajům, jejich opravu, přenos nebo kompletní výmaz (právo být zapomenut) přímo v nastavení profilu nebo zasláním žádosti na naši podporu.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* REVIEWS MODAL */}
+            {modalContent === 'reviews' && (
+              <div className="space-y-6 text-left">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>💬</span> Uživatelské recenze
+                  </h3>
+                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
+                    ★ {averageRating} / 5.0
+                  </span>
+                </div>
+
+                {reviewsList.length === 0 ? (
+                  <p className="text-xs sm:text-sm text-slate-500 text-center py-6">Zatím nebyly přidány žádné recenze.</p>
+                ) : (
+                  <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
+                    {reviewsList.map((rev) => (
+                      <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-slate-900 dark:text-white">{rev.author}</span>
+                          <span className="text-amber-400">★ {rev.rating.toFixed(1)}</span>
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300 font-medium">{rev.text}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{rev.text}</p>
                         <span className="text-[10px] text-slate-400 block pt-1">
-                          {new Date(rev.created_at).toLocaleDateString('cs-CZ')}
+                          {new Date(rev.created_at).toLocaleDateString(lang === 'cs' ? 'cs-CZ' : 'en-US')}
                         </span>
                       </div>
-                    ))
-                  )}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-              {modalContent === 'terms' && (
-                <div className="space-y-3">
-                  <p>Vítejte v aplikaci PawMeet. Používáním této služby souhlasíte s následujícími pravidly komunity:</p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Respektujte ostatní chovatele a jejich zvířata.</li>
-                    <li>Nezveřejňujte nevhodný nebo nepravdivý obsah.</li>
-                    <li>Dodržujte místní vyhlášky a pravidla pro venčení psů.</li>
-                  </ul>
-                </div>
-              )}
-
-              {modalContent === 'privacy' && (
-                <div className="space-y-3">
-                  <p>Vaše soukromí je pro nás klíčové. Shromažďujeme pouze údaje nezbytné pro správné fungování aplikace PawMeet:</p>
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Poloha se využívá výhradně s vaším souhlasem k vyhledání nejbližších parků a přátel.</li>
-                    <li>Údaje nepředáváme třetím stranám bez zákonného důvodu.</li>
-                    <li>Svoje údaje můžete kdykoli upravit nebo požádat o smazání svého účtu.</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex justify-end">
+            <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
               <button
                 onClick={() => setModalContent(null)}
-                className="px-5 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-md"
               >
                 Zavřít
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   )
 }
