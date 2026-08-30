@@ -1,5 +1,9 @@
+'use client'
+
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/react'
+import Script from 'next/script'
+import { usePathname } from 'next/navigation'
 
 // @ts-ignore: Side-effect CSS import
 import './globals.css'
@@ -7,18 +11,23 @@ import './globals.css'
 import BottomNav from '@/components/BottomNav'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
-export const metadata: Metadata = {
-  title: 'PawMeet | Komunita pro vašeho psa a kočku',
-  description: 'Místo, kde se setkávají milovníci zvířat, sdílí své příběhy a plánují venčení.',
-}
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
+  
+  // Zde definuješ, na kterých stránkách má být obsah přes celou obrazovku bez odsazení pro menu.
+  // Pokud je to jen hlavní landing page, nechej tam pouze '/'.
+  const isFullScreenPage = pathname === '/'
+
   return (
     <html lang="cs" suppressHydrationWarning>
+      <head>
+        {/* Puter.js pro AI bez API klíčů a limitů */}
+        <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
+      </head>
       <body className="min-h-screen bg-white text-slate-900 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white m-0 p-0">
         <ThemeProvider
           attribute="class"
@@ -27,7 +36,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <BottomNav />
-          <main className="min-h-screen w-full md:pl-[240px] xl:md:pl-[260px] transition-all duration-300">
+          <main 
+            className={`min-h-screen w-full transition-all duration-300 ${
+              isFullScreenPage ? '' : 'md:pl-[240px] xl:md:pl-[260px]'
+            }`}
+          >
             {children}
           </main>
           <Analytics />

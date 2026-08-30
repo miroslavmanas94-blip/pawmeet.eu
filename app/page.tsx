@@ -222,7 +222,7 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 overflow-x-hidden selection:bg-purple-500 selection:text-white">
+    <div className="fixed inset-0 z-50 w-full min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 overflow-y-auto selection:bg-purple-500 selection:text-white flex flex-col items-center">
       
       {/* Background Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-purple-600/20 via-indigo-500/20 to-pink-500/20 blur-[140px] pointer-events-none rounded-full" />
@@ -231,7 +231,7 @@ export default function LandingPage() {
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-white/70 dark:bg-slate-950/75 border-b border-slate-200/60 dark:border-slate-800/80 transition-all">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center w-full">
           <Link href="/" className="flex items-center gap-3 group">
             <PawLogo className="w-10 h-10 transition-transform group-hover:scale-105" />
             <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 dark:from-purple-400 dark:via-indigo-300 dark:to-pink-400 bg-clip-text text-transparent">
@@ -287,7 +287,7 @@ export default function LandingPage() {
       </header>
 
       {/* HERO SECTION */}
-      <main className="relative max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 flex flex-col items-center text-center">
+      <main className="relative w-full max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 flex flex-col items-center text-center">
         
         <div className="relative mb-8 group cursor-pointer">
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-600 to-pink-500 blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
@@ -591,181 +591,9 @@ export default function LandingPage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 py-10 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-        <p>© {new Date().getFullYear()} PawMeet. Všechna práva vyhrazena.</p>
+      <footer className="w-full border-t border-slate-200 dark:border-slate-800 py-10 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
+        © 2026 PawMeet
       </footer>
-
-      {/* MODAL DIALOG */}
-      {modalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative max-h-[85vh] overflow-y-auto">
-            <button
-              onClick={() => setModalContent(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center font-bold text-sm transition-colors"
-            >
-              ✕
-            </button>
-
-            {/* EXPANDED TERMS OF USE */}
-            {modalContent === 'terms' && (
-              <div className="space-y-6 text-left">
-                <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>📜</span> Podmínky použití
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Poslední aktualizace: 2026
-                  </p>
-                </div>
-
-                <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">1. Přijetí podmínek</h4>
-                    <p>
-                      Registrací nebo používáním služby PawMeet vyjadřujete bezvýhradný souhlas s těmito podmínkami použití. Pokud s těmito podmínkami nesouhlasíte, aplikaci prosím nepoužívejte.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">2. Pravidla chování v komunitě</h4>
-                    <p>
-                      PawMeet je bezpečný prostor pro všechny chovatele. Zákaz platí pro:
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 mt-1 pl-2 text-slate-500 dark:text-slate-400">
-                      <li>Urážlivý, nenávistný nebo diskriminační obsah.</li>
-                      <li>Propagaci týrání zvířat nebo jakéhokoliv neetického zacházení.</li>
-                      <li>Spam, nevyžádané obchodní nabídky a klamavé informace.</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">3. Odpovědnost za domácí mazlíčky</h4>
-                    <p>
-                      Uživatelé jsou plně právně a finančně odpovědní za své domácí mazlíčky při osobních setkáních domluvených skrze aplikaci PawMeet. Aplikace PawMeet nenesou žádnou odpovědnost za případná zranění, škody na majetku či jiné incidenty vzniklé mezi uživateli.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">4. Používání živé mapy a GPS</h4>
-                    <p>
-                      Funkce živé mapy slouží pro usnadnění setkávání. Uživatel bere na vědomí, že sdílení své polohy aktivuje dobrovolně a může ho kdykoliv v nastavení aplikace vypnout.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">5. AI Poradce (PawAI)</h4>
-                    <p>
-                      Doporučení poskytovaná modulům AI mají pouze informativní a vzdělávací charakter. Nenahrazují odbornou veterinární péči ani diagnostiku kvalifikovaným veterinářem.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">6. Zrušení účtu</h4>
-                    <p>
-                      Vyhrazujeme si právo pozastavit nebo zrušit účet každému uživateli, který opakovaně nebo závažným způsobem porušuje tato pravidla.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* EXPANDED PRIVACY POLICY */}
-            {modalContent === 'privacy' && (
-              <div className="space-y-6 text-left">
-                <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                  <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>🔒</span> Ochrana soukromí (GDPR)
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Informace o zpracování a ochraně osobních údajů
-                  </p>
-                </div>
-
-                <div className="space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">1. Správce osobních údajů</h4>
-                    <p>
-                      Správcem vašich osobních údajů je provozovatel platformy PawMeet. Vaše data zpracováváme v souladu s Nařízením Evropského parlamentu a Rady (EU) 2016/679 (GDPR).
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">2. Jaké údaje sbíráme?</h4>
-                    <ul className="list-disc list-inside space-y-1 mt-1 pl-2 text-slate-500 dark:text-slate-400">
-                      <li><strong>Registrační údaje:</strong> E-mailová adresa, uživatelské jméno, heslo (šifrované).</li>
-                      <li><strong>Profilové údaje:</strong> Fotografie, informace o vašich mazlíčcích (plemeno, věk, jméno).</li>
-                      <li><strong>Lokalizační data:</strong> Přibližná nebo přesná GPS poloha (pouze v případě, že k tomu udělíte výslovný souhlas v aplikaci).</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">3. Jak s daty nakládáme?</h4>
-                    <p>
-                      Vaše data využíváme výhradně k provozu služby, k umožnění interakcí mezi uživateli na mapě a v chatu a k personalizaci AI poradce. **Vaše osobní údaje nikdy neprodáváme třetím stranám** pro marketingové účely.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">4. Bezpečnost a uchovávání</h4>
-                    <p>
-                      Veškerá data jsou bezpečně uložena na šifrovaných cloudových serverech (Supabase). Přesná poloha na mapě je automaticky zaokrouhlována, aby bylo znemožněno přesné sledování vašeho domova.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">5. Vaše práva</h4>
-                    <p>
-                      Máte právo kdykoliv požádat o přístup ke svým osobním údajům, jejich opravu, přenos nebo kompletní výmaz (právo být zapomenut) přímo v nastavení profilu nebo zasláním žádosti na naši podporu.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* REVIEWS MODAL */}
-            {modalContent === 'reviews' && (
-              <div className="space-y-6 text-left">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>💬</span> Uživatelské recenze
-                  </h3>
-                  <span className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full">
-                    ★ {averageRating} / 5.0
-                  </span>
-                </div>
-
-                {reviewsList.length === 0 ? (
-                  <p className="text-xs sm:text-sm text-slate-500 text-center py-6">Zatím nebyly přidány žádné recenze.</p>
-                ) : (
-                  <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
-                    {reviewsList.map((rev) => (
-                      <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-bold">
-                          <span className="text-slate-900 dark:text-white">{rev.author}</span>
-                          <span className="text-amber-400">★ {rev.rating.toFixed(1)}</span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{rev.text}</p>
-                        <span className="text-[10px] text-slate-400 block pt-1">
-                          {new Date(rev.created_at).toLocaleDateString(lang === 'cs' ? 'cs-CZ' : 'en-US')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mt-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-              <button
-                onClick={() => setModalContent(null)}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-md"
-              >
-                Zavřít
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
