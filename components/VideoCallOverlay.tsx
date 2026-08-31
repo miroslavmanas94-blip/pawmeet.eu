@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 export default function VideoCallOverlay({
@@ -32,6 +32,19 @@ export default function VideoCallOverlay({
   const [callStatus, setCallStatus] = useState('Propojování...')
   const [isConnected, setIsConnected] = useState(false)
 
+  const roomId = [currentUserId, targetUserId].sort().join('_')
+
+  // Bezpečné ukončení hovoru a úklid
+  const handleCleanupAndClose = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop())
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close()
+    }
+    onClose()
+  }, [onClose])
+
   useEffect(() => {
     if (!targetUserId) return
 
@@ -46,12 +59,82 @@ export default function VideoCallOverlay({
     const pc = new RTCPeerConnection(servers)
     peerConnectionRef.current = pc
 
-    const roomId = [currentUserId, targetUserId].sort().join('_')
     const channel = supabase.channel(`room_${roomId}`, {
       config: { broadcast: { self: false } }
     })
 
-    // 1. Získání médií
+    // Sledování stavu WebRTC připojení
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        handleCleanupAndClose()
+      }
+    }
+
+    // 1. Příjem vzdáleného videa/audio streamu
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current && event.streams[0]) {
+        remoteVideoRef.current.srcObject = event.streams[0]
+        setCallStatus('Spojeno')
+        setIsConnected(true)
+        
+        event.streams[0].getVideoTracks().forEach(track => {
+          setRemoteVideoOff(!track.enabled)
+          track.onunmute = () => setRemoteVideoOff(false)
+          track.onmute = () => setRemoteVideoOff(true)
+        })
+      }
+    }
+
+    // 2. ICE kandidáti
+    pc.onicecandidate = (event) => {
+      if (event.candidate && pc.signalingState !== 'closed') {
+        channel.send({
+          type: 'broadcast',
+          event: 'ice-candidate',
+          payload: event.candidate
+        })
+      }
+    }
+
+    // 3. Nastavení posluchačů signalizace před samotným přihlášením do kanálu
+    channel
+      .on('broadcast', { event: 'offer' }, async ({ payload }) => {
+        if (!isCaller && pc.signalingState === 'stable') {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload))
+            const answer = await pc.createAnswer()
+            await pc.setLocalDescription(answer)
+            channel.send({ type: 'broadcast', event: 'answer', payload: answer })
+          } catch (e) {
+            console.error('Chyba při zpracování offeru:', e)
+          }
+        }
+      })
+      .on('broadcast', { event: 'answer' }, async ({ payload }) => {
+        if (isCaller && pc.signalingState === 'have-local-offer') {
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(payload))
+            setIsConnected(true)
+            setCallStatus('Spojeno')
+          } catch (e) {
+            console.error('Chyba při zpracování answeru:', e)
+          }
+        }
+      })
+      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+        if (pc.signalingState !== 'closed' && payload) {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(payload))
+          } catch (e) {
+            console.error('Chyba při přidávání ICE:', e)
+          }
+        }
+      })
+      .on('broadcast', { event: 'hangup' }, () => {
+        handleCleanupAndClose()
+      })
+
+    // 4. Inicializace médií a následné přihlášení do kanálu
     navigator.mediaDevices
       .getUserMedia({ video: callType === 'video', audio: true })
       .then((stream) => {
@@ -71,82 +154,28 @@ export default function VideoCallOverlay({
           }
         })
 
-        if (isCaller) {
-          setupCaller(pc, channel)
-        }
+        // Přihlášení do kanálu až po načtení médií
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            setCallStatus(isCaller ? 'Vyzvánění...' : 'Příchozí hovor...')
+
+            // Volající vytvoří offer AŽ POTÉ, co je jisté, že je v kanálu přihlášený
+            if (isCaller && pc.signalingState === 'stable') {
+              try {
+                const offer = await pc.createOffer()
+                await pc.setLocalDescription(offer)
+                channel.send({ type: 'broadcast', event: 'offer', payload: offer })
+              } catch (e) {
+                console.error('Chyba při vytváření offeru:', e)
+              }
+            }
+          }
+        })
       })
       .catch((err) => {
         console.error('Chyba přístupu ke kameře/mikrofonu:', err)
         setCallStatus('Chyba přístupu k zařízení')
       })
-
-    // 2. Příjem vzdáleného videa
-    pc.ontrack = (event) => {
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0]
-        setCallStatus('Spojeno')
-        setIsConnected(true)
-        
-        event.streams[0].getVideoTracks().forEach(track => {
-          setRemoteVideoOff(!track.enabled)
-          track.onunmute = () => setRemoteVideoOff(false)
-          track.onmute = () => setRemoteVideoOff(true)
-        })
-      }
-    }
-
-    // 3. ICE kandidáti
-    pc.onicecandidate = (event) => {
-      if (event.candidate && pc.signalingState !== 'closed') {
-        channel.send({
-          type: 'broadcast',
-          event: 'ice-candidate',
-          payload: event.candidate
-        })
-      }
-    }
-
-    // 4. Signalling
-    channel
-      .on('broadcast', { event: 'offer' }, async ({ payload }) => {
-        if (!isCaller && pc.signalingState === 'stable') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload))
-          const answer = await pc.createAnswer()
-          await pc.setLocalDescription(answer)
-          channel.send({ type: 'broadcast', event: 'answer', payload: answer })
-        }
-      })
-      .on('broadcast', { event: 'answer' }, async ({ payload }) => {
-        if (isCaller && pc.signalingState === 'have-local-offer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload))
-          setIsConnected(true)
-          setCallStatus('Spojeno')
-        }
-      })
-      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
-        if (pc.signalingState !== 'closed' && payload) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(payload))
-          } catch (e) {
-            console.error('Chyba při přidávání ICE:', e)
-          }
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          setCallStatus(isCaller ? 'Vyzvánění...' : 'Příchozí hovor...')
-        }
-      })
-
-    async function setupCaller(pc: RTCPeerConnection, ch: any) {
-      try {
-        const offer = await pc.createOffer()
-        await pc.setLocalDescription(offer)
-        ch.send({ type: 'broadcast', event: 'offer', payload: offer })
-      } catch (e) {
-        console.error('Chyba při vytváření offeru:', e)
-      }
-    }
 
     return () => {
       isMounted = false
@@ -156,7 +185,14 @@ export default function VideoCallOverlay({
       pc.close()
       supabase.removeChannel(channel)
     }
-  }, [callType, targetUserId, isCaller, currentUserId, supabase])
+  }, [callType, targetUserId, isCaller, roomId, supabase, handleCleanupAndClose])
+
+  const handleHangupClick = () => {
+    // Odeslání informací o zavěšení druhé straně před uzavřením okna
+    const channel = supabase.channel(`room_${roomId}`)
+    channel.send({ type: 'broadcast', event: 'hangup', payload: {} })
+    handleCleanupAndClose()
+  }
 
   const toggleVideo = () => {
     if (localStreamRef.current) {
@@ -191,11 +227,9 @@ export default function VideoCallOverlay({
       {/* Hlavní plocha hovoru / Vyzvánění */}
       <div className="relative w-full flex-1 rounded-3xl overflow-hidden bg-slate-900 border border-slate-800/80 flex items-center justify-center mt-14 shadow-2xl">
         
-        {/* Pokud ještě není spojeno, zobrazíme krásnou obrazovku vyzvánění s profilovkou */}
         {!isConnected ? (
           <div className="flex flex-col items-center justify-center p-8 space-y-6 animate-fadeIn">
             <div className="relative">
-              {/* Vlnící se pulzující kruhy simulující vyzvánění */}
               <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 opacity-30 blur-xl animate-ping" />
               <div className="absolute -inset-4 rounded-full bg-indigo-500/20 blur-md animate-pulse" />
               
@@ -216,7 +250,6 @@ export default function VideoCallOverlay({
             </div>
           </div>
         ) : (
-          /* Pokud je spojeno, zobrazíme video nebo profilovku při vypnuté kameře */
           <>
             {callType === 'video' && !remoteVideoOff ? (
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
@@ -238,7 +271,6 @@ export default function VideoCallOverlay({
               </div>
             )}
 
-            {/* Lokální video v rohu u videohovoru */}
             {callType === 'video' && !isVideoOff && (
               <div className="absolute top-4 right-4 w-28 h-40 sm:w-36 sm:h-48 rounded-2xl overflow-hidden border-2 border-white/80 shadow-2xl bg-slate-950">
                 <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
@@ -259,7 +291,7 @@ export default function VideoCallOverlay({
         </button>
 
         <button 
-          onClick={onClose} 
+          onClick={handleHangupClick} 
           className="p-5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-full text-2xl shadow-2xl hover:scale-110 transition-all cursor-pointer"
           title="Ukončit hovor"
         >

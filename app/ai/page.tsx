@@ -178,21 +178,16 @@ export default function PawMeetAIPage() {
   }
 
   return (
-    <div className="h-screen w-full bg-emerald-50/40 text-slate-800 font-sans antialiased flex flex-col overflow-hidden">
+    <div className="h-[100dvh] w-full bg-emerald-50/40 text-slate-800 font-sans antialiased flex flex-col overflow-hidden pb-16 md:pb-0 md:pl-[240px] xl:md:pl-[260px]">
       
-      {/* Pevná hlavička */}
-      <header className="flex-shrink-0 z-40 bg-white/90 backdrop-blur-xl border-b border-emerald-100 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm">
+      {/* Pevná hlavička přes celou zbývající šířku */}
+      <header className="flex-shrink-0 z-40 bg-white/90 backdrop-blur-xl border-b border-emerald-100 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm w-full">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20">
             <span className="text-xl text-white">🐾</span>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight text-slate-900">PawMeet AI</h1>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
-                Puter AI (Bez limitů)
-              </span>
-            </div>
+            <h1 className="text-base font-bold tracking-tight text-slate-900">PawMeet AI</h1>
             <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Pro všechna zvířata světa
@@ -283,12 +278,12 @@ export default function PawMeetAIPage() {
         </div>
       </aside>
 
-      {/* Skrolovatelná hlavní část se zprávami */}
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6 overflow-y-auto flex flex-col gap-4">
+      {/* Skrolovatelná hlavní část se zprávami roztažená na maximum */}
+      <main className="flex-1 w-full px-4 sm:px-8 py-6 overflow-y-auto flex flex-col gap-4">
         {activeSession?.messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+            className={`flex items-start gap-3 w-full ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
           >
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm ${
               msg.role === 'user'
@@ -298,7 +293,7 @@ export default function PawMeetAIPage() {
               {msg.role === 'user' ? 'Vy' : '🐾'}
             </div>
 
-            <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
+            <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
               msg.role === 'user'
                 ? 'bg-emerald-600 text-white rounded-tr-none shadow-md'
                 : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none shadow-sm'
@@ -314,7 +309,7 @@ export default function PawMeetAIPage() {
         ))}
 
         {isGenerating && (
-          <div className="flex items-start gap-3 flex-row">
+          <div className="flex items-start gap-3 flex-row w-full">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold text-white shadow-sm animate-pulse">
               🐾
             </div>
@@ -330,9 +325,9 @@ export default function PawMeetAIPage() {
         <div ref={messagesEndRef} />
       </main>
 
-      {/* Pevná patka se vstupem */}
-      <footer className="flex-shrink-0 z-30 w-full max-w-4xl mx-auto px-4 pb-4 pt-2">
-        <div className="relative flex items-center bg-white/90 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-2 shadow-xl focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition">
+      {/* Pevná patka se vstupem roztažená na plnou šířku nad BottomNav */}
+      <footer className="flex-shrink-0 z-30 w-full px-4 sm:px-8 pb-20 md:pb-4 pt-2">
+        <div className="relative flex items-center bg-white/90 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-2 shadow-xl focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition w-full">
           <textarea
             rows={1}
             value={input}
@@ -357,10 +352,6 @@ export default function PawMeetAIPage() {
             </svg>
           </button>
         </div>
-
-        <p className="text-[10px] text-center text-slate-400 mt-2">
-          PawMeet AI – Běží přímo v prohlížeči přes Puter.js bez nutnosti API klíčů.
-        </p>
       </footer>
 
       <BottomNav />

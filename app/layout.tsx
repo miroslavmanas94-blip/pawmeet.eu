@@ -18,9 +18,8 @@ export default function RootLayout({
 }) {
   const pathname = usePathname()
   
-  // Zde definuješ, na kterých stránkách má být obsah přes celou obrazovku bez odsazení pro menu.
-  // Pokud je to jen hlavní landing page, nechej tam pouze '/'.
-  const isFullScreenPage = pathname === '/'
+  // Přidali jsme '/ai', aby layout nezkresloval odsazení pro AI stránku, která si plnou šířku a odsazení řídí sama
+  const isFullScreenPage = pathname === '/' || pathname === '/ai'
 
   return (
     <html lang="cs" suppressHydrationWarning>

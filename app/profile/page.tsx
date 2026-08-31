@@ -46,6 +46,13 @@ type Post = {
   [key: string]: any
 }
 
+type FollowUser = {
+  id: string
+  username: string
+  full_name: string
+  avatar_url: string
+}
+
 export default function ProfilePage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -61,6 +68,13 @@ export default function ProfilePage() {
   const [commentsMap, setCommentsMap] = useState<Record<string, CommentItem[]>>({})
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
 
+  // Stavy pro modální okno sledovatelů / sledovaných
+  const [isFollowModalOpen, setIsFollowModalOpen] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers')
+  const [followersList, setFollowersList] = useState<FollowUser[]>([])
+  const [followingList, setFollowingList] = useState<FollowUser[]>([])
+  const [loadingFollows, setLoadingFollows] = useState(false)
+
   // Data profilu
   const [profile, setProfile] = useState<ProfileData>({
     id: '',
@@ -74,7 +88,7 @@ export default function ProfilePage() {
     following_count: 0,
     avatar_scale: 1,
     avatar_x: 0,
-    avatar_y: 0
+    avatar_y: 0,
   })
 
   // Stavy pro úpravu v modálním okně
@@ -132,7 +146,7 @@ export default function ProfilePage() {
           ...post,
           is_liked: likedPostIds.has(post.id),
           is_saved: savedPostIds.has(post.id),
-          likes_count: post.likes_count || 0
+          likes_count: post.likes_count || 0,
         }))
 
         setPosts(formattedPosts)
@@ -170,7 +184,7 @@ export default function ProfilePage() {
           following_count: profileData?.following_count ?? followingCount,
           avatar_scale: profileData?.avatar_scale ?? 1,
           avatar_x: profileData?.avatar_x ?? 0,
-          avatar_y: profileData?.avatar_y ?? 0
+          avatar_y: profileData?.avatar_y ?? 0,
         }
 
         setProfile(loadedProfile)
@@ -182,6 +196,51 @@ export default function ProfilePage() {
 
     fetchProfileAndPosts()
   }, [])
+
+  // Načtení seznamu sledujících a sledovaných
+  const fetchFollowData = async (userId: string) => {
+    if (!userId) return
+    setLoadingFollows(true)
+    try {
+      // Sledující: kde following_id == moje ID (získáváme follower_id)
+      const { data: followersData, error: fError } = await supabase
+        .from('followers')
+        .select('follower_id, profiles:follower_id (id, username, full_name, avatar_url)')
+        .eq('following_id', userId)
+
+      if (!fError && followersData) {
+        const mappedFollowers = followersData
+          .map((item: any) => item.profiles)
+          .filter(Boolean) as FollowUser[]
+        setFollowersList(mappedFollowers)
+      }
+
+      // Sleduji: kde follower_id == moje ID (získáváme following_id)
+      const { data: followingData, error: fgError } = await supabase
+        .from('followers')
+        .select('following_id, profiles:following_id (id, username, full_name, avatar_url)')
+        .eq('follower_id', userId)
+
+      if (!fgError && followingData) {
+        const mappedFollowing = followingData
+          .map((item: any) => item.profiles)
+          .filter(Boolean) as FollowUser[]
+        setFollowingList(mappedFollowing)
+      }
+    } catch (err) {
+      console.error('Chyba při načítání vztahů:', err)
+    } finally {
+      setLoadingFollows(false)
+    }
+  }
+
+  const handleOpenFollowModal = (tab: 'followers' | 'following') => {
+    setFollowModalTab(tab)
+    setIsFollowModalOpen(true)
+    if (profile.id) {
+      fetchFollowData(profile.id)
+    }
+  }
 
   // Prevence úniku paměti u objektových URL
   useEffect(() => {
@@ -195,7 +254,6 @@ export default function ProfilePage() {
   // --- AKCE: OTEVŘENÍ PŘÍSPĚVKU A NAČTENÍ KOMENTÁŘŮ ---
   const handleOpenPostFeed = (index: number) => {
     setSelectedPostIndex(index)
-    // Načteme komentáře pro vybraný příspěvek i následující
     posts.slice(index).forEach((p) => {
       if (!commentsMap[p.id]) {
         fetchCommentsForPost(p.id)
@@ -224,14 +282,13 @@ export default function ProfilePage() {
 
     const isLiked = targetPost.is_liked
 
-    // Optimistická aktualizace UI
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
           ? {
               ...p,
               is_liked: !isLiked,
-              likes_count: (p.likes_count || 0) + (isLiked ? -1 : 1)
+              likes_count: (p.likes_count || 0) + (isLiked ? -1 : 1),
             }
           : p
       )
@@ -274,7 +331,7 @@ export default function ProfilePage() {
       .insert({
         post_id: postId,
         user_id: profile.id,
-        content: text
+        content: text,
       })
       .select('*, profiles(username, avatar_url)')
       .single()
@@ -282,7 +339,7 @@ export default function ProfilePage() {
     if (!error && data) {
       setCommentsMap((prev) => ({
         ...prev,
-        [postId]: [...(prev[postId] || []), data as CommentItem]
+        [postId]: [...(prev[postId] || []), data as CommentItem],
       }))
 
       setPosts((prev) =>
@@ -351,7 +408,7 @@ export default function ProfilePage() {
         avatar_scale: editForm.avatar_scale,
         avatar_x: editForm.avatar_x,
         avatar_y: editForm.avatar_y,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       const { error } = await supabase.from('profiles').upsert(updatedData)
@@ -369,42 +426,73 @@ export default function ProfilePage() {
     }
   }
 
+  // Pomocná funkce s automatickým parsováním JSON pro získání URL obrázku
   const getPostImageUrl = (post: Post) => {
-    return post.image_url || post.media_url || post.url || post.photo_url || ''
+    let raw: any = post.image_url || post.media_url || post.url || post.photo_url || ''
+    if (!raw) return ''
+
+    if (typeof raw === 'string' && (raw.startsWith('{') || raw.startsWith('['))) {
+      try {
+        raw = JSON.parse(raw)
+      } catch (e) {
+        return raw
+      }
+    }
+
+    if (Array.isArray(raw) && raw.length > 0) {
+      const first = raw[0]
+      if (typeof first === 'object' && first !== null) {
+        return (first as any).url || (first as any).image_url || (first as any).media_url || ''
+      }
+      return String(first)
+    }
+
+    if (typeof raw === 'object' && raw !== null) {
+      return (raw as any).url || (raw as any).image_url || (raw as any).media_url || ''
+    }
+
+    return String(raw)
   }
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-white text-slate-800">
-        <div className="animate-spin text-3xl">🌀</div>
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+          <span className="text-sm font-medium text-slate-500">Načítání profilu...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col items-center">
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col items-center antialiased">
       {/* Hlavní kontejner */}
       <div className="w-full max-w-4xl px-4 py-8 flex-1">
         
         {/* HORNÍ SEKCE: Profilová karta */}
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-14 mb-8">
+        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 mb-8">
           
-          {/* FOTKA S INSTAGRAM PŘÍBĚHOVÝM KRUHEM */}
+          {/* Profilový obrázek s gradientem */}
           <div className="relative group flex-shrink-0">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full p-[3px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-md">
+            <div className="w-32 h-32 md:w-36 md:h-36 rounded-full p-[3px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-md">
               <div className="w-full h-full rounded-full bg-white p-1">
                 <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
                       alt={profile.full_name}
-                      className="w-full h-full object-cover transition-transform"
+                      className="w-full h-full object-cover transition-transform duration-200"
                       style={{
-                        transform: `translate(${profile.avatar_x || 0}px, ${profile.avatar_y || 0}px) scale(${profile.avatar_scale || 1})`
+                        transform: `translate(${profile.avatar_x || 0}px, ${profile.avatar_y || 0}px) scale(${profile.avatar_scale || 1})`,
                       }}
                     />
                   ) : (
-                    <span className="text-5xl">🐾</span>
+                    <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400">
+                      <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    </div>
                   )}
                 </div>
               </div>
@@ -414,87 +502,114 @@ export default function ProfilePage() {
           {/* INFORMACE O UŽIVATELI */}
           <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-4">
             
-            {/* Radek 1: Nickname + Tlačítka */}
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">@{profile.username}</h1>
+            {/* Nickname + Tlačítka */}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">@{profile.username}</h1>
               
-              <button
-                onClick={handleOpenEdit}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-4 py-2 rounded-xl transition border border-slate-200/60 active:scale-95"
-              >
-                Upravit profil
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenEdit}
+                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm active:scale-95"
+                >
+                  Upravit profil
+                </button>
 
-              <button className="text-lg p-2 text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
-                ⚙️
-              </button>
+                <button 
+                  onClick={handleOpenEdit}
+                  className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"
+                  title="Nastavení"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            {/* Radek 2: Statistiky */}
-            <div className="flex items-center gap-8 py-3 text-sm md:text-base border-y border-slate-100 md:border-none w-full justify-center md:justify-start">
-              <div>
-                <span className="font-extrabold text-slate-900">{profile.posts_count}</span>{' '}
+            {/* Statistiky (interaktivní tlačítka pro sledující/sleduji) */}
+            <div className="flex items-center gap-6 py-3 border-y border-slate-100 md:border-none w-full justify-center md:justify-start">
+              <div className="text-center md:text-left">
+                <span className="font-bold text-slate-900 text-base">{profile.posts_count}</span>{' '}
                 <span className="text-slate-500 text-xs md:text-sm">příspěvků</span>
               </div>
-              <div>
-                <span className="font-extrabold text-slate-900">{profile.followers_count}</span>{' '}
+              <button
+                onClick={() => handleOpenFollowModal('followers')}
+                className="text-center md:text-left hover:opacity-75 transition cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 text-base">{profile.followers_count}</span>{' '}
                 <span className="text-slate-500 text-xs md:text-sm">sledujících</span>
-              </div>
-              <div>
-                <span className="font-extrabold text-slate-900">{profile.following_count}</span>{' '}
+              </button>
+              <button
+                onClick={() => handleOpenFollowModal('following')}
+                className="text-center md:text-left hover:opacity-75 transition cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 text-base">{profile.following_count}</span>{' '}
                 <span className="text-slate-500 text-xs md:text-sm">sleduji</span>
-              </div>
+              </button>
             </div>
 
-            {/* Radek 3: Celé jméno, Bio a Web */}
-            <div className="text-sm space-y-1">
+            {/* Celé jméno, Bio a Web */}
+            <div className="text-sm space-y-1 w-full">
               <h2 className="font-bold text-slate-900">{profile.full_name}</h2>
-              <p className="whitespace-pre-line text-slate-600 max-w-md leading-relaxed">{profile.bio}</p>
+              <p className="whitespace-pre-line text-slate-600 leading-relaxed max-w-lg">{profile.bio}</p>
               {profile.website && (
                 <a
                   href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-semibold text-blue-600 hover:underline inline-flex items-center gap-1 mt-1"
+                  className="font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1 mt-1 text-xs"
                 >
-                  🔗 {profile.website.replace(/^https?:\/\//, '')}
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 005.656-5.656l-1.1 1.1" />
+                  </svg>
+                  {profile.website.replace(/^https?:\/\//, '')}
                 </a>
               )}
             </div>
           </div>
         </div>
 
-        {/* ZÁLOŽKY (Příspěvky / Uložené / Označení) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-1 mb-6 flex justify-center text-xs font-bold tracking-wider text-slate-500">
+        {/* ZÁLOŽKY */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 mb-6 flex justify-center text-xs font-bold text-slate-500 shadow-sm">
           <button
             onClick={() => setActiveTab('posts')}
-            className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
               activeTab === 'posts'
-                ? 'bg-slate-900 text-white shadow-sm'
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            🖼️ Příspěvky
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            Příspěvky
           </button>
           <button
             onClick={() => setActiveTab('saved')}
-            className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
               activeTab === 'saved'
-                ? 'bg-slate-900 text-white shadow-sm'
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            🔖 Uložené
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            Uložené
           </button>
           <button
             onClick={() => setActiveTab('tagged')}
-            className={`flex-1 py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
+            className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
               activeTab === 'tagged'
-                ? 'bg-slate-900 text-white shadow-sm'
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'hover:text-slate-900 hover:bg-slate-50'
             }`}
           >
-            🏷️ Označení
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Označení
           </button>
         </div>
 
@@ -502,10 +617,15 @@ export default function ProfilePage() {
         {activeTab === 'posts' && (
           <div className="grid grid-cols-3 gap-2 md:gap-4">
             {posts.length === 0 ? (
-              <div className="col-span-3 py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400">
-                <div className="text-5xl mb-3">📸</div>
+              <div className="col-span-3 py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400 flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
                 <p className="text-base font-bold text-slate-700">Zatím nemáš žádné příspěvky</p>
-                <p className="text-xs text-slate-400 mt-1">Sdílej své první fotky s mazlíčkem!</p>
+                <p className="text-xs text-slate-400 mt-1">Sdílej své fotky a zážitky!</p>
               </div>
             ) : (
               posts.map((post, idx) => {
@@ -514,7 +634,7 @@ export default function ProfilePage() {
                   <div
                     key={post.id}
                     onClick={() => handleOpenPostFeed(idx)}
-                    className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group cursor-pointer border border-slate-200/80 shadow-sm"
+                    className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group cursor-pointer border border-slate-200/80 shadow-xs"
                   >
                     {imgUrl ? (
                       <img
@@ -523,14 +643,26 @@ export default function ProfilePage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300 text-3xl bg-slate-100">
-                        📷
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-100">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
                       </div>
                     )}
-                    {/* Hover překryv s počtem lajků a komentářů */}
-                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-6 font-bold text-white text-sm backdrop-blur-[2px]">
-                      <span className="flex items-center gap-1.5">❤️ {post.likes_count || 0}</span>
-                      <span className="flex items-center gap-1.5">💬 {post.comments_count || 0}</span>
+                    {/* Hover překryv */}
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-6 font-bold text-white text-sm backdrop-blur-[2px]">
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-5 h-5 fill-current text-white" viewBox="0 0 24 24">
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                        {post.likes_count || 0}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <svg className="w-5 h-5 fill-current text-white" viewBox="0 0 24 24">
+                          <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z" />
+                        </svg>
+                        {post.comments_count || 0}
+                      </span>
                     </div>
                   </div>
                 )
@@ -540,21 +672,115 @@ export default function ProfilePage() {
         )}
 
         {activeTab === 'saved' && (
-          <div className="py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400">
-            <div className="text-5xl mb-3">🔖</div>
+          <div className="py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400 flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </div>
             <p className="text-base font-bold text-slate-700">Žádné uložené příspěvky</p>
             <p className="text-xs text-slate-400 mt-1">Uložené příspěvky uvidíš pouze ty.</p>
           </div>
         )}
 
         {activeTab === 'tagged' && (
-          <div className="py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400">
-            <div className="text-5xl mb-3">🏷️</div>
+          <div className="py-20 bg-white rounded-3xl border border-slate-200/80 text-center text-slate-400 flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
             <p className="text-base font-bold text-slate-700">Fotky s tebou</p>
             <p className="text-xs text-slate-400 mt-1">Až tě někdo označí na fotce, objeví se zde.</p>
           </div>
         )}
       </div>
+
+      {/* MODÁLNÍ OKNO: SLEDUJÍCÍ / SLEDUJI */}
+      {isFollowModalOpen && (
+        <div
+          onClick={() => setIsFollowModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-sm w-full h-[450px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden"
+          >
+            {/* Header modalu */}
+            <div className="flex border-b border-slate-100 font-bold text-xs text-slate-500">
+              <button
+                onClick={() => setFollowModalTab('followers')}
+                className={`flex-1 py-3.5 text-center transition border-b-2 ${
+                  followModalTab === 'followers'
+                    ? 'border-slate-900 text-slate-900 bg-slate-50/50'
+                    : 'border-transparent hover:text-slate-900'
+                }`}
+              >
+                {profile.followers_count || followersList.length} Sledujících
+              </button>
+              <button
+                onClick={() => setFollowModalTab('following')}
+                className={`flex-1 py-3.5 text-center transition border-b-2 ${
+                  followModalTab === 'following'
+                    ? 'border-slate-900 text-slate-900 bg-slate-50/50'
+                    : 'border-transparent hover:text-slate-900'
+                }`}
+              >
+                {profile.following_count || followingList.length} Sleduji
+              </button>
+            </div>
+
+            {/* Seznam uživatelů */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {loadingFollows ? (
+                <div className="flex justify-center items-center h-full">
+                  <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin" />
+                </div>
+              ) : (
+                (() => {
+                  const currentList = followModalTab === 'followers' ? followersList : followingList
+                  if (currentList.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full text-slate-400 text-xs text-center py-10">
+                        <p className="font-semibold text-slate-600">Zatím zde nic není</p>
+                      </div>
+                    )
+                  }
+                  return currentList.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <svg className="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="overflow-hidden">
+                          <h4 className="text-xs font-bold text-slate-900 truncate">@{user.username}</h4>
+                          <p className="text-[11px] text-slate-500 truncate">{user.full_name}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                })()
+              )}
+            </div>
+
+            {/* Patička modalu */}
+            <div className="p-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setIsFollowModalOpen(false)}
+                className="px-4 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+              >
+                Zavřít
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DETAIL PŘÍSPĚVKŮ: CONTINUOUS SCROLL FEED MODAL */}
       {selectedPostIndex !== null && (
@@ -586,11 +812,13 @@ export default function ProfilePage() {
                 >
                   {/* Hlavička s autorem */}
                   <div className="p-4 flex items-center gap-3 border-b border-slate-100">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0 flex items-center justify-center">
                       {profile.avatar_url ? (
                         <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm">🐾</div>
+                        <svg className="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                        </svg>
                       )}
                     </div>
                     <div>
@@ -604,7 +832,9 @@ export default function ProfilePage() {
                     {imgUrl ? (
                       <img src={imgUrl} alt="Post detail" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-5xl text-slate-600">📷</span>
+                      <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                     )}
                   </div>
 
@@ -614,9 +844,17 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleToggleLike(post.id)}
-                          className="text-2xl transition-transform active:scale-125"
+                          className="text-slate-800 hover:text-rose-600 transition-transform active:scale-125"
                         >
-                          {post.is_liked ? '❤️' : '🤍'}
+                          {post.is_liked ? (
+                            <svg className="w-6 h-6 text-rose-500 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
+                          )}
                         </button>
                         <span className="text-xs font-extrabold text-slate-900">
                           {post.likes_count || 0} To se mi líbí
@@ -625,9 +863,17 @@ export default function ProfilePage() {
 
                       <button
                         onClick={() => handleToggleSave(post.id)}
-                        className="text-2xl transition-transform active:scale-125"
+                        className="text-slate-800 hover:text-blue-600 transition-transform active:scale-125"
                       >
-                        {post.is_saved ? '🔖' : '🏷️'}
+                        {post.is_saved ? (
+                          <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24">
+                            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        )}
                       </button>
                     </div>
 
@@ -645,46 +891,48 @@ export default function ProfilePage() {
                         {new Date(post.created_at).toLocaleDateString('cs-CZ', {
                           day: 'numeric',
                           month: 'long',
-                          year: 'numeric'
+                          year: 'numeric',
                         })}
                       </div>
                     )}
                   </div>
 
-                  {/* Komentáře */}
-                  <div className="p-4 bg-slate-50/70 space-y-3">
-                    <div className="max-h-40 overflow-y-auto space-y-2 text-xs pr-1">
+                  {/* Komentáře sekce */}
+                  <div className="p-4 bg-slate-50/50 space-y-3">
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-1 text-xs">
                       {postComments.length === 0 ? (
-                        <p className="text-slate-400 text-[11px] italic">Zatím žádné komentáře.</p>
+                        <p className="text-slate-400 text-center py-2 text-[11px]">Zatím žádné komentáře</p>
                       ) : (
                         postComments.map((c) => (
-                          <div key={c.id} className="flex gap-2 items-start bg-white p-2 rounded-xl border border-slate-100 shadow-2xs">
+                          <div key={c.id} className="flex gap-2 items-start">
                             <span className="font-bold text-slate-900 shrink-0">
-                              @{c.profiles?.username || 'Uživatel'}:
+                              @{c.profiles?.username || 'uživatel'}:
                             </span>
-                            <span className="text-slate-600">{c.content}</span>
+                            <span className="text-slate-700 break-all">{c.content}</span>
                           </div>
                         ))
                       )}
                     </div>
 
-                    {/* Formulář komentáře */}
-                    <div className="flex gap-2 pt-2 border-t border-slate-200/70">
+                    {/* Vstup pro nový komentář */}
+                    <div className="flex gap-2 pt-2 border-t border-slate-200/60">
                       <input
                         type="text"
-                        placeholder="Napište komentář..."
+                        placeholder="Přidat komentář..."
                         value={commentInputs[post.id] || ''}
                         onChange={(e) =>
-                          setCommentInputs({ ...commentInputs, [post.id]: e.target.value })
+                          setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
                         }
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                        className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddComment(post.id)
+                        }}
+                        className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                       />
                       <button
                         onClick={() => handleAddComment(post.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm active:scale-95"
+                        className="text-xs font-bold text-blue-600 hover:text-blue-700 px-2"
                       >
-                        Odeslat
+                        Zveřejnit
                       </button>
                     </div>
                   </div>
@@ -695,172 +943,100 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO: ÚPRAVA PROFILU A VYCENTROVÁNÍ PROFILOVKY */}
+      {/* MODÁLNÍ OKNO PRO ÚPRAVU PROFILU */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl relative my-8 text-slate-900">
-            
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-6">
-              <h3 className="text-lg font-extrabold text-slate-900">Upravit profil</h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-xl font-bold"
-              >
-                ✕
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-slate-900">Upravit profil</h3>
 
-            {/* 1. SEKCE PROFILOVKY S NASTAVENÍM VYCENTROVÁNÍ */}
-            <div className="flex flex-col items-center gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-200/80 mb-6">
-              <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Úprava fotky</p>
-              
-              {/* Zobrazovací kruh s živým náhledem */}
-              <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-blue-500 relative bg-slate-200 shadow-inner flex items-center justify-center">
+            {/* Fotka a upload */}
+            <div className="flex flex-col items-center gap-3 my-2">
+              <div className="w-24 h-24 rounded-full overflow-hidden relative bg-slate-100 border border-slate-200">
                 {previewAvatarUrl ? (
-                  <img
-                    src={previewAvatarUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover pointer-events-none"
-                    style={{
-                      transform: `translate(${editForm.avatar_x || 0}px, ${editForm.avatar_y || 0}px) scale(${editForm.avatar_scale || 1})`
-                    }}
-                  />
+                  <img src={previewAvatarUrl} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-4xl">🐾</span>
+                  <div className="w-full h-full flex items-center justify-center text-slate-400">
+                    <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  </div>
                 )}
               </div>
-
               <input
-                type="file"
                 ref={fileInputRef}
-                onChange={handleFileChange}
+                type="file"
                 accept="image/*"
+                onChange={handleFileChange}
                 className="hidden"
               />
-
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl shadow transition"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
               >
-                Vybrat novou fotku
+                Změnit profilovou fotku
               </button>
-
-              {/* POSUVNÍKY PRO VYCENTROVÁNÍ A MĚŘÍTKO */}
-              <div className="w-full space-y-3 pt-2 text-xs">
-                <div>
-                  <div className="flex justify-between text-slate-500 mb-1 font-semibold">
-                    <span>Přiblížení (Zoom):</span>
-                    <span>{Number(editForm.avatar_scale).toFixed(1)}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={editForm.avatar_scale || 1}
-                    onChange={(e) => setEditForm({ ...editForm, avatar_scale: parseFloat(e.target.value) })}
-                    className="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex justify-between text-slate-500 mb-1 font-semibold">
-                      <span>Posun X:</span>
-                      <span>{editForm.avatar_x || 0}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-50"
-                      max="50"
-                      value={editForm.avatar_x || 0}
-                      onChange={(e) => setEditForm({ ...editForm, avatar_x: parseInt(e.target.value) })}
-                      className="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-slate-500 mb-1 font-semibold">
-                      <span>Posun Y:</span>
-                      <span>{editForm.avatar_y || 0}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-50"
-                      max="50"
-                      value={editForm.avatar_y || 0}
-                      onChange={(e) => setEditForm({ ...editForm, avatar_y: parseInt(e.target.value) })}
-                      className="w-full accent-blue-600 bg-slate-200 h-1.5 rounded-lg appearance-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* 2. FORMULÁŘ TEXTOVÝCH ÚDAJŮ */}
-            <div className="space-y-4 text-sm">
+            {/* Formulářová pole */}
+            <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Uživatelské jméno (@username)</label>
+                <label className="block font-bold text-slate-700 mb-1">Uživatelské jméno</label>
                 <input
                   type="text"
                   value={editForm.username}
                   onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Jméno a příjmení</label>
+                <label className="block font-bold text-slate-700 mb-1">Jméno</label>
                 <input
                   type="text"
                   value={editForm.full_name}
                   onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Bio (O mně)</label>
+                <label className="block font-bold text-slate-700 mb-1">Bio</label>
                 <textarea
                   rows={3}
                   value={editForm.bio}
                   onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">Webová stránka</label>
+                <label className="block font-bold text-slate-700 mb-1">Webová stránka</label>
                 <input
                   type="text"
                   value={editForm.website}
                   onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                  placeholder="https://mojestranka.cz"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
             </div>
 
-            {/* TLAČÍTKA ULOŽIT / ZRUŠIT */}
-            <div className="flex gap-3 pt-6 border-t border-slate-100 mt-6">
+            {/* Tlačítka akci modal okna */}
+            <div className="flex gap-2 justify-end mt-4">
               <button
-                type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-3 rounded-xl transition text-xs text-slate-700"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
               >
                 Zrušit
               </button>
               <button
-                type="button"
-                disabled={saving}
                 onClick={handleSaveProfile}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 font-bold py-3 rounded-xl transition text-xs text-white shadow-md flex items-center justify-center gap-2"
+                disabled={saving}
+                className="px-4 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50"
               >
-                {saving ? 'Ukládám...' : 'Uložit změny'}
+                {saving ? 'Ukládám...' : 'Uložit'}
               </button>
             </div>
-
           </div>
         </div>
       )}

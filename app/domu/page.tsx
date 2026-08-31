@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import BottomNav from '@/components/BottomNav'
 
-type CreateTab = 'post' | 'story'
+type CreateTab = 'post' | 'story' | 'reel'
 
 interface Profile {
   id: string
@@ -37,6 +37,7 @@ interface Post {
   location?: string
   likes_count: number
   comments_count: number
+  shares_count: number
   is_liked: boolean
   is_saved: boolean
   comments: Comment[]
@@ -58,6 +59,15 @@ interface UserStories {
   has_unseen: boolean
 }
 
+interface NotificationItem {
+  id: string
+  user: Profile
+  type: 'like' | 'follow' | 'comment'
+  text: string
+  created_at: string
+  is_read: boolean
+}
+
 function getRelativeTime(dateString: string) {
   if (!dateString) return 'Právě teď'
   const date = new Date(dateString)
@@ -70,7 +80,7 @@ function getRelativeTime(dateString: string) {
   return `${Math.floor(diffInSeconds / 86400)}d`
 }
 
-export default function InstagramHomeFull() {
+export default function HomeFeed() {
   const supabase = createClient()
 
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
@@ -78,20 +88,25 @@ export default function InstagramHomeFull() {
   const [storiesList, setStoriesList] = useState<UserStories[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  // Notifikace
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+
+  // Modály
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [createTab, setCreateTab] = useState<CreateTab>('post')
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
-  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [previewItems, setPreviewItems] = useState<{ url: string; type: 'image' | 'video' }[]>([])
   const [createCaption, setCreateCaption] = useState('')
   const [createLocation, setCreateLocation] = useState('')
   const [isUploading, setIsUploading] = useState(false)
 
-  // STAVY PRO STORIES VIEWER (MODAL)
+  // Stories Viewer
   const [activeStoryGroupIndex, setActiveStoryGroupIndex] = useState<number | null>(null)
   const [activeStoryItemIndex, setActiveStoryItemIndex] = useState<number>(0)
   const [storyCommentInput, setStoryCommentInput] = useState('')
-  const [mediaError, setMediaError] = useState(false)
 
+  // Interakce
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [doubleTapHeartPostId, setDoubleTapHeartPostId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -133,7 +148,7 @@ export default function InstagramHomeFull() {
         })
       }
 
-      // Načtení příspěvků
+      // 1. Načtení Příspěvků a Reels
       const { data: rawPosts, error: postsError } = await supabase
         .from('posts')
         .select('id, user_id, media_url, media_type, caption, location, created_at')
@@ -186,7 +201,7 @@ export default function InstagramHomeFull() {
             } else {
               author = {
                 id: p.user_id || 'unknown',
-                username: p.user_id ? `Uživatel_${p.user_id.substring(0, 5)}` : 'Neznámý uživatel',
+                username: p.user_id ? `user_${p.user_id.substring(0, 5)}` : 'Uživatel',
                 full_name: '',
                 avatar_url: '',
                 is_verified: false
@@ -206,6 +221,7 @@ export default function InstagramHomeFull() {
             location: p.location,
             likes_count: postLikes.length,
             comments_count: postComments.length,
+            shares_count: Math.floor(Math.random() * 12) + 1,
             is_liked: authUser ? postLikes.some(l => l.user_id === authUser.id) : false,
             is_saved: false,
             comments: postComments.map((c: any) => {
@@ -228,7 +244,7 @@ export default function InstagramHomeFull() {
         setPosts(formattedPosts)
       }
 
-      // Bezpečné načtení Stories a filtrace v JS (vyřeší problémy s časovými zónami a mizením)
+      // 2. Načtení Stories
       const { data: rawStories } = await supabase
         .from('stories')
         .select('id, user_id, media_url, media_type, created_at')
@@ -238,7 +254,6 @@ export default function InstagramHomeFull() {
         const nowTime = Date.now()
         const twentyFourHours = 24 * 60 * 60 * 1000
 
-        // Filtrujeme pouze ty, které jsou mladší než 24 hodin
         const storiesData = rawStories.filter((s: any) => {
           const storyTime = new Date(s.created_at).getTime()
           return (nowTime - storyTime) <= twentyFourHours
@@ -265,7 +280,7 @@ export default function InstagramHomeFull() {
               if (authUser && uid === authUser.id && activeUserProfile) {
                 sUser = activeUserProfile
               } else {
-                sUser = { username: `Uživatel_${uid.substring(0, 5)}`, avatar_url: '' }
+                sUser = { username: `user_${uid.substring(0, 5)}`, avatar_url: '' }
               }
             }
 
@@ -291,15 +306,105 @@ export default function InstagramHomeFull() {
           })
 
           setStoriesList(Array.from(groupedMap.values()))
-        } else {
-          setStoriesList([])
         }
-      } else {
-        setStoriesList([])
+      }
+
+      // 3. Načtení Reálných Upozornění
+      if (activeUserProfile && activeUserProfile.id !== 'guest') {
+        const myUserId = activeUserProfile.id
+        const realNotifications: NotificationItem[] = []
+
+        const { data: myPosts } = await supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', myUserId)
+
+        const myPostIds = myPosts?.map(p => p.id) || []
+
+        if (myPostIds.length > 0) {
+          const [{ data: realLikes }, { data: realComments }] = await Promise.all([
+            supabase.from('likes').select('id, user_id, created_at').in('post_id', myPostIds).neq('user_id', myUserId).limit(10),
+            supabase.from('comments').select('id, user_id, text, created_at').in('post_id', myPostIds).neq('user_id', myUserId).limit(10)
+          ])
+
+          const senderUserIds = Array.from(new Set([
+            ...(realLikes?.map(l => l.user_id) || []),
+            ...(realComments?.map(c => c.user_id) || [])
+          ]))
+
+          if (senderUserIds.length > 0) {
+            const { data: senders } = await supabase
+              .from('profiles')
+              .select('id, username, avatar_url')
+              .in('id', senderUserIds)
+
+            const sendersMap = new Map(senders?.map(s => [s.id, s]))
+
+            realLikes?.forEach(l => {
+              const u = sendersMap.get(l.user_id)
+              if (u) {
+                realNotifications.push({
+                  id: `like_${l.id}`,
+                  user: u,
+                  type: 'like',
+                  text: 'dal(a) like vašemu příspěvku.',
+                  created_at: getRelativeTime(l.created_at),
+                  is_read: false
+                })
+              }
+            })
+
+            realComments?.forEach(c => {
+              const u = sendersMap.get(c.user_id)
+              if (u) {
+                realNotifications.push({
+                  id: `comment_${c.id}`,
+                  user: u,
+                  type: 'comment',
+                  text: `napsal(a): "${c.text.length > 20 ? c.text.substring(0, 20) + '...' : c.text}"`,
+                  created_at: getRelativeTime(c.created_at),
+                  is_read: false
+                })
+              }
+            })
+          }
+        }
+
+        const { data: followers } = await supabase
+          .from('follows')
+          .select('id, follower_id, created_at')
+          .eq('following_id', myUserId)
+          .limit(10)
+
+        if (followers && followers.length > 0) {
+          const followerIds = followers.map(f => f.follower_id)
+          const { data: fProfiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', followerIds)
+
+          const fMap = new Map(fProfiles?.map(p => [p.id, p]))
+
+          followers.forEach(f => {
+            const u = fMap.get(f.follower_id)
+            if (u) {
+              realNotifications.push({
+                id: `follow_${f.id}`,
+                user: u,
+                type: 'follow',
+                text: 'vás začal(a) sledovat.',
+                created_at: getRelativeTime(f.created_at),
+                is_read: false
+              })
+            }
+          })
+        }
+
+        setNotifications(realNotifications)
       }
 
     } catch (err) {
-      console.error('Chyba při načítání:', err)
+      console.error('Chyba při načítání feedu:', err)
     } finally {
       setIsLoading(false)
     }
@@ -309,17 +414,18 @@ export default function InstagramHomeFull() {
     fetchFeedData()
   }, [fetchFeedData])
 
+  // Posun na další Story
   const handleNextStory = useCallback(() => {
     if (activeStoryGroupIndex === null) return
     const currentGroup = storiesList[activeStoryGroupIndex]
+    if (!currentGroup) return
 
-    setMediaError(false)
     if (activeStoryItemIndex < currentGroup.stories.length - 1) {
       setActiveStoryItemIndex(prev => prev + 1)
       setStoryCommentInput('')
     } else {
       if (activeStoryGroupIndex < storiesList.length - 1) {
-        setActiveStoryGroupIndex(prev => prev! + 1)
+        setActiveStoryGroupIndex(prev => (prev !== null ? prev + 1 : null))
         setActiveStoryItemIndex(0)
         setStoryCommentInput('')
       } else {
@@ -328,30 +434,26 @@ export default function InstagramHomeFull() {
     }
   }, [activeStoryGroupIndex, activeStoryItemIndex, storiesList])
 
-  const handlePrevStory = () => {
+  // Posun na předchozí Story
+  const handlePrevStory = useCallback(() => {
     if (activeStoryGroupIndex === null) return
 
-    setMediaError(false)
     if (activeStoryItemIndex > 0) {
       setActiveStoryItemIndex(prev => prev - 1)
       setStoryCommentInput('')
-    } else {
-      if (activeStoryGroupIndex > 0) {
-        setActiveStoryGroupIndex(prev => prev! - 1)
-        const prevGroupStoriesCount = storiesList[activeStoryGroupIndex - 1].stories.length
-        setActiveStoryItemIndex(prevGroupStoriesCount - 1)
-        setStoryCommentInput('')
-      }
+    } else if (activeStoryGroupIndex > 0) {
+      const prevGroupIndex = activeStoryGroupIndex - 1
+      setActiveStoryGroupIndex(prevGroupIndex)
+      setActiveStoryItemIndex(storiesList[prevGroupIndex]?.stories.length - 1 || 0)
+      setStoryCommentInput('')
     }
-  }
+  }, [activeStoryGroupIndex, activeStoryItemIndex, storiesList])
 
   useEffect(() => {
     if (activeStoryGroupIndex === null) return
-
     const timer = setTimeout(() => {
       handleNextStory()
     }, 5000)
-
     return () => clearTimeout(timer)
   }, [activeStoryGroupIndex, activeStoryItemIndex, handleNextStory])
 
@@ -380,7 +482,7 @@ export default function InstagramHomeFull() {
     if (!post) return
 
     const nextSaved = !post.is_saved
-    showToast(nextSaved ? 'Příspěvek uložen' : 'Příspěvek odebrán z uložených')
+    showToast(nextSaved ? 'Příspěvek uložen do sbírky' : 'Odebráno z uložených')
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, is_saved: nextSaved } : p))
   }
 
@@ -412,40 +514,29 @@ export default function InstagramHomeFull() {
     }
   }
 
-  const handleLikeActiveStory = () => {
-    if (activeStoryGroupIndex === null) return
-    setStoriesList(prev => {
-      const copy = [...prev]
-      const group = copy[activeStoryGroupIndex]
-      if (!group || !group.stories[activeStoryItemIndex]) return prev
-
-      const item = group.stories[activeStoryItemIndex]
-      const nextLiked = !item.is_liked
-      item.is_liked = nextLiked
-      item.likes_count = (item.likes_count || 0) + (nextLiked ? 1 : -1)
-
-      return copy
-    })
-    showToast('❤️ To se líbí příběhu')
-  }
-
-  const handleSendStoryComment = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!storyCommentInput.trim()) return
-    showToast('💬 Odpověď na příběh odeslána!')
-    setStoryCommentInput('')
-  }
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
     setUploadFiles(files)
-    setPreviewUrls(files.map(file => URL.createObjectURL(file)))
+
+    const items = files.map(file => ({
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith('video') ? ('video' as const) : ('image' as const)
+    }))
+    setPreviewItems(items)
+  }
+
+  const resetCreateModal = () => {
+    setIsCreateOpen(false)
+    setUploadFiles([])
+    setPreviewItems([])
+    setCreateCaption('')
+    setCreateLocation('')
   }
 
   const handlePublishContent = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!previewUrls.length) return
+    if (!previewItems.length) return
 
     setIsUploading(true)
     try {
@@ -471,7 +562,7 @@ export default function InstagramHomeFull() {
 
       const mediaToSave = uploadedMediaUrls.length > 0
         ? uploadedMediaUrls
-        : previewUrls.map(url => ({ url, type: 'image' as const }))
+        : previewItems.map(item => ({ url: item.url, type: item.type }))
 
       if (createTab === 'story') {
         const { error } = await supabase.from('stories').insert({
@@ -480,24 +571,21 @@ export default function InstagramHomeFull() {
           media_type: mediaToSave[0].type
         })
         if (error) throw error
-        showToast('🎉 Příběh byl publikován!')
+        showToast('✨ Příběh byl publikován!')
       } else {
+        const isReel = createTab === 'reel' || mediaToSave[0].type === 'video'
         const { error } = await supabase.from('posts').insert({
           user_id: currentUser?.id !== 'guest' ? currentUser?.id : null,
           media_url: JSON.stringify(mediaToSave),
-          media_type: mediaToSave.length > 1 ? 'carousel' : mediaToSave[0].type,
+          media_type: isReel ? 'video' : mediaToSave.length > 1 ? 'carousel' : mediaToSave[0].type,
           caption: createCaption,
           location: createLocation || null
         })
         if (error) throw error
-        showToast('✨ Příspěvek byl publikován!')
+        showToast(isReel ? '🎬 Reel byl publikován!' : '📸 Příspěvek byl publikován!')
       }
 
-      setIsCreateOpen(false)
-      setUploadFiles([])
-      setPreviewUrls([])
-      setCreateCaption('')
-      setCreateLocation('')
+      resetCreateModal()
       await fetchFeedData()
     } catch (err: any) {
       showToast(`Chyba: ${err.message || 'Nepodařilo se publikovat'}`)
@@ -506,68 +594,139 @@ export default function InstagramHomeFull() {
     }
   }
 
-  const activeStoryGroup = activeStoryGroupIndex !== null ? storiesList[activeStoryGroupIndex] : null
-  const activeStoryItem = activeStoryGroup ? activeStoryGroup.stories[activeStoryItemIndex] : null
+  const activeGroup = activeStoryGroupIndex !== null ? storiesList[activeStoryGroupIndex] : null
+  const activeStory = activeGroup ? activeGroup.stories[activeStoryItemIndex] : null
 
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 font-sans antialiased flex flex-col">
+      
+      {/* NOTIFIKACE TOAST */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-2.5 rounded-full text-xs font-medium shadow-2xl border border-slate-800 animate-bounce">
-          {toastMessage}
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xl border border-indigo-400/30 animate-bounce flex items-center gap-2">
+          <span>✨</span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* HORNI BAR */}
-      <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-8 py-3.5 flex justify-end items-center shadow-sm">
-        <button
-          onClick={() => { setCreateTab('post'); setIsCreateOpen(true); }}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition active:scale-95 shadow-sm"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Přidat příspěvek</span>
-        </button>
+      {/* HORNÍ NAVIGAČNÍ PANEL */}
+      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex justify-end items-center shadow-sm relative">
+        <div className="flex items-center gap-3">
+          
+          {/* VYTVOŘIT OBSAH */}
+          <button
+            onClick={() => { setCreateTab('post'); setIsCreateOpen(true); }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition active:scale-95 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Vytvořit</span>
+          </button>
+
+          {/* SRDÍČKO - PRO NOTIFIKACE */}
+          <button
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition border border-slate-200 cursor-pointer"
+            title="Upozornění"
+          >
+            <svg className="w-5 h-5 text-rose-500" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            {notifications.some(n => !n.is_read) && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
+            )}
+          </button>
+
+        </div>
+
+        {/* OKNO NOTIFIKACÍ */}
+        {isNotificationsOpen && (
+          <div className="absolute right-4 top-16 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex justify-between items-center mb-3 border-b border-slate-100 pb-2">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                <span>❤️</span> Upozornění
+              </h3>
+              <button
+                onClick={() => setIsNotificationsOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-slate-400 text-xs">
+                  <span className="text-2xl block mb-1">📭</span>
+                  Zatím žádné nové notifikace
+                </div>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} className="flex items-center gap-3 text-xs p-2 hover:bg-slate-50 rounded-xl transition">
+                    <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-indigo-600 shrink-0 overflow-hidden">
+                      {n.user.avatar_url ? (
+                        <img src={n.user.avatar_url} alt={n.user.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{n.user.username[0]?.toUpperCase() || 'U'}</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-bold text-slate-900">{n.user.username}</span>{' '}
+                      <span className="text-slate-600">{n.text}</span>
+                      <span className="block text-[10px] text-slate-400 mt-0.5">{n.created_at}</span>
+                    </div>
+                    {!n.is_read && (
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* OBSAH FEEDU */}
-      <main className="flex-1 w-full px-3 sm:px-6 md:px-8 py-4 pb-24 max-w-7xl mx-auto flex flex-col items-center">
-        {/* STORIES */}
-        <section className="w-full bg-white rounded-2xl border border-slate-200/80 p-4 mb-6 shadow-sm overflow-x-auto no-scrollbar">
-          <div className="flex gap-5 items-center min-w-max">
+      {/* HLAVNÍ OBSAH */}
+      <main className="flex-1 w-full px-3 sm:px-6 md:px-8 py-5 pb-24 max-w-7xl mx-auto flex flex-col items-center">
+        
+        {/* STORIES BAR */}
+        <section className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 p-4 mb-6 shadow-sm overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 items-center min-w-max">
+            
+            {/* OTEVŘENÍ MODÁLU PRO PŘIDÁNÍ STORY */}
             <div
               onClick={() => { setCreateTab('story'); setIsCreateOpen(true); }}
-              className="flex flex-col items-center gap-1.5 cursor-pointer group flex-shrink-0"
+              className="flex flex-col items-center gap-2 cursor-pointer group flex-shrink-0"
             >
-              <div className="relative w-16 h-16 rounded-full p-0.5 border-2 border-dashed border-rose-400 group-hover:scale-105 transition-transform bg-white flex items-center justify-center overflow-hidden">
+              <div className="relative w-16 h-16 rounded-full p-0.5 border-2 border-dashed border-indigo-500/60 group-hover:border-indigo-600 group-hover:scale-105 transition-all bg-white flex items-center justify-center">
                 {currentUser?.avatar_url ? (
                   <img src={currentUser.avatar_url} alt="Váš profil" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  <span className="text-xl select-none">🐾</span>
+                  <span className="text-xl">👤</span>
                 )}
-                <div className="absolute bottom-0 right-0 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-white shadow">
+                <div className="absolute bottom-0 right-0 bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-black border-2 border-white shadow">
                   +
                 </div>
               </div>
-              <span className="text-[11px] font-medium text-slate-600 truncate max-w-[72px]">Váš příběh</span>
+              <span className="text-[11px] font-medium text-slate-500 truncate max-w-[72px]">Váš příběh</span>
             </div>
 
+            {/* SEZNAM UŽIVATELSKÝCH STORIES K OTEVŘENÍ */}
             {storiesList.map((storyGroup, sIdx) => (
               <div
                 key={storyGroup.user.id}
                 onClick={() => {
-                  setMediaError(false)
                   setActiveStoryGroupIndex(sIdx)
                   setActiveStoryItemIndex(0)
                 }}
-                className="flex flex-col items-center gap-1.5 cursor-pointer group flex-shrink-0"
+                className="flex flex-col items-center gap-2 cursor-pointer group flex-shrink-0"
               >
-                <div className="p-[2.5px] rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 transition-transform group-hover:scale-105 shadow-sm">
+                <div className="p-[2.5px] rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-500 transition-transform group-hover:scale-105 shadow-sm">
                   <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white bg-slate-100 flex items-center justify-center">
                     {storyGroup.user.avatar_url ? (
                       <img src={storyGroup.user.avatar_url} alt={storyGroup.user.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-xl select-none">🐾</span>
+                      <span className="text-xl">👤</span>
                     )}
                   </div>
                 </div>
@@ -577,17 +736,18 @@ export default function InstagramHomeFull() {
           </div>
         </section>
 
-        {/* LIST PŘÍSPĚVKŮ */}
+        {/* FEED PŘÍSPĚVKŮ A REELS */}
         {isLoading ? (
           <div className="w-full max-w-2xl flex flex-col gap-6 py-4">
             {[1, 2].map(n => (
-              <div key={n} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm animate-pulse h-[480px]" />
+              <div key={n} className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm animate-pulse h-[500px]" />
             ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-500 shadow-sm my-8">
-            <p className="text-base font-semibold text-slate-800 mb-1">Žádné příspěvky</p>
-            <p className="text-xs text-slate-500">Zatím nebyly publikovány žádné příspěvky.</p>
+          <div className="w-full max-w-2xl bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-500 shadow-sm my-8">
+            <span className="text-4xl block mb-3">📭</span>
+            <p className="text-base font-bold text-slate-900 mb-1">Žádné příspěvky k zobrazení</p>
+            <p className="text-xs text-slate-500">Buďte první, kdo sdílí nový moment nebo video Reel!</p>
           </div>
         ) : (
           <div className="w-full max-w-2xl flex flex-col gap-6">
@@ -595,15 +755,16 @@ export default function InstagramHomeFull() {
               const currentMedia = post.media[0]
 
               return (
-                <article key={post.id} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden w-full">
-                  {/* AUTOR PŘÍSPĚVKU - JMÉNO A SKUTEČNÁ PROFILOVKA NEBO 🐾 */}
+                <article key={post.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden w-full">
+                  
+                  {/* AUTOR PŘÍSPĚVKU */}
                   <div className="flex justify-between items-center px-4 py-3.5 border-b border-slate-100">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
                         {post.user.avatar_url ? (
                           <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-base select-none">🐾</span>
+                          <span className="text-sm">👤</span>
                         )}
                       </div>
                       <div>
@@ -611,14 +772,17 @@ export default function InstagramHomeFull() {
                           <span className="text-xs font-bold text-slate-900">{post.user.username}</span>
                           <span className="text-slate-400 text-[11px]">• {post.created_at}</span>
                         </div>
-                        {post.location && <span className="text-[10px] text-slate-500 block">{post.location}</span>}
+                        {post.location && <span className="text-[10px] text-indigo-600 font-medium block">{post.location}</span>}
                       </div>
                     </div>
+                    <button onClick={() => showToast('Možnosti příspěvku')} className="text-slate-400 hover:text-slate-700 p-1 text-base cursor-pointer">
+                      •••
+                    </button>
                   </div>
 
-                  {/* MÉDIA */}
+                  {/* OBSAH (FOTO / VIDEO REEL) */}
                   <div
-                    className="relative bg-slate-900 aspect-square w-full overflow-hidden select-none flex items-center justify-center cursor-pointer"
+                    className="relative bg-black aspect-square w-full overflow-hidden select-none flex items-center justify-center cursor-pointer"
                     onDoubleClick={() => {
                       if (!post.is_liked) handleToggleLike(post.id)
                       setDoubleTapHeartPostId(post.id)
@@ -626,56 +790,95 @@ export default function InstagramHomeFull() {
                     }}
                   >
                     {currentMedia?.type === 'video' ? (
-                      <video src={currentMedia.url} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                      <video
+                        src={currentMedia.url}
+                        controls
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <img src={currentMedia?.url} alt="Příspěvek" className="w-full h-full object-cover" />
                     )}
 
                     {doubleTapHeartPostId === post.id && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px] animate-ping">
-                        <span className="text-7xl text-rose-500 drop-shadow-md">❤️</span>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] animate-ping pointer-events-none">
+                        <span className="text-7xl text-rose-500 drop-shadow-2xl">❤️</span>
                       </div>
                     )}
                   </div>
 
-                  {/* AKCE A KOMENTÁŘE */}
+                  {/* INTERAKCE A POPIS */}
                   <div className="p-4">
                     <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-4">
-                        <button onClick={() => handleToggleLike(post.id)} className="text-xl">
+                      <div className="flex items-center gap-4 text-xl">
+                        <button onClick={() => handleToggleLike(post.id)} className="transition active:scale-125 cursor-pointer">
                           {post.is_liked ? '❤️' : '🤍'}
                         </button>
+                        <button onClick={() => showToast('💬 Napište komentář níže')} className="transition hover:opacity-75 cursor-pointer">
+                          💬
+                        </button>
+                        <button onClick={() => showToast('🚀 Příspěvek nasdílen')} className="transition hover:opacity-75 cursor-pointer">
+                          🚀
+                        </button>
                       </div>
-                      <button onClick={() => handleToggleSave(post.id)} className="text-xl">
+
+                      <button onClick={() => handleToggleSave(post.id)} className="text-xl transition active:scale-110 cursor-pointer">
                         {post.is_saved ? '🔖' : '🏷️'}
                       </button>
                     </div>
 
-                    <div className="text-xs font-bold text-slate-900 mb-1.5">{post.likes_count} To se líbí</div>
-
-                    <div className="text-xs text-slate-700 mb-3">
-                      <span className="font-bold text-slate-900 mr-2">{post.user.username}</span>
-                      <span>{post.caption}</span>
+                    <div className="text-xs font-bold text-slate-900 mb-2">
+                      {post.likes_count} To se líbí
                     </div>
 
-                    <div className="mt-3 flex items-center border-t border-slate-100 pt-3">
+                    {post.caption && (
+                      <div className="text-xs text-slate-800 mb-3 leading-relaxed">
+                        <span className="font-bold text-slate-900 mr-2">{post.user.username}</span>
+                        {post.caption}
+                      </div>
+                    )}
+
+                    {/* KOMENTÁŘE */}
+                    {post.comments.length > 0 && (
+                      <div className="space-y-1.5 mb-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        {post.comments.slice(-3).map(c => (
+                          <div key={c.id} className="text-xs flex items-start gap-2">
+                            <span className="font-bold text-slate-900 shrink-0">{c.user.username}:</span>
+                            <span className="text-slate-700 flex-1 break-words">{c.text}</span>
+                            <span className="text-[10px] text-slate-400 shrink-0">{c.created_at}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* FORMULÁŘ PRO PŘIDÁNÍ KOMENTÁŘE */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        handleAddComment(post.id)
+                      }}
+                      className="flex items-center gap-2 pt-2 border-t border-slate-100"
+                    >
                       <input
                         type="text"
                         placeholder="Přidat komentář..."
                         value={commentInput[post.id] || ''}
-                        onChange={(e) => setCommentInput(prev => ({ ...prev, [post.id]: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                        className="bg-slate-50 border border-slate-200 text-xs w-full text-slate-900 rounded-full px-3.5 py-2 outline-none focus:bg-white"
+                        onChange={(e) => setCommentInput({ ...commentInput, [post.id]: e.target.value })}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200/60 focus:bg-white text-xs px-3.5 py-2 rounded-xl outline-none border border-transparent focus:border-indigo-300 transition"
                       />
                       <button
-                        onClick={() => handleAddComment(post.id)}
+                        type="submit"
                         disabled={!commentInput[post.id]?.trim()}
-                        className="text-xs text-indigo-600 font-bold ml-2.5 disabled:opacity-40"
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 disabled:opacity-40 px-2 py-1 transition cursor-pointer"
                       >
                         Zveřejnit
                       </button>
-                    </div>
+                    </form>
                   </div>
+
                 </article>
               )
             })}
@@ -683,99 +886,105 @@ export default function InstagramHomeFull() {
         )}
       </main>
 
-      {/* PROFESIONÁLNÍ INSTAGRAM-STYLE STORIES VIEWER */}
-      {activeStoryGroup && activeStoryItem && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center select-none">
-          <div className="relative w-full h-full sm:max-w-md sm:h-[88vh] sm:rounded-2xl overflow-hidden bg-black flex flex-col justify-between shadow-2xl">
+      {/* OPRAVENÝ STORIES VIEWER (PROHLÍŽEČ STORIES) */}
+      {activeGroup && activeStory && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-0 sm:p-4">
+          <div className="relative w-full max-w-md h-full sm:h-[90vh] sm:rounded-3xl bg-black overflow-hidden flex flex-col justify-between shadow-2xl border border-slate-800">
             
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-0">
-              {!mediaError && activeStoryItem.media_url ? (
-                activeStoryItem.type === 'video' ? (
-                  <video 
-                    src={activeStoryItem.media_url} 
-                    autoPlay 
-                    playsInline 
-                    onError={() => setMediaError(true)}
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  <img 
-                    src={activeStoryItem.media_url} 
-                    alt="Story" 
-                    onError={() => setMediaError(true)}
-                    className="w-full h-full object-cover" 
-                  />
-                )
+            {/* OBRÁZEK / VIDEO PŘÍBĚHU - UMÍSTĚNÍ V POZADÍ */}
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+              {activeStory.type === 'video' ? (
+                <video
+                  key={activeStory.id}
+                  src={activeStory.media_url}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-white bg-gradient-to-br from-indigo-900 via-slate-900 to-black w-full h-full">
-                  <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-3xl shadow-lg">
-                    🐾
-                  </div>
-                  <span className="text-sm font-bold">{activeStoryGroup.user.username}</span>
-                  <span className="text-xs text-white/60">Příběh nelze načíst nebo vypršel</span>
-                </div>
+                <img
+                  key={activeStory.id}
+                  src={activeStory.media_url}
+                  alt="Story"
+                  className="w-full h-full object-cover"
+                />
               )}
             </div>
 
-            <div className="absolute inset-y-0 left-0 w-1/3 z-10 cursor-pointer" onClick={handlePrevStory} />
-            <div className="absolute inset-y-0 right-0 w-1/3 z-10 cursor-pointer" onClick={handleNextStory} />
+            {/* DOTYKOVÉ ZÓNY PRO PROKLIKÁVÁNÍ (VLEVO / VPRAVO) */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1/3 z-20 cursor-pointer"
+              onClick={handlePrevStory}
+            />
+            <div
+              className="absolute right-0 top-0 bottom-0 w-2/3 z-20 cursor-pointer"
+              onClick={handleNextStory}
+            />
 
-            <div className="relative z-20 flex flex-col gap-2 pt-3 px-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent pb-6">
-              <div className="flex gap-1 w-full">
-                {activeStoryGroup.stories.map((st, idx) => (
-                  <div key={st.id} className="flex-1 h-[2px] bg-white/40 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full bg-white transition-all duration-300 ${
-                        idx < activeStoryItemIndex ? 'w-full' : idx === activeStoryItemIndex ? 'w-full animate-pulse' : 'w-0'
-                      }`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between mt-1">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/60 bg-slate-800 flex items-center justify-center shrink-0">
-                    {activeStoryGroup.user.avatar_url ? (
-                      <img src={activeStoryGroup.user.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs select-none">🐾</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white drop-shadow">{activeStoryGroup.user.username}</span>
-                    <span className="text-[10px] text-white/70">• {getRelativeTime(activeStoryItem.created_at)}</span>
-                  </div>
+            {/* PROGRESS BAR */}
+            <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5 pointer-events-none">
+              {activeGroup.stories.map((story, idx) => (
+                <div key={story.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div
+                    className={`h-full bg-white transition-all duration-300 ${
+                      idx < activeStoryItemIndex
+                        ? 'w-full'
+                        : idx === activeStoryItemIndex
+                        ? 'w-full animate-pulse'
+                        : 'w-0'
+                    }`}
+                  />
                 </div>
-                
-                <button
-                  onClick={() => {
-                    setActiveStoryGroupIndex(null)
-                    setActiveStoryItemIndex(0)
-                  }}
-                  className="text-white text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/70 transition backdrop-blur-sm"
-                  title="Zavřít"
-                >
-                  ✕
-                </button>
-              </div>
+              ))}
             </div>
 
-            <div className="relative z-20 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-center gap-3 mt-auto">
-              <form onSubmit={handleSendStoryComment} className="flex-1 flex items-center">
-                <input
-                  type="text"
-                  placeholder={`Odpovědět uživateli ${activeStoryGroup.user.username}...`}
-                  value={storyCommentInput}
-                  onChange={(e) => setStoryCommentInput(e.target.value)}
-                  className="bg-black/30 backdrop-blur-md border border-white/30 text-xs text-white placeholder-white/70 rounded-full px-4 py-3 w-full outline-none focus:bg-black/50 transition shadow-inner"
-                />
-              </form>
+            {/* HLAVIČKA STORY */}
+            <div className="absolute top-6 left-3 right-3 z-30 flex justify-between items-center text-white pointer-events-auto">
+              <div className="flex items-center gap-2.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 bg-slate-800">
+                  {activeGroup.user.avatar_url ? (
+                    <img
+                      src={activeGroup.user.avatar_url}
+                      alt={activeGroup.user.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs">👤</div>
+                  )}
+                </div>
+                <span className="text-xs font-bold">{activeGroup.user.username}</span>
+                <span className="text-[10px] text-white/60">
+                  {getRelativeTime(activeStory.created_at)}
+                </span>
+              </div>
+
               <button
-                onClick={handleLikeActiveStory}
-                className="text-2xl p-2 bg-black/30 backdrop-blur-md border border-white/20 rounded-full w-11 h-11 flex items-center justify-center hover:bg-black/50 transition shrink-0 active:scale-95 shadow"
+                onClick={() => setActiveStoryGroupIndex(null)}
+                className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center text-white text-sm font-bold border border-white/20 transition cursor-pointer"
               >
-                {activeStoryItem.is_liked ? '❤️' : '🤍'}
+                ✕
+              </button>
+            </div>
+
+            {/* SPODNÍ REAKCE NA STORY */}
+            <div className="absolute bottom-4 left-3 right-3 z-30 flex items-center gap-2 pointer-events-auto">
+              <input
+                type="text"
+                placeholder={`Odpovědět uživateli ${activeGroup.user.username}...`}
+                value={storyCommentInput}
+                onChange={(e) => setStoryCommentInput(e.target.value)}
+                className="flex-1 bg-black/60 backdrop-blur-md text-white placeholder-white/60 text-xs px-4 py-3 rounded-full border border-white/20 outline-none focus:border-white/50 transition"
+              />
+              <button
+                onClick={() => {
+                  if (storyCommentInput.trim()) {
+                    showToast('Odpověď odeslána!')
+                    setStoryCommentInput('')
+                  }
+                }}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-3 rounded-full transition shadow-lg cursor-pointer"
+              >
+                Odeslat
               </button>
             </div>
 
@@ -783,88 +992,161 @@ export default function InstagramHomeFull() {
         </div>
       )}
 
-      {/* MODAL NOVÉHO PŘÍSPĚVKU / PŘÍBĚHU */}
+      {/* MODÁL PRO VYTVOŘENÍ OBSAHU */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <span className="font-bold text-slate-900 text-sm">Vytvořit {createTab === 'story' ? 'Příběh' : 'Příspěvek'}</span>
-              <button onClick={() => setIsCreateOpen(false)} className="text-slate-400 font-bold text-lg">✕</button>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>✨</span> Vytvořit nový obsah
+              </h2>
+              <button
+                onClick={resetCreateModal}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex border-b border-slate-100 bg-slate-50 p-1.5 gap-1.5">
               <button
+                type="button"
                 onClick={() => setCreateTab('post')}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold ${createTab === 'post' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                  createTab === 'post'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                Příspěvek
+                📸 Příspěvek
               </button>
               <button
+                type="button"
                 onClick={() => setCreateTab('story')}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold ${createTab === 'story' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                  createTab === 'story'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                Příběh
+                ⚡ Příběh
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateTab('reel')}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
+                  createTab === 'reel'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                🎬 Reel
               </button>
             </div>
 
-            <form onSubmit={handlePublishContent} className="flex flex-col gap-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*,video/*"
-                multiple={createTab === 'post'}
-                className="hidden"
-              />
+            <form onSubmit={handlePublishContent} className="p-6 space-y-4">
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={createTab === 'reel' ? 'video/*' : 'image/*,video/*'}
+                  multiple={createTab === 'post'}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
 
-              {previewUrls.length === 0 ? (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-50 transition"
-                >
-                  <span className="text-3xl">📁</span>
-                  <span className="text-xs font-medium text-slate-700">Vybrat soubory z počítače</span>
-                </div>
-              ) : (
-                <div className="flex gap-2 overflow-x-auto py-2">
-                  {previewUrls.map((url, idx) => (
-                    <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                      <img src={url} alt="Náhled" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
+                {previewItems.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-48 rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-slate-100/70 transition flex flex-col items-center justify-center gap-2 cursor-pointer group"
+                  >
+                    <span className="text-3xl group-hover:scale-110 transition-transform">📁</span>
+                    <p className="text-xs font-bold text-slate-700">Vyberte fotky nebo videa</p>
+                    <p className="text-[10px] text-slate-400">
+                      {createTab === 'story'
+                        ? 'Nahrát fotku/video pro Story (24 hod)'
+                        : createTab === 'reel'
+                        ? 'Nahrát krátké video (Reel)'
+                        : 'Nahrát 1 nebo více souborů pro příspěvek'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-slate-200">
+                    {previewItems[0].type === 'video' ? (
+                      <video src={previewItems[0].url} controls className="w-full h-full object-cover" />
+                    ) : (
+                      <img src={previewItems[0].url} alt="Náhled" className="w-full h-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadFiles([])
+                        setPreviewItems([])
+                      }}
+                      className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-md border border-white/20 font-bold transition cursor-pointer"
+                    >
+                      Změnit
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              {createTab === 'post' && (
+              {createTab !== 'story' && (
                 <>
-                  <textarea
-                    placeholder="Napište popis příspěvku..."
-                    value={createCaption}
-                    onChange={(e) => setCreateCaption(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-900 outline-none focus:bg-white resize-none h-20"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Lokalita (např. Praha)"
-                    value={createLocation}
-                    onChange={(e) => setCreateLocation(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 outline-none focus:bg-white"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Popisek</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Napište popisek k příspěvku..."
+                      value={createCaption}
+                      onChange={(e) => setCreateCaption(e.target.value)}
+                      className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none transition resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Lokalita (volitelné)</label>
+                    <input
+                      type="text"
+                      placeholder="např. Praha, Česká republika"
+                      value={createLocation}
+                      onChange={(e) => setCreateLocation(e.target.value)}
+                      className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none transition"
+                    />
+                  </div>
                 </>
               )}
 
-              <button
-                type="submit"
-                disabled={isUploading || previewUrls.length === 0}
-                className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition disabled:opacity-50"
-              >
-                {isUploading ? 'Publikuji...' : 'Sdílet'}
-              </button>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={resetCreateModal}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Zrušit
+                </button>
+                <button
+                  type="submit"
+                  disabled={previewItems.length === 0 || isUploading}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 disabled:opacity-50 transition cursor-pointer flex items-center gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Publikuji...</span>
+                    </>
+                  ) : (
+                    <span>Zveřejnit</span>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
       )}
 
+      {/* SPODNÍ NAVIGAČNÍ PANEL */}
       <BottomNav />
     </div>
   )

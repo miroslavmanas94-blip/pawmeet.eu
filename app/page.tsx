@@ -592,8 +592,16 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className="w-full border-t border-slate-200 dark:border-slate-800 py-10 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-        © 2026 PawMeet
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} PawMeet. Všechna práva vyhrazena.</p>
+          <div className="flex items-center gap-6">
+            <button onClick={() => setModalContent('terms')} className="hover:underline">Podmínky</button>
+            <button onClick={() => setModalContent('privacy')} className="hover:underline">Soukromí</button>
+            <Link href="/contact" className="hover:underline">Kontakt</Link>
+          </div>
+        </div>
       </footer>
+
     </div>
   )
 }

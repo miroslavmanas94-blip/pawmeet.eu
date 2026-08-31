@@ -23,6 +23,9 @@ type UserLocation = {
     dog_breed?: string
     pet_gender?: 'kluk' | 'holka'
     dog_gender?: 'kluk' | 'holka'
+    bio?: string
+    age?: string | number
+    instagram?: string
     [key: string]: any
   }
 }
@@ -37,12 +40,7 @@ export default function PetMapPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
-  const [navigatingTo, setNavigatingTo] = useState<{ name: string; coords: [number, number] } | null>(null)
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([])
-  const [routeInfo, setRouteInfo] = useState({ distance: '', duration: '' })
-
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null)
-  const [copied, setCopied] = useState(false)
   const [hasFittedBounds, setHasFittedBounds] = useState(false)
 
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -51,7 +49,6 @@ export default function PetMapPage() {
   const labelLayerRef = useRef<any>(null)
   const markersRef = useRef<{ [key: string]: any }>({})
   const myLocationMarkerRef = useRef<any>(null)
-  const routePolylineRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -100,7 +97,6 @@ export default function PetMapPage() {
 
   const fetchGlobalLocations = async () => {
     const supabase = createClient()
-    // Používáme profiles(*) místo vyjmenovávání sloupců, aby dotaz nikdy neselhal na chybějící sloupec
     const { data, error } = await supabase
       .from('user_locations')
       .select('*, profiles(*)')
@@ -111,7 +107,6 @@ export default function PetMapPage() {
     }
 
     if (data) {
-      console.log('Stažená data ze Supabase:', data)
       setUsersLocations(data as any)
     }
   }
@@ -334,6 +329,15 @@ export default function PetMapPage() {
     return <div className="w-full h-screen bg-slate-100" />
   }
 
+  const selectedPetName = selectedUser?.profiles?.pet_name || selectedUser?.profiles?.dog_name || 'Bez jména'
+  const selectedGender = selectedUser?.profiles?.pet_gender || selectedUser?.profiles?.dog_gender
+  const selectedAvatarUrl = selectedUser?.profiles?.avatar_url || selectedUser?.profiles?.avatar
+  const selectedBreed = selectedUser?.profiles?.pet_type || selectedUser?.profiles?.dog_breed || 'Zvíře'
+  const selectedBio = selectedUser?.profiles?.bio
+  const selectedAge = selectedUser?.profiles?.age
+  const selectedUsername = selectedUser?.profiles?.username
+  const selectedInstagram = selectedUser?.profiles?.instagram
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-slate-100 select-none font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
@@ -383,7 +387,93 @@ export default function PetMapPage() {
         </div>
       </div>
 
-      {/* SPODNÍ LIST SEZNAMU GLOBÁLNÍCH PEJKAŘŮ */}
+      {/* DETAILNÍ KARTA PROFILU (VÍCE INFORMACÍ, ČISTÝ DESIGN BEZ NAVIGACE) */}
+      {selectedUser && (
+        <div className="absolute bottom-28 left-4 right-4 z-30 bg-white/95 backdrop-blur-2xl rounded-3xl p-5 border border-slate-200/90 shadow-2xl animate-in fade-in slide-in-from-bottom-5 max-w-md mx-auto">
+          <div className="flex items-start justify-between mb-3.5">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-slate-200 shadow-sm flex-shrink-0">
+                {selectedAvatarUrl ? (
+                  <img src={selectedAvatarUrl} className="w-full h-full object-cover" alt="avatar" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl">🐾</div>
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-extrabold text-slate-900">{selectedPetName}</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold text-white ${selectedGender === 'holka' ? 'bg-pink-500' : 'bg-blue-500'}`}>
+                    {selectedGender === 'holka' ? '♀ Holka' : '♂ Kluk'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  {selectedUsername ? `@${selectedUsername}` : 'Pejskař'}
+                </p>
+                <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                  <span>📍</span> {selectedUser.address || 'Aktivní poloha'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="p-2 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-xl transition"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Rozšířené detailní informace */}
+          <div className="grid grid-cols-2 gap-2 mb-3.5">
+            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Plemeno / Druh</p>
+              <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">{selectedBreed}</p>
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Věk</p>
+              <p className="text-xs font-bold text-slate-800 mt-0.5">{selectedAge ? `${selectedAge} let` : 'Neuvedeno'}</p>
+            </div>
+          </div>
+
+          {selectedBio && (
+            <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl mb-3.5 border border-slate-100">
+              <p className="font-bold text-slate-700 mb-0.5">O nás:</p>
+              <p className="italic">"{selectedBio}"</p>
+            </div>
+          )}
+
+          {selectedInstagram && (
+            <div className="text-xs text-slate-600 bg-pink-50/50 p-2.5 rounded-2xl mb-3.5 border border-pink-100 flex items-center gap-2">
+              <span className="text-pink-600 font-bold">📸 Instagram:</span>
+              <span className="font-semibold text-slate-700">@{selectedInstagram.replace('@', '')}</span>
+            </div>
+          )}
+
+          {/* Akční tlačítka */}
+          <div className="flex gap-2 pt-2 border-t border-slate-100">
+            {selectedUsername && (
+              <button
+                onClick={() => router.push(`/profile/${selectedUsername}`)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+              >
+                <span>👤</span> Zobrazit profil
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setSelectedUser(null)
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.flyTo([selectedUser.latitude, selectedUser.longitude], 17, { duration: 1 })
+                }
+              }}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+            >
+              <span>🗺️</span> Ukázat na mapě
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SPODNÍ LIST SEZNAMU PEJKAŘŮ */}
       <div className={`absolute bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-2xl rounded-t-[2.5rem] border-t border-slate-200/80 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] transition-all duration-300 ease-out ${isDrawerOpen ? 'h-[55vh]' : 'h-20'}`}>
         <div onClick={() => setIsDrawerOpen(!isDrawerOpen)} className="w-full py-3 flex flex-col items-center cursor-pointer group">
           <div className="w-12 h-1.5 bg-slate-300 rounded-full group-hover:bg-slate-400 transition-colors" />
@@ -404,7 +494,7 @@ export default function PetMapPage() {
           {usersLocations.length === 0 ? (
             <div className="text-center py-10 space-y-2">
               <span className="text-3xl">🐾</span>
-              <p className="text-xs text-slate-400 font-medium">Nikdo na světě teď nemá zapnutou polohu.</p>
+              <p className="text-xs text-slate-400 font-medium">Nikdo v okolí teď nemá zapnutou polohu.</p>
             </div>
           ) : (
             usersLocations.map((user) => {
