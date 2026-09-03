@@ -1,13 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Ignorovat ESLint chyby během sestavování (build) */
   eslint: {
     ignoreDuringBuilds: true,
   },
-  /* Ignorovat TypeScript chyby během sestavování */
   typescript: {
     ignoreBuildErrors: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'rloxhhjgzvimhtqwgpar.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 };
 
