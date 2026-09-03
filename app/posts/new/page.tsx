@@ -96,6 +96,17 @@ export default function NewPostPage() {
         throw new Error('Pro přidání příspěvku musíte být přihlášeni.')
       }
 
+      // 1.1 Načtení profilu uživatele (jméno, avatar atd.)
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('username, full_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError) {
+        console.warn('Nepodařilo se načíst profil uživatele:', profileError.message)
+      }
+
       // 2. Nahrání souboru do Supabase Storage
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}_${Date.now()}.${fileExt}`
@@ -115,18 +126,21 @@ export default function NewPostPage() {
       const mediaUrl = publicUrlData.publicUrl
       const detectedType = file.type.startsWith('video') ? 'video' : 'image'
 
-      // Uložení media_url ve formátu JSON pole pro 100% kompatibilitu s feedem
+      // Uložení media_url ve formátu JSON pole pro kompatibilitu s feedem
       const mediaArray = JSON.stringify([{ url: mediaUrl, type: detectedType }])
 
-      // 4. Zápis do databáze 'posts'
+      // 4. Zápis do databáze 'posts' včetně údajů o uživateli z profilu
       const { error: insertError } = await supabase.from('posts').insert({
         user_id: user.id,
         caption: caption.trim(),
-        media_url: mediaArray, // Uložíme jako kompatibilní JSON řetězec
+        media_url: mediaArray,
         media_type: detectedType,
         location: location.trim() || null,
         pet_tag: petTag.trim() || null,
-        likes_count: 0
+        likes_count: 0,
+        username: profileData?.username || null,
+        full_name: profileData?.full_name || null,
+        avatar_url: profileData?.avatar_url || null,
       })
 
       if (insertError) throw insertError
@@ -261,7 +275,7 @@ export default function NewPostPage() {
             </div>
           </div>
 
-          {/* LOKALITA A MAZLÍČEK (Vstupy vedle sebe) */}
+          {/* LOKALITA A MAZLÍČEK */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400 mb-1.5 ml-1">

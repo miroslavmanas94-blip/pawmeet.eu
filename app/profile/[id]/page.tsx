@@ -23,10 +23,13 @@ type Post = {
   media_type?: 'image' | 'video'
 }
 
+const isUuid = (val: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+
 export default function UserProfilePage() {
   const params = useParams()
   const router = useRouter()
-  const profileId = params?.id as string
+  const profileIdParam = params?.id as string
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
@@ -44,10 +47,10 @@ export default function UserProfilePage() {
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const isOwnProfile = currentUserId === profileId
+  const isOwnProfile = Boolean(currentUserId && profile && currentUserId === profile.id)
 
   useEffect(() => {
-    if (!profileId) return
+    if (!profileIdParam) return
 
     const loadProfileData = async () => {
       setLoading(true)
@@ -59,70 +62,76 @@ export default function UserProfilePage() {
         setCurrentUserId(user.id)
       }
 
-      // 2. Načíst profil uživatele
+      // 2. Načíst profil uživatele podle UUID nebo username
+      const searchColumn = isUuid(profileIdParam) ? 'id' : 'username'
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', profileId)
-        .single()
+        .eq(searchColumn, profileIdParam)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error('Chyba při načítání profilu:', profileError.message)
+      }
 
       if (profileData) {
         setProfile(profileData)
         setEditForm(profileData)
         setPreviewAvatarUrl(profileData.avatar_url || '')
-      } else if (profileError) {
-        console.error('Chyba při načítání profilu:', profileError.message)
-      }
 
-      // 3. Načíst příspěvky uživatele
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('user_id', profileId)
-        .order('created_at', { ascending: false })
+        const targetUserId = profileData.id
 
-      if (postsData) setPosts(postsData as Post[])
+        // 3. Načíst příspěvky uživatele
+        const { data: postsData } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .order('created_at', { ascending: false })
 
-      // 4. Počet sledujících a sledovaných
-      try {
-        const { count: followers } = await supabase
-          .from('followers')
-          .select('*', { count: 'exact', head: true })
-          .eq('following_id', profileId)
+        if (postsData) setPosts(postsData as Post[])
 
-        const { count: following } = await supabase
-          .from('followers')
-          .select('*', { count: 'exact', head: true })
-          .eq('follower_id', profileId)
+        // 4. Počet sledujících a sledovaných
+        try {
+          const { count: followers } = await supabase
+            .from('followers')
+            .select('*', { count: 'exact', head: true })
+            .eq('following_id', targetUserId)
 
-        setFollowersCount(followers || 0)
-        setFollowingCount(following || 0)
-      } catch (e) {
-        // Ignorujeme, pokud tabulka followers neexistuje
-      }
+          const { count: following } = await supabase
+            .from('followers')
+            .select('*', { count: 'exact', head: true })
+            .eq('follower_id', targetUserId)
 
-      // 5. Kontrola, zda ho přihlášený uživatel už sleduje
-      if (user && user.id !== profileId) {
-        const { data: followCheck } = await supabase
-          .from('followers')
-          .select('id')
-          .eq('follower_id', user.id)
-          .eq('following_id', profileId)
-          .maybeSingle()
+          setFollowersCount(followers || 0)
+          setFollowingCount(following || 0)
+        } catch (e) {
+          // Ignorujeme, pokud tabulka followers neexistuje
+        }
 
-        if (followCheck) setIsFollowing(true)
+        // 5. Kontrola, zda ho přihlášený uživatel už sleduje
+        if (user && user.id !== targetUserId) {
+          const { data: followCheck } = await supabase
+            .from('followers')
+            .select('id')
+            .eq('follower_id', user.id)
+            .eq('following_id', targetUserId)
+            .maybeSingle()
+
+          if (followCheck) setIsFollowing(true)
+        }
       }
 
       setLoading(false)
     }
 
     loadProfileData()
-  }, [profileId])
+  }, [profileIdParam])
 
   // Přepnutí sledování
   const handleFollowToggle = async () => {
-    if (!currentUserId || !profileId || isOwnProfile) return
+    if (!currentUserId || !profile || isOwnProfile) return
     const supabase = createClient()
+    const targetUserId = profile.id
 
     if (isFollowing) {
       setIsFollowing(false)
@@ -131,13 +140,13 @@ export default function UserProfilePage() {
         .from('followers')
         .delete()
         .eq('follower_id', currentUserId)
-        .eq('following_id', profileId)
+        .eq('following_id', targetUserId)
     } else {
       setIsFollowing(true)
       setFollowersCount((prev) => prev + 1)
       await supabase
         .from('followers')
-        .insert({ follower_id: currentUserId, following_id: profileId })
+        .insert({ follower_id: currentUserId, following_id: targetUserId })
     }
   }
 
@@ -173,7 +182,7 @@ export default function UserProfilePage() {
 
         if (uploadError) {
           console.error('Chyba při nahrávání obrázku:', uploadError.message)
-          alert('Nepodařilo se nahráít fotku. Ověřte, že máte v Supabase Storage vytvořený veřejný bucket "avatars".')
+          alert('Nepodařilo se nahrát fotku. Ověřte, že máte v Supabase Storage vytvořený veřejný bucket "avatars".')
         } else {
           const { data: publicUrlData } = supabase.storage
             .from('avatars')
@@ -192,7 +201,6 @@ export default function UserProfilePage() {
         updated_at: new Date().toISOString()
       }
 
-      // Volitelně přidáme souřadnice a měřítko
       if (editForm.avatar_scale !== undefined) updatedPayload.avatar_scale = editForm.avatar_scale
       if (editForm.avatar_x !== undefined) updatedPayload.avatar_x = editForm.avatar_x
       if (editForm.avatar_y !== undefined) updatedPayload.avatar_y = editForm.avatar_y
@@ -231,7 +239,7 @@ export default function UserProfilePage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => router.back()}
-          className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-sm shadow-sm hover:bg-slate-50"
+          className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center font-bold text-sm shadow-sm hover:bg-slate-50 cursor-pointer"
         >
           ←
         </button>
@@ -297,7 +305,7 @@ export default function UserProfilePage() {
                 setPreviewAvatarUrl(profile.avatar_url || '')
                 setIsEditModalOpen(true)
               }}
-              className="flex-1 py-2.5 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
+              className="flex-1 py-2.5 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-200 transition-all shadow-sm cursor-pointer"
             >
               Upravit profil
             </button>
@@ -305,7 +313,7 @@ export default function UserProfilePage() {
             <>
               <button
                 onClick={handleFollowToggle}
-                className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm ${
+                className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer ${
                   isFollowing
                     ? 'bg-slate-100 text-slate-800 border border-slate-300'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700'
@@ -315,8 +323,8 @@ export default function UserProfilePage() {
               </button>
 
               <button
-                onClick={() => router.push(`/chat?userId=${profileId}`)}
-                className="flex-1 py-2.5 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-200 transition-all shadow-sm"
+                onClick={() => router.push(`/chat?userId=${profile.id}`)}
+                className="flex-1 py-2.5 bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-200 hover:bg-slate-200 transition-all shadow-sm cursor-pointer"
               >
                 Zpráva
               </button>
@@ -354,7 +362,7 @@ export default function UserProfilePage() {
           <div className="bg-white border border-slate-200 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative my-8 text-slate-900">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-6">
               <h3 className="text-lg font-extrabold">Upravit profil</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-700 text-xl font-bold">
+              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-700 text-xl font-bold cursor-pointer">
                 ✕
               </button>
             </div>
@@ -380,7 +388,7 @@ export default function UserProfilePage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl shadow transition"
+                className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl shadow transition cursor-pointer"
               >
                 Vybrat fotku
               </button>
@@ -474,7 +482,7 @@ export default function UserProfilePage() {
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-2.5 rounded-xl text-xs text-slate-700"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 font-bold py-2.5 rounded-xl text-xs text-slate-700 cursor-pointer"
               >
                 Zrušit
               </button>
@@ -482,9 +490,9 @@ export default function UserProfilePage() {
                 type="button"
                 disabled={saving}
                 onClick={handleSaveProfile}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 font-bold py-2.5 rounded-xl text-xs text-white shadow-md"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 font-bold py-2.5 rounded-xl text-xs text-white shadow-md cursor-pointer disabled:opacity-50"
               >
-                {saving ? 'Ukládám...' : 'Uložit zmený'}
+                {saving ? 'Ukládám...' : 'Uložit změny'}
               </button>
             </div>
           </div>

@@ -97,6 +97,16 @@ export default function ProfilePage() {
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Pomocná funkce pro získání platné veřejné URL adresy avatara
+  const getAvatarUrl = (url?: string) => {
+    if (!url) return ''
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+      return url
+    }
+    const { data } = supabase.storage.from('avatars').getPublicUrl(url)
+    return data.publicUrl
+  }
+
   // Načtení profilu, příspěvků a stavů lajků/uložení
   useEffect(() => {
     const fetchProfileAndPosts = async () => {
@@ -172,11 +182,14 @@ export default function ProfilePage() {
           // Ignorujeme, pokud tabulka neexistuje
         }
 
+        const rawAvatar = profileData?.avatar_url || profileData?.avatar || user.user_metadata?.avatar_url || ''
+        const resolvedAvatar = getAvatarUrl(rawAvatar)
+
         const loadedProfile: ProfileData = {
           id: user.id,
           username: profileData?.username || user.user_metadata?.username || user.email?.split('@')[0] || 'uzivatel',
           full_name: profileData?.full_name || user.user_metadata?.full_name || 'Uživatel',
-          avatar_url: profileData?.avatar_url || profileData?.avatar || user.user_metadata?.avatar_url || '',
+          avatar_url: resolvedAvatar,
           bio: profileData?.bio || user.user_metadata?.bio || 'Zatím bez popisu',
           website: profileData?.website || '',
           posts_count: formattedPosts.length,
@@ -202,7 +215,6 @@ export default function ProfilePage() {
     if (!userId) return
     setLoadingFollows(true)
     try {
-      // Sledující: kde following_id == moje ID (získáváme follower_id)
       const { data: followersData, error: fError } = await supabase
         .from('followers')
         .select('follower_id, profiles:follower_id (id, username, full_name, avatar_url)')
@@ -210,12 +222,17 @@ export default function ProfilePage() {
 
       if (!fError && followersData) {
         const mappedFollowers = followersData
-          .map((item: any) => item.profiles)
+          .map((item: any) => {
+            if (!item.profiles) return null
+            return {
+              ...item.profiles,
+              avatar_url: getAvatarUrl(item.profiles.avatar_url)
+            }
+          })
           .filter(Boolean) as FollowUser[]
         setFollowersList(mappedFollowers)
       }
 
-      // Sleduji: kde follower_id == moje ID (získáváme following_id)
       const { data: followingData, error: fgError } = await supabase
         .from('followers')
         .select('following_id, profiles:following_id (id, username, full_name, avatar_url)')
@@ -223,7 +240,13 @@ export default function ProfilePage() {
 
       if (!fgError && followingData) {
         const mappedFollowing = followingData
-          .map((item: any) => item.profiles)
+          .map((item: any) => {
+            if (!item.profiles) return null
+            return {
+              ...item.profiles,
+              avatar_url: getAvatarUrl(item.profiles.avatar_url)
+            }
+          })
           .filter(Boolean) as FollowUser[]
         setFollowingList(mappedFollowing)
       }
@@ -269,7 +292,14 @@ export default function ProfilePage() {
       .order('created_at', { ascending: true })
 
     if (!error && data) {
-      setCommentsMap((prev) => ({ ...prev, [postId]: data as CommentItem[] }))
+      const formattedComments = data.map((c: any) => ({
+        ...c,
+        profiles: c.profiles ? {
+          ...c.profiles,
+          avatar_url: getAvatarUrl(c.profiles.avatar_url)
+        } : undefined
+      }))
+      setCommentsMap((prev) => ({ ...prev, [postId]: formattedComments }))
     }
   }
 
@@ -337,9 +367,20 @@ export default function ProfilePage() {
       .single()
 
     if (!error && data) {
+      const newComment = {
+        ...data,
+        profiles: data.profiles ? {
+          ...data.profiles,
+          avatar_url: getAvatarUrl(data.profiles.avatar_url)
+        } : {
+          username: profile.username,
+          avatar_url: profile.avatar_url
+        }
+      }
+
       setCommentsMap((prev) => ({
         ...prev,
-        [postId]: [...(prev[postId] || []), data as CommentItem],
+        [postId]: [...(prev[postId] || []), newComment as CommentItem],
       }))
 
       setPosts((prev) =>
@@ -527,7 +568,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Statistiky (interaktivní tlačítka pro sledující/sleduji) */}
+            {/* Statistiky */}
             <div className="flex items-center gap-6 py-3 border-y border-slate-100 md:border-none w-full justify-center md:justify-start">
               <div className="text-center md:text-left">
                 <span className="font-bold text-slate-900 text-base">{profile.posts_count}</span>{' '}
@@ -649,7 +690,6 @@ export default function ProfilePage() {
                         </svg>
                       </div>
                     )}
-                    {/* Hover překryv */}
                     <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-6 font-bold text-white text-sm backdrop-blur-[2px]">
                       <span className="flex items-center gap-1.5">
                         <svg className="w-5 h-5 fill-current text-white" viewBox="0 0 24 24">
@@ -706,7 +746,6 @@ export default function ProfilePage() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-3xl max-w-sm w-full h-[450px] shadow-2xl border border-slate-100 flex flex-col overflow-hidden"
           >
-            {/* Header modalu */}
             <div className="flex border-b border-slate-100 font-bold text-xs text-slate-500">
               <button
                 onClick={() => setFollowModalTab('followers')}
@@ -730,7 +769,6 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Seznam uživatelů */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loadingFollows ? (
                 <div className="flex justify-center items-center h-full">
@@ -768,192 +806,26 @@ export default function ProfilePage() {
                 })()
               )}
             </div>
-
-            {/* Patička modalu */}
-            <div className="p-3 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => setIsFollowModalOpen(false)}
-                className="px-4 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
-              >
-                Zavřít
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* DETAIL PŘÍSPĚVKŮ: CONTINUOUS SCROLL FEED MODAL */}
-      {selectedPostIndex !== null && (
+      {/* MODÁLNÍ OKNO: ÚPRAVA PROFILU */}
+      {isEditModalOpen && (
         <div
-          onClick={() => setSelectedPostIndex(null)}
-          className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex justify-center items-center p-2 sm:p-4"
+          onClick={() => setIsEditModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center p-4"
         >
-          {/* Tlačítko Zavřít */}
-          <button
-            onClick={() => setSelectedPostIndex(null)}
-            className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center text-slate-800 font-bold hover:bg-white shadow-lg transition"
-          >
-            ✕
-          </button>
-
-          {/* Scroll container pro posun mezi příspěvky */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg h-[90vh] overflow-y-auto rounded-3xl space-y-6 pr-1 scrollbar-thin scrollbar-thumb-slate-400"
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-4"
           >
-            {posts.slice(selectedPostIndex).map((post) => {
-              const imgUrl = getPostImageUrl(post)
-              const postComments = commentsMap[post.id] || []
-
-              return (
-                <div
-                  key={post.id}
-                  className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl text-slate-900"
-                >
-                  {/* Hlavička s autorem */}
-                  <div className="p-4 flex items-center gap-3 border-b border-slate-100">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0 flex items-center justify-center">
-                      {profile.avatar_url ? (
-                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <svg className="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">@{profile.username}</h4>
-                      <p className="text-[10px] text-slate-400">{profile.full_name}</p>
-                    </div>
-                  </div>
-
-                  {/* Obrázek / Médium */}
-                  <div className="w-full aspect-square bg-slate-950 flex items-center justify-center">
-                    {imgUrl ? (
-                      <img src={imgUrl} alt="Post detail" className="w-full h-full object-cover" />
-                    ) : (
-                      <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    )}
-                  </div>
-
-                  {/* Tlačítka interakcí */}
-                  <div className="p-4 border-b border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleToggleLike(post.id)}
-                          className="text-slate-800 hover:text-rose-600 transition-transform active:scale-125"
-                        >
-                          {post.is_liked ? (
-                            <svg className="w-6 h-6 text-rose-500 fill-current" viewBox="0 0 24 24">
-                              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                            </svg>
-                          ) : (
-                            <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                          )}
-                        </button>
-                        <span className="text-xs font-extrabold text-slate-900">
-                          {post.likes_count || 0} To se mi líbí
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => handleToggleSave(post.id)}
-                        className="text-slate-800 hover:text-blue-600 transition-transform active:scale-125"
-                      >
-                        {post.is_saved ? (
-                          <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24">
-                            <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-6 h-6 fill-none stroke-current" viewBox="0 0 24 24" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Popisek */}
-                    {post.caption && (
-                      <div className="text-xs text-slate-700 mt-3 leading-relaxed">
-                        <span className="font-bold text-slate-900 mr-1.5">@{profile.username}</span>
-                        {post.caption}
-                      </div>
-                    )}
-
-                    {/* Datum */}
-                    {post.created_at && (
-                      <div className="text-[10px] text-slate-400 uppercase font-semibold mt-2">
-                        {new Date(post.created_at).toLocaleDateString('cs-CZ', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Komentáře sekce */}
-                  <div className="p-4 bg-slate-50/50 space-y-3">
-                    <div className="max-h-40 overflow-y-auto space-y-2 pr-1 text-xs">
-                      {postComments.length === 0 ? (
-                        <p className="text-slate-400 text-center py-2 text-[11px]">Zatím žádné komentáře</p>
-                      ) : (
-                        postComments.map((c) => (
-                          <div key={c.id} className="flex gap-2 items-start">
-                            <span className="font-bold text-slate-900 shrink-0">
-                              @{c.profiles?.username || 'uživatel'}:
-                            </span>
-                            <span className="text-slate-700 break-all">{c.content}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Vstup pro nový komentář */}
-                    <div className="flex gap-2 pt-2 border-t border-slate-200/60">
-                      <input
-                        type="text"
-                        placeholder="Přidat komentář..."
-                        value={commentInputs[post.id] || ''}
-                        onChange={(e) =>
-                          setCommentInputs((prev) => ({ ...prev, [post.id]: e.target.value }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddComment(post.id)
-                        }}
-                        className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                      />
-                      <button
-                        onClick={() => handleAddComment(post.id)}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 px-2"
-                      >
-                        Zveřejnit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* MODÁLNÍ OKNO PRO ÚPRAVU PROFILU */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col gap-4">
             <h3 className="text-lg font-bold text-slate-900">Upravit profil</h3>
 
-            {/* Fotka a upload */}
-            <div className="flex flex-col items-center gap-3 my-2">
-              <div className="w-24 h-24 rounded-full overflow-hidden relative bg-slate-100 border border-slate-200">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-24 h-24 rounded-full overflow-hidden border border-slate-200 relative bg-slate-100">
                 {previewAvatarUrl ? (
-                  <img src={previewAvatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={previewAvatarUrl} alt="Avatar preview" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-400">
                     <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
@@ -962,13 +834,7 @@ export default function ProfilePage() {
                   </div>
                 )}
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -978,61 +844,59 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Formulářová pole */}
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Uživatelské jméno</label>
+                <label className="font-semibold text-slate-600 block mb-1">Uživatelské jméno</label>
                 <input
                   type="text"
                   value={editForm.username}
                   onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Jméno</label>
+                <label className="font-semibold text-slate-600 block mb-1">Jméno a příjmení</label>
                 <input
                   type="text"
                   value={editForm.full_name}
                   onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Bio</label>
+                <label className="font-semibold text-slate-600 block mb-1">Bio</label>
                 <textarea
                   rows={3}
                   value={editForm.bio}
                   onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Webová stránka</label>
+                <label className="font-semibold text-slate-600 block mb-1">Webová stránka</label>
                 <input
                   type="text"
                   value={editForm.website}
                   onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-slate-900"
                 />
               </div>
             </div>
 
-            {/* Tlačítka akci modal okna */}
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
               >
                 Zrušit
               </button>
               <button
-                onClick={handleSaveProfile}
                 disabled={saving}
-                className="px-4 py-2 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50"
+                onClick={handleSaveProfile}
+                className="px-4 py-2 text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 rounded-xl transition shadow-xs disabled:opacity-50"
               >
                 {saving ? 'Ukládám...' : 'Uložit'}
               </button>
