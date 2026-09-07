@@ -10,19 +10,44 @@ import Link from 'next/link'
 export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'exists' | 'valid'>('idle')
+  const [allowMultiAccount, setAllowMultiAccount] = useState(false)
   const router = useRouter()
+
+  // Automatická kontrola existence e-mailu
+  const checkEmailExists = async (email: string) => {
+    const cleanEmail = email.trim()
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setEmailStatus('idle')
+      return
+    }
+
+    setEmailStatus('checking')
+    const supabase = createClient()
+    
+    // Dotaz do tabulky profiles na existující e-mail
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', cleanEmail)
+      .maybeSingle()
+
+    if (data) {
+      setEmailStatus('exists')
+    } else {
+      setEmailStatus('valid')
+    }
+  }
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMsg('')
     setLoading(true)
 
-    // ⚠️ OPRAVA: Supabase klienta vytvoříme až ve chvíli odeslání formuláře!
-    // Tím zaručíme, že na tento řádek Next.js při buildu vůbec nenarazí.
     const supabase = createClient()
-
     const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
+    
+    const rawEmail = (formData.get('email') as string).trim()
     const password = formData.get('password') as string
     const confirmPassword = formData.get('confirmPassword') as string
     
@@ -31,6 +56,11 @@ export default function RegisterPage() {
       setLoading(false)
       return
     }
+
+    // Pokud e-mail existuje a je povolen vícenásobný účet, vytvoří se unikátní alias pro Supabase (např. email+1710000000@domain.cz)
+    const finalEmail = (emailStatus === 'exists' && allowMultiAccount)
+      ? rawEmail.replace('@', `+${Date.now()}@`)
+      : rawEmail
 
     const firstName = formData.get('firstName') as string
     const lastName = formData.get('lastName') as string
@@ -50,10 +80,11 @@ export default function RegisterPage() {
 
     // 1. Registrace uživatele v Supabase Auth
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: finalEmail,
       password,
       options: {
         data: {
+          original_email: rawEmail,
           username,
           first_name: firstName,
           last_name: lastName,
@@ -95,8 +126,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-8">
+    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
+      <div className="max-w-2xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-auto">
         
         <div className="text-center mb-8">
           <Link href="/" className="inline-block text-4xl animate-bounce mb-2">
@@ -134,8 +165,33 @@ export default function RegisterPage() {
                   type="email"
                   required
                   placeholder="vás@email.cz"
+                  onBlur={(e) => checkEmailExists(e.target.value)}
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
+                
+                {/* Indikátor kontroly e-mailu */}
+                {emailStatus === 'checking' && (
+                  <p className="text-xs text-gray-500 mt-1 ml-1">Ověřuji e-mail...</p>
+                )}
+                {emailStatus === 'valid' && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-1 font-medium">✓ E-mail je k dispozici</p>
+                )}
+                {emailStatus === 'exists' && (
+                  <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">
+                      ⚠️ Tento e-mail už v systému existuje.
+                    </p>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      <input
+                        type="checkbox"
+                        checked={allowMultiAccount}
+                        onChange={(e) => setAllowMultiAccount(e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Vytvořit další profil pod tímto e-mailem
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -175,7 +231,7 @@ export default function RegisterPage() {
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -377,8 +433,8 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50"
+            disabled={loading || (emailStatus === 'exists' && !allowMultiAccount)}
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Vytvářím účet...' : 'Zaregistrovat se 🚀'}
           </button>

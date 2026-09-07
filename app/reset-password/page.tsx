@@ -1,8 +1,11 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import Link from 'next/link'
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams()
@@ -42,46 +45,64 @@ function ResetPasswordContent() {
     if (updateError) {
       setError(updateError.message)
     } else {
-      alert('Heslo bylo úspěšně změněno!')
       router.push('/login')
     }
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-xl border border-neutral-100">
-        <h1 className="text-2xl font-bold mb-2">Obnovení hesla</h1>
-        <p className="text-sm text-neutral-500 mb-6">Zadejte kód z e-mailu a vaše nové heslo.</p>
+    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
+      <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-auto">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block text-4xl animate-bounce mb-2">
+            🐾
+          </Link>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+            Obnovení hesla
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
+            Zadejte kód z e-mailu a vaše nové heslo.
+          </p>
+        </div>
 
-        {error && <div className="p-3 mb-4 text-xs bg-red-50 text-red-600 rounded-xl">{error}</div>}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
+            ⚠️ {error}
+          </div>
+        )}
 
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-neutral-500 block mb-1">E-mail</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
+              E-mail <span className="text-red-500">*</span>
+            </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none"
+              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-neutral-500 block mb-1">6místný kód z e-mailu</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
+              6místný kód z e-mailu <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               required
               placeholder="123456"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none text-center font-mono text-lg tracking-widest"
+              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-center font-mono text-lg tracking-widest font-bold"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-neutral-500 block mb-1">Nové heslo</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
+              Nové heslo <span className="text-red-500">*</span>
+            </label>
             <input
               type="password"
               required
@@ -89,18 +110,28 @@ function ResetPasswordContent() {
               placeholder="••••••••"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-100 rounded-2xl text-sm outline-none"
+              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all disabled:opacity-50"
+            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Ukládám...' : 'Změnit heslo'}
+            {loading ? 'Ukládám...' : 'Změnit heslo 🔑'}
           </button>
         </form>
+
+        <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
+          Zpět na{' '}
+          <Link
+            href="/login"
+            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1"
+          >
+            Přihlášení
+          </Link>
+        </div>
       </div>
     </div>
   )
@@ -108,7 +139,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="text-center p-10">Načítám...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-medium text-gray-500">Načítám...</div>}>
       <ResetPasswordContent />
     </Suspense>
   )

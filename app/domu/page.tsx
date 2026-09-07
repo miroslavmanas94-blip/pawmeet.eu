@@ -124,6 +124,153 @@ function getRelativeTime(dateString: string) {
   return `${Math.floor(diffInSeconds / 86400)}d`
 }
 
+function formatTime(seconds: number) {
+  if (isNaN(seconds) || !isFinite(seconds) || seconds < 0) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+}
+
+function FeedVideoPlayer({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(true)
+  const [progress, setProgress] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [isSeeking, setIsSeeking] = useState(false)
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!videoRef.current) return
+    if (isPlaying) {
+      videoRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      videoRef.current.play()
+      setIsPlaying(true)
+    }
+  }
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!videoRef.current) return
+    videoRef.current.muted = !isMuted
+    setIsMuted(!isMuted)
+  }
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration || 0)
+    }
+  }
+
+  const handleTimeUpdate = () => {
+    if (!videoRef.current || isSeeking) return
+    const current = videoRef.current.currentTime
+    const total = videoRef.current.duration || duration
+    setCurrentTime(current)
+    if (total > 0) {
+      setDuration(total)
+      setProgress((current / total) * 100)
+    }
+  }
+
+  const handleSeekStart = () => {
+    setIsSeeking(true)
+  }
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+    const val = Number(e.target.value)
+    setProgress(val)
+    if (duration > 0) {
+      setCurrentTime((val / 100) * duration)
+    }
+  }
+
+  const handleSeekEnd = () => {
+    if (videoRef.current && duration > 0) {
+      videoRef.current.currentTime = (progress / 100) * duration
+    }
+    setIsSeeking(false)
+  }
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay
+        loop
+        muted={isMuted}
+        playsInline
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        className="w-full max-h-[420px] object-contain"
+      />
+
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute bottom-2 left-3 right-3 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 opacity-90 hover:opacity-100 transition-opacity"
+      >
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="text-white hover:text-violet-400 text-xs font-bold shrink-0 cursor-pointer p-0.5"
+          title={isPlaying ? 'Pozastavit' : 'Přehrát'}
+        >
+          {isPlaying ? (
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        <input
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value={isNaN(progress) ? 0 : progress}
+          onMouseDown={handleSeekStart}
+          onTouchStart={handleSeekStart}
+          onChange={handleSeekChange}
+          onMouseUp={handleSeekEnd}
+          onTouchEnd={handleSeekEnd}
+          className="w-full h-1 bg-white/30 rounded-lg appearance-none cursor-pointer accent-violet-500 hover:h-1.5 transition-all"
+        />
+
+        <span className="text-[10px] font-mono text-white/90 shrink-0 font-bold min-w-[65px] text-center">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+
+        <button
+          type="button"
+          onClick={toggleMute}
+          className="text-white hover:text-violet-400 text-xs font-bold shrink-0 cursor-pointer p-0.5"
+          title={isMuted ? 'Zapnout zvuk' : 'Vypnout zvuk'}
+        >
+          {isMuted ? (
+            <svg className="w-4 h-4 stroke-current fill-none" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 stroke-current fill-none" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function HomeFeed() {
   const supabase = createClient()
 
@@ -647,6 +794,30 @@ export default function HomeFeed() {
   }
 
   const handleDeleteComment = async (postId: string, commentId: string) => {
+    if (!currentUser || currentUser.id === 'guest') return
+
+    const targetPost = posts.find(p => p.id === postId)
+    const targetComment = targetPost?.comments.find(c => c.id === commentId)
+
+    if (targetComment && targetComment.user_id !== currentUser.id) {
+      showToast('Můžeš mazat pouze své vlastní komentáře!')
+      return
+    }
+
+    if (!commentId.startsWith('temp_')) {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', currentUser.id)
+
+      if (error) {
+        console.error('Chyba při mazání komentáře ze Supabase:', error.message)
+        showToast(`Chyba při mazání: ${error.message}`)
+        return
+      }
+    }
+
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
         return {
@@ -675,9 +846,45 @@ export default function HomeFeed() {
     }
 
     showToast('Komentář smazán')
-    if (!commentId.startsWith('temp_')) {
-      await supabase.from('comments').delete().eq('id', commentId)
+  }
+
+  const handleDeleteStoryComment = async (storyId: string, commentId: string) => {
+    if (!currentUser || currentUser.id === 'guest') return
+
+    if (activeStoryGroupIndex !== null) {
+      const activeGroup = storiesList[activeStoryGroupIndex]
+      const activeStory = activeGroup?.stories.find(s => s.id === storyId)
+      const targetComment = activeStory?.comments.find(c => c.id === commentId)
+
+      if (targetComment && targetComment.user_id !== currentUser.id) {
+        showToast('Můžeš mazat pouze své vlastní komentáře!')
+        return
+      }
     }
+
+    if (!commentId.startsWith('temp_')) {
+      const { error } = await supabase
+        .from('story_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', currentUser.id)
+
+      if (error) {
+        console.error('Chyba při mazání komentáře z příběhu ze Supabase:', error.message)
+        showToast(`Chyba při mazání: ${error.message}`)
+        return
+      }
+    }
+
+    setStoriesList(prev => prev.map(g => ({
+      ...g,
+      stories: g.stories.map(st => st.id === storyId ? {
+        ...st,
+        comments: st.comments.filter(c => c.id !== commentId)
+      } : st)
+    })))
+
+    showToast('Komentář smazán')
   }
 
   const handleDeletePost = async (postId: string, postUserId: string) => {
@@ -686,13 +893,17 @@ export default function HomeFeed() {
       return
     }
 
+    const { error } = await supabase.from('posts').delete().eq('id', postId)
+    if (error) {
+      console.error('Chyba při mazání příspěvku z databáze:', error.message)
+      showToast(`Chyba mazání: ${error.message}`)
+      return
+    }
+
     setPosts(prev => prev.filter(p => p.id !== postId))
     setSelectedPostForDetail(null)
     setSelectedPostForComments(null)
     showToast('Příspěvek smazán')
-
-    const { error } = await supabase.from('posts').delete().eq('id', postId)
-    if (error) console.error('Chyba při mazání z databáze:', error.message)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1053,9 +1264,7 @@ export default function HomeFeed() {
                     }}
                   >
                     {isReel ? (
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        <video src={currentMedia.url} autoPlay loop muted playsInline className="w-full max-h-[420px] object-contain pointer-events-none" />
-                      </div>
+                      <FeedVideoPlayer src={currentMedia.url} />
                     ) : (
                       <img src={currentMedia?.url} alt="" className="w-full max-h-[420px] object-contain bg-slate-900" />
                     )}
@@ -1126,6 +1335,7 @@ export default function HomeFeed() {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 21.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
                         </svg>
+                        {post.likes_count > 0 && <span className="text-slate-800 text-xs font-black">{post.likes_count}</span>}
                       </button>
 
                       <button
@@ -1159,10 +1369,6 @@ export default function HomeFeed() {
                   </div>
 
                   <div className="px-4 py-3 space-y-1.5 bg-white">
-                    {post.likes_count > 0 && (
-                      <p className="text-xs font-black text-slate-900">{post.likes_count} to se líbí</p>
-                    )}
-
                     {post.caption && (
                       <p className="text-xs text-slate-800 leading-relaxed">
                         <span className="font-extrabold mr-1.5 text-slate-900">{post.user.username}</span>
@@ -1182,8 +1388,8 @@ export default function HomeFeed() {
                               <span className="font-extrabold text-slate-900 shrink-0">{c.user.username}:</span>
                               <span className="truncate text-slate-700">{c.text}</span>
                             </div>
-                            {currentUser && (c.user_id === currentUser.id || currentUser.id !== 'guest') && (
-                              <button onClick={() => handleDeleteComment(post.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2">✕</button>
+                            {currentUser && c.user_id === currentUser.id && (
+                              <button onClick={() => handleDeleteComment(post.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
                             )}
                           </div>
                         ))}
@@ -1295,17 +1501,9 @@ export default function HomeFeed() {
                         <strong className="mr-1.5 text-violet-400">{sc.user.username}:</strong>
                         {sc.text}
                       </span>
-                      {currentUser && (sc.user_id === currentUser.id || currentUser.id !== 'guest') && (
+                      {currentUser && sc.user_id === currentUser.id && (
                         <button
-                          onClick={async () => {
-                            setStoriesList(prev => prev.map(g => ({
-                              ...g,
-                              stories: g.stories.map(st => st.id === activeStory.id ? { ...st, comments: st.comments.filter(c => c.id !== sc.id) } : st)
-                            })))
-                            if (!sc.id.startsWith('temp_')) {
-                              await supabase.from('story_comments').delete().eq('id', sc.id)
-                            }
-                          }}
+                          onClick={() => handleDeleteStoryComment(activeStory.id, sc.id)}
                           className="text-slate-400 hover:text-rose-500 font-bold ml-2 cursor-pointer"
                         >
                           ✕
@@ -1555,7 +1753,7 @@ export default function HomeFeed() {
           <div className="bg-white rounded-3xl w-full max-w-3xl h-full max-h-[80vh] flex flex-col md:flex-row overflow-hidden border border-slate-200 shadow-2xl">
             <div className="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden min-h-[250px]">
               {selectedPostForDetail.media[0]?.type === 'video' ? (
-                <video src={selectedPostForDetail.media[0].url} autoPlay loop muted playsInline className="w-full h-full object-contain" />
+                <FeedVideoPlayer src={selectedPostForDetail.media[0].url} />
               ) : (
                 <img src={selectedPostForDetail.media[0]?.url} alt="" className="w-full h-full object-contain" />
               )}
@@ -1589,8 +1787,8 @@ export default function HomeFeed() {
                       <span className="font-extrabold text-slate-900 block">{c.user.username}</span>
                       <span className="text-slate-700">{c.text}</span>
                     </div>
-                    {currentUser && (c.user_id === currentUser.id || currentUser.id !== 'guest') && (
-                      <button onClick={() => handleDeleteComment(selectedPostForDetail.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2">✕</button>
+                    {currentUser && c.user_id === currentUser.id && (
+                      <button onClick={() => handleDeleteComment(selectedPostForDetail.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
                     )}
                   </div>
                 ))}
@@ -1633,8 +1831,8 @@ export default function HomeFeed() {
                     <span className="font-extrabold text-slate-900 block">{c.user.username}</span>
                     <span className="text-slate-700">{c.text}</span>
                   </div>
-                  {currentUser && (c.user_id === currentUser.id || currentUser.id !== 'guest') && (
-                    <button onClick={() => handleDeleteComment(selectedPostForComments.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2">✕</button>
+                  {currentUser && c.user_id === currentUser.id && (
+                    <button onClick={() => handleDeleteComment(selectedPostForComments.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
                   )}
                 </div>
               ))}
