@@ -2,46 +2,65 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function PremiumPage() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly')
+  const [loading, setLoading] = useState(false)
 
   const benefits = [
-    {
-      icon: '👑',
-      title: 'Exkluzivní odznak',
-      description: 'Získej prémiovou korunku na svůj profil a ke všem příspěvkům.',
-    },
-    {
-      icon: '🐾',
-      title: 'Neomezené interakce',
-      description: 'Procházej profily, lajkuj a propojuj se bez denních limitů.',
-    },
-    {
-      icon: '👁️',
-      title: 'Kdo si tě uložil',
-      description: 'Měj přehled o tom, kteří uživatelé si uložili tvé příspěvky.',
-    },
-    {
-      icon: '🔍',
-      title: 'Pokročilé filtry',
-      description: 'Filtruj mazlíčky přesně podle rasy, věku, lokality či povahy.',
-    },
-    {
-      icon: '🚀',
-      title: 'Prioritní zviditelnění',
-      description: 'Tvůj profil a příspěvky se budou zobrazovat na předních příčkách.',
-    },
-    {
-      icon: '✨',
-      title: 'Zcela bez reklam',
-      description: 'Užívej si aplikaci čistě a bez jakéhokoliv vyrušování.',
-    },
+    { icon: '👑', title: 'Ověřený VIP profil', description: 'Získej zlatou korunku u jména a odznak ověřeného páníčka.' },
+    { icon: '👁️', title: 'Přehled návštěvníků', description: 'Zjisti, kdo si prohlížel tvůj profil nebo uložil fotky.' },
+    { icon: '✨', title: 'Zcela bez reklam', description: 'Procházej aplikaci naprosto plynule a bez vyrušování.' },
+    { icon: '🚀', title: 'Prioritní zviditelnění', description: 'Tvé příspěvky se zobrazí na předních příčkách přímo na Domů.' },
+    { icon: '📋', title: 'Zdravotní deník', description: 'Hlídač termínů očkování, odčervení a kontrol u veterináře.' },
+    { icon: '🏆', title: 'Výzvy s odměnou pro kámoše', description: 'Plň venčící výzvy a získej 1 měsíc Premium zdarma pro kamaráda!' },
+    { icon: '🌤️', title: 'Hlídač počasí na venčení', description: 'Upozornění na ideální čas na procházku bez horka či deště.' },
   ]
+
+  const handleCheckout = async () => {
+    try {
+      setLoading(true)
+
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        alert('Pro nákup předplatného se musíte nejprve přihlásit.')
+        return
+      }
+
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          userId: user.id,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert('Chyba při spuštění platby: ' + (data.error || 'Neznámá chyba'))
+      }
+    } catch (error) {
+      console.error('Chyba platby:', error)
+      alert('Došlo k chybě při připojování k platební bráně.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-4 md:p-8 antialiased">
-      <div className="w-full max-w-3xl bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
+      <div className="w-full max-w-4xl bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden">
         
         {/* Hlavička */}
         <div className="bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 p-8 text-center text-white relative">
@@ -58,7 +77,7 @@ export default function PremiumPage() {
           <span className="inline-block text-4xl mb-2 animate-bounce">👑</span>
           <h1 className="text-3xl font-extrabold tracking-tight">PawMeet Premium</h1>
           <p className="text-amber-100 text-sm mt-2 max-w-md mx-auto">
-            Odemkni naplno potenciál pro svého mazlíčka a získej exkluzivní výhody.
+            Odemkni všechny výhody, plň výzvy a věnuj měsíc Premium svému parťákovi zdarma!
           </p>
         </div>
 
@@ -69,7 +88,9 @@ export default function PremiumPage() {
             {benefits.map((benefit, idx) => (
               <div
                 key={idx}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-100"
+                className={`flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-100 ${
+                  idx === benefits.length - 1 ? 'md:col-span-2 md:w-[calc(50%-0.5rem)] md:justify-self-center' : ''
+                }`}
               >
                 <span className="text-2xl shrink-0">{benefit.icon}</span>
                 <div>
@@ -96,7 +117,7 @@ export default function PremiumPage() {
             >
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Měsíční plán</h4>
-                <p className="text-xs text-slate-500 mt-1">Flexibilní platba každý měsíc</p>
+                <p className="text-xs text-slate-500 mt-1">Platba každý měsíc, bez závazků</p>
               </div>
               <div className="mt-4">
                 <span className="text-2xl font-black text-slate-900">99 Kč</span>
@@ -118,7 +139,7 @@ export default function PremiumPage() {
               </span>
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Roční plán</h4>
-                <p className="text-xs text-slate-500 mt-1">Jednorázová platba na celý rok</p>
+                <p className="text-xs text-slate-500 mt-1">Výhodné předplatné na celý rok</p>
               </div>
               <div className="mt-4">
                 <span className="text-2xl font-black text-slate-900">899 Kč</span>
@@ -134,16 +155,23 @@ export default function PremiumPage() {
           {/* Tlačítko akce */}
           <div className="space-y-3 pt-2">
             <button
-              onClick={() => alert(`Aktivace plánu: ${selectedPlan === 'yearly' ? 'Roční (899 Kč)' : 'Měsíční (99 Kč)'}`)}
-              className="w-full bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:opacity-95 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-sm"
+              onClick={handleCheckout}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:opacity-95 disabled:opacity-50 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
-              <span>Aktivovat PawMeet Premium</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+              {loading ? (
+                <span>Přesměrovávám na platbu...</span>
+              ) : (
+                <>
+                  <span>Aktivovat PawMeet Premium</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </>
+              )}
             </button>
             <p className="text-center text-[11px] text-slate-400">
-              Předplatné se automaticky obnovuje. Můžeš ho kdykoliv zrušit.
+              Předplatné lze kdykoliv zrušit v nastavení účtu.
             </p>
           </div>
 
