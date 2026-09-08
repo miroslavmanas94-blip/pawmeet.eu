@@ -1,69 +1,35 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 
-export default function EmailChangePage() {
+export default function LoginPage() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
-  // Kontrola přihlášení při načtení stránky
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('Pro změnu e-mailu musíte být přihlášeni do svého účtu.')
-      }
-      setCheckingSession(false)
-    }
-    checkAuth()
-  }, [])
-
-  const handleSendChangeRequest = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setMessage(null)
 
-    // Ověření existující relace před voláním Supabase
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      setError('Relace vypršela. Přihlaste se prosím znovu.')
-      setLoading(false)
-      return
-    }
-
-    // Odeslání e-mailu se 6místným kódem ze šablony "Change email address"
-    const { error: updateError } = await supabase.auth.updateUser({
-      email: email,
+    const supabase = createClient()
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
 
-    if (updateError) {
-      if (updateError.message.includes('Auth session missing')) {
-        setError('Neste přihlášeni. Přihlaste se prosím znovu.')
-      } else {
-        setError(updateError.message)
-      }
+    if (loginError) {
+      setError(loginError.message)
+      setLoading(false)
     } else {
-      setMessage(`Kód pro potvrzení byl úspěšně odeslán na: ${email}`)
-      setEmail('')
+      router.push('/domu')
+      router.refresh()
     }
-    setLoading(false)
-  }
-
-  if (checkingSession) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <p className="text-sm font-medium text-gray-500 animate-pulse">Načítání relace...</p>
-      </div>
-    )
   }
 
   return (
@@ -74,10 +40,10 @@ export default function EmailChangePage() {
             🐾
           </Link>
           <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-            Změna e-mailu
+            Přihlášení
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
-            Zadejte novou e-mailovou adresu pro váš účet PawMeet.
+            Vítejte zpět! Přihlaste se ke svému účtu.
           </p>
         </div>
 
@@ -87,23 +53,39 @@ export default function EmailChangePage() {
           </div>
         )}
 
-        {message && (
-          <div className="mb-6 p-4 rounded-2xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 text-sm font-medium">
-            ✓ {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSendChangeRequest} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
-              Nový e-mail <span className="text-red-500">*</span>
+              E-mailová adresa <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               required
-              placeholder="novy@email.cz"
+              placeholder="vas@email.cz"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center mb-1 ml-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
+                Heslo <span className="text-red-500">*</span>
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+              >
+                Zapomenuté heslo?
+              </Link>
+            </div>
+            <input
+              type="password"
+              required
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
             />
           </div>
@@ -113,17 +95,17 @@ export default function EmailChangePage() {
             disabled={loading}
             className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Odesílám...' : 'Změnit e-mail ✉️'}
+            {loading ? 'Přihlašuji...' : 'Přihlásit se 🚀'}
           </button>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
-          Zpět do{' '}
+          Nemáte ještě účet?{' '}
           <Link
-            href="/nastaveni"
+            href="/register"
             className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1"
           >
-            Nastavení
+            Zaregistrovat se
           </Link>
         </div>
       </div>

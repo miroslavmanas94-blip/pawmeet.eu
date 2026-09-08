@@ -87,12 +87,12 @@ function ResetPasswordContent() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 ml-1">
-              6místný kód z e-mailu <span className="text-red-500">*</span>
+              8místný kód z e-mailu <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="123456"
+              placeholder="12345678"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-center font-mono text-lg tracking-widest font-bold"

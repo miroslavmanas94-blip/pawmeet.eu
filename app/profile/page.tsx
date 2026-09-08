@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 
 type ProfileData = {
@@ -303,96 +304,6 @@ export default function ProfilePage() {
     }
   }
 
-  // --- AKCE: LAJKOVÁNÍ ---
-  const handleToggleLike = async (postId: string) => {
-    if (!profile.id) return
-
-    const targetPost = posts.find((p) => p.id === postId)
-    if (!targetPost) return
-
-    const isLiked = targetPost.is_liked
-
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              is_liked: !isLiked,
-              likes_count: (p.likes_count || 0) + (isLiked ? -1 : 1),
-            }
-          : p
-      )
-    )
-
-    if (isLiked) {
-      await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', profile.id)
-    } else {
-      await supabase.from('likes').insert({ post_id: postId, user_id: profile.id })
-    }
-  }
-
-  // --- AKCE: ULOŽENÍ PŘÍSPĚVKU ---
-  const handleToggleSave = async (postId: string) => {
-    if (!profile.id) return
-
-    const targetPost = posts.find((p) => p.id === postId)
-    if (!targetPost) return
-
-    const isSaved = targetPost.is_saved
-
-    setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, is_saved: !isSaved } : p))
-    )
-
-    if (isSaved) {
-      await supabase.from('saved_posts').delete().eq('post_id', postId).eq('user_id', profile.id)
-    } else {
-      await supabase.from('saved_posts').insert({ post_id: postId, user_id: profile.id })
-    }
-  }
-
-  // --- AKCE: PŘIDÁNÍ KOMENTÁŘE ---
-  const handleAddComment = async (postId: string) => {
-    const text = commentInputs[postId]?.trim()
-    if (!text || !profile.id) return
-
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({
-        post_id: postId,
-        user_id: profile.id,
-        content: text,
-      })
-      .select('*, profiles(username, avatar_url)')
-      .single()
-
-    if (!error && data) {
-      const newComment = {
-        ...data,
-        profiles: data.profiles ? {
-          ...data.profiles,
-          avatar_url: getAvatarUrl(data.profiles.avatar_url)
-        } : {
-          username: profile.username,
-          avatar_url: profile.avatar_url
-        }
-      }
-
-      setCommentsMap((prev) => ({
-        ...prev,
-        [postId]: [...(prev[postId] || []), newComment as CommentItem],
-      }))
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p
-        )
-      )
-
-      setCommentInputs((prev) => ({ ...prev, [postId]: '' }))
-    }
-  }
-
   // Otevření editoru
   const handleOpenEdit = () => {
     setEditForm(profile)
@@ -547,13 +458,22 @@ export default function ProfilePage() {
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">@{profile.username}</h1>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleOpenEdit}
                   className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm active:scale-95"
                 >
                   Upravit profil
                 </button>
+
+                {/* PAWMEET PREMIUM TLAČÍTKO */}
+                <Link
+                  href="/premium"
+                  className="bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:opacity-90 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow-sm flex items-center gap-1.5 active:scale-95"
+                >
+                  <span>👑</span>
+                  <span>PawMeet Premium</span>
+                </Link>
 
                 <button 
                   onClick={handleOpenEdit}

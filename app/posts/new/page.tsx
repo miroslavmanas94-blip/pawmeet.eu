@@ -126,14 +126,11 @@ export default function NewPostPage() {
       const mediaUrl = publicUrlData.publicUrl
       const detectedType = file.type.startsWith('video') ? 'video' : 'image'
 
-      // Uložení media_url ve formátu JSON pole pro kompatibilitu s feedem
-      const mediaArray = JSON.stringify([{ url: mediaUrl, type: detectedType }])
-
-      // 4. Zápis do databáze 'posts' včetně údajů o uživateli z profilu
+      // 4. Zápis do databáze 'posts' s přímou URL adresou
       const { error: insertError } = await supabase.from('posts').insert({
         user_id: user.id,
         caption: caption.trim(),
-        media_url: mediaArray,
+        media_url: mediaUrl,
         media_type: detectedType,
         location: location.trim() || null,
         pet_tag: petTag.trim() || null,

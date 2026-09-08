@@ -12,7 +12,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 type TabType = 'stories' | 'map' | 'chat' | 'ai'
-type ModalType = 'terms' | 'privacy' | 'reviews' | null
+type ModalType = 'terms' | 'privacy' | 'reviews' | 'contact' | null
 
 interface Review {
   id: number
@@ -46,6 +46,13 @@ export default function LandingPage() {
   const [submitted, setSubmitted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [reviewsList, setReviewsList] = useState<Review[]>([])
+
+  // Kontaktní formulář
+  const [contactEmail, setContactEmail] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [contactSubmitted, setContactSubmitted] = useState(false)
+  const [contactLoading, setContactLoading] = useState(false)
+  const [contactError, setContactError] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -94,7 +101,7 @@ export default function LandingPage() {
     if (rating === 0) return
 
     const newReview = {
-      author: 'Uživatel PawMeet',
+      author: 'Uživatel',
       rating: rating,
       text: reviewText.trim() || 'Bez textového komentáře.'
     }
@@ -108,6 +115,47 @@ export default function LandingPage() {
       setReviewsList([data[0], ...reviewsList])
       setSubmitted(true)
     }
+  }
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!contactEmail.trim() || !contactMessage.trim()) return
+
+    setContactLoading(true)
+    setContactError(false)
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: contactEmail.trim(),
+          message: contactMessage.trim(),
+        }),
+      })
+
+      if (res.ok) {
+        setContactSubmitted(true)
+      } else {
+        setContactError(true)
+      }
+    } catch (err) {
+      setContactError(true)
+    } finally {
+      setContactLoading(false)
+    }
+  }
+
+  const resetContactForm = () => {
+    setContactEmail('')
+    setContactMessage('')
+    setContactSubmitted(false)
+    setContactError(false)
+  }
+
+  const openContactModal = () => {
+    resetContactForm()
+    setModalContent('contact')
   }
 
   const t = translations[lang] || translations['cs']
@@ -421,7 +469,7 @@ export default function LandingPage() {
 
                 <button
                   onClick={() => setModalContent('reviews')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer"
                 >
                   💬 Zobrazit recenze ({totalRatingCount})
                 </button>
@@ -510,7 +558,7 @@ export default function LandingPage() {
                 </div>
                 <button 
                   onClick={() => setModalContent('reviews')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shrink-0"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shrink-0 cursor-pointer"
                 >
                   Zobrazit v seznamu
                 </button>
@@ -533,26 +581,26 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">📜 {t?.termsTitle || 'Podmínky použití'}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">📜 Podmínky použití</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                {t?.termsText || 'Užíváním PawMeet souhlasíte s dodržováním pravidlech komunity a uctivým chováním.'}
+                Pravidla komunity, práva a povinnosti uživatelů platformy PawMeet.
               </p>
               <button 
                 onClick={() => setModalContent('terms')}
-                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block"
+                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block cursor-pointer"
               >
                 Zobrazit podmínky →
               </button>
             </div>
 
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-purple-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🔒 {t?.privacyTitle || 'Ochrana soukromí'}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🔒 Ochrana soukromí</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                {t?.privacyText || 'Vaše osobní údaje chráníme podle standardů GDPR.'}
+                Pravidla zpracování osobních údajů, GPS dat a ochrana podle GDPR.
               </p>
               <button 
                 onClick={() => setModalContent('privacy')}
-                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block"
+                className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1 inline-block cursor-pointer"
               >
                 Zásady soukromí →
               </button>
@@ -595,12 +643,193 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} PawMeet. Všechna práva vyhrazena.</p>
           <div className="flex items-center gap-6">
-            <button onClick={() => setModalContent('terms')} className="hover:underline">Podmínky</button>
-            <button onClick={() => setModalContent('privacy')} className="hover:underline">Soukromí</button>
-            <Link href="/contact" className="hover:underline">Kontakt</Link>
+            <button onClick={() => setModalContent('terms')} className="hover:underline cursor-pointer">Podmínky</button>
+            <button onClick={() => setModalContent('privacy')} className="hover:underline cursor-pointer">Soukromí</button>
+            <button 
+              onClick={openContactModal} 
+              className="hover:underline font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 cursor-pointer"
+            >
+              ✉️ Kontakt
+            </button>
           </div>
         </div>
       </footer>
+
+      {/* MODAL DIALOGS */}
+      {modalContent && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setModalContent(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                {modalContent === 'terms' && '📜 Podmínky použití platformy PawMeet'}
+                {modalContent === 'privacy' && '🔒 Zásady ochrany osobních údajů'}
+                {modalContent === 'reviews' && `💬 Uživatelské recenze (${totalRatingCount})`}
+                {modalContent === 'contact' && '✉️ Napište nám (info@pawmeet.eu)'}
+              </h3>
+              <button
+                onClick={() => setModalContent(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              
+              {/* REVIEWS MODAL */}
+              {modalContent === 'reviews' && (
+                <div className="space-y-4">
+                  {reviewsList.length === 0 ? (
+                    <p className="text-center text-slate-400 py-8 font-medium">Zatím nebyly přidány žádné recenze.</p>
+                  ) : (
+                    reviewsList.map((rev) => (
+                      <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-slate-900 dark:text-white">Uživatel</span>
+                          <span className="text-amber-400 font-extrabold text-xs">★ {rev.rating.toFixed(1)} / 5.0</span>
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">{rev.text}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">
+                          {new Date(rev.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* CONTACT FORM MODAL */}
+              {modalContent === 'contact' && (
+                <div className="space-y-4">
+                  {!contactSubmitted ? (
+                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-purple-600 dark:text-purple-400">info@pawmeet.eu</span>.
+                      </p>
+
+                      {contactError && (
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold">
+                          ⚠️ Odeslání zprávy selhalo. Zkontrolujte prosím připojení nebo to zkuste znovu.
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                          Váš e-mail
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          placeholder="vas@email.cz"
+                          className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                          Vaše zpráva
+                        </label>
+                        <textarea
+                          required
+                          value={contactMessage}
+                          onChange={(e) => setContactMessage(e.target.value)}
+                          placeholder="Co byste nám chtěli sdělit..."
+                          className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50 h-32 resize-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={contactLoading || !contactEmail.trim() || !contactMessage.trim()}
+                        className={`w-full py-3.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
+                          contactEmail.trim() && contactMessage.trim() && !contactLoading
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-500/25 cursor-pointer hover:scale-[1.01]'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {contactLoading ? 'Odesílám...' : 'Odeslat zprávu'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3">
+                      <span className="text-4xl block">📬</span>
+                      <h4 className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">Zpráva byla úspěšně odeslána!</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Děkujeme za váš kontakt. Budeme vás kontaktovat na e-mailu <span className="font-bold">{contactEmail}</span> co nejdříve.
+                      </p>
+                      <button
+                        onClick={resetContactForm}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md mt-2 cursor-pointer"
+                      >
+                        Napsat další zprávu
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TERMS MODAL */}
+              {modalContent === 'terms' && (
+                <div className="space-y-4">
+                  <p className="font-bold text-slate-900 dark:text-white">Vítejte v aplikaci PawMeet. Používáním naší platformy souhlasíte s následujícími smluvními podmínkami:</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">1. Úvodní ustanovení</strong>
+                  <p>Aplikace PawMeet slouží k propojování majitelů domácích mazlíčků, sdílení informací, plánování venčení a využití asistenčních služeb AI. Registrací účtu stvrzujete, že jste dosáhli věku 15 let nebo máte souhlas zákonného zástupce.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">2. Uživatelský účet a chování</strong>
+                  <p>Uživatel se zavazuje uvádět pravdivé informace a chovat se v komunitě s respektem. Je přísně zakázáno publikovat nevhodný, urážlivý, nezákonný nebo klamavý obsah, stejně jako obtěžovat ostatní páníčky.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">3. Bezpečnost a odpovědnost</strong>
+                  <p>PawMeet nenese odpovědnost za přímá setkání uživatelů ani za chování jejich zvířat během venčení. Uživatelé jsou plně zodpovědni za bezpečnost svých mazlíčků i sebe samých.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">4. Změny podmínek</strong>
+                  <p>Vyhrazujeme si právo tyto podmínky kdykoliv upravit. O významných změnách budete informováni přímo v aplikaci.</p>
+                </div>
+              )}
+
+              {/* PRIVACY MODAL */}
+              {modalContent === 'privacy' && (
+                <div className="space-y-4">
+                  <p className="font-bold text-slate-900 dark:text-white">Ochrana vašeho soukromí je pro nás nejvyšší prioritou. Zde jsou podrobné zásady nakládání s vašimi údaji podle GDPR:</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">1. Jaké údaje sbíráme?</strong>
+                  <p>Sbíráme pouze nezbytné údaje pro chod aplikace: e-mailovou adresu, profilové informace o vás a vašich mazlíčcích, a anonymizovaná/přibližná polohová data pro potřeby Živé mapy.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">2. Použití polohových dat (GPS)</strong>
+                  <p>Vaše přesné souřadnice neukládáme ani nezveřejňujeme. Na mapě se zobrazuje pouze přibližná zóna s nastavitelným rádiusem tak, aby byla chráněna vaše adresa a bezpečí.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">3. Sdílení dat se třetími stranami</strong>
+                  <p>Vaše osobní údaje neprodáváme ani nesdílíme se třetími stranami pro marketingové účely. Data zpracováváme výhradně na zabezpečených serverech (Supabase/Vercel) v souladu s evropskou legislativou.</p>
+
+                  <strong className="block text-slate-900 dark:text-white pt-2">4. Vaše práva podle GDPR</strong>
+                  <p>Máte právo na přístup ke svým údajům, jejich opravu, vyexportování nebo trvalé smazání účtu. V případě dotazů nás kontaktujte přímo přes formulář nebo na e-mailu info@pawmeet.eu.</p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/50">
+              <button
+                onClick={() => setModalContent(null)}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
+              >
+                Zavřít
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
