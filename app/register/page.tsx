@@ -10,32 +10,37 @@ import Link from 'next/link'
 export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'exists' | 'valid'>('idle')
-  const [allowMultiAccount, setAllowMultiAccount] = useState(false)
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'exists' | 'valid'>('idle')
   const router = useRouter()
 
-  // Automatická kontrola existence e-mailu
-  const checkEmailExists = async (email: string) => {
-    const cleanEmail = email.trim()
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setEmailStatus('idle')
+  // Dnešní datum pro kalendář (YYYY-MM-DD)
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  // Ověření unikátnosti uživatelského jména
+  const checkUsernameExists = async (username: string) => {
+    const cleanUsername = username.trim()
+    if (!cleanUsername) {
+      setUsernameStatus('idle')
       return
     }
 
-    setEmailStatus('checking')
+    setUsernameStatus('checking')
     const supabase = createClient()
-    
-    // Dotaz do tabulky profiles na existující e-mail
-    const { data } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', cleanEmail)
-      .maybeSingle()
 
-    if (data) {
-      setEmailStatus('exists')
-    } else {
-      setEmailStatus('valid')
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', cleanUsername)
+        .maybeSingle()
+
+      if (data) {
+        setUsernameStatus('exists')
+      } else {
+        setUsernameStatus('valid')
+      }
+    } catch {
+      setUsernameStatus('idle')
     }
   }
 
@@ -44,85 +49,105 @@ export default function RegisterPage() {
     setErrorMsg('')
     setLoading(true)
 
-    const supabase = createClient()
-    const formData = new FormData(e.currentTarget)
-    
-    const rawEmail = (formData.get('email') as string).trim()
-    const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
-    
-    if (password !== confirmPassword) {
-      setErrorMsg('Hesla se neshodují.')
-      setLoading(false)
-      return
-    }
+    try {
+      const supabase = createClient()
+      const formData = new FormData(e.currentTarget)
 
-    // Pokud e-mail existuje a je povolen vícenásobný účet, vytvoří se unikátní alias pro Supabase (např. email+1710000000@domain.cz)
-    const finalEmail = (emailStatus === 'exists' && allowMultiAccount)
-      ? rawEmail.replace('@', `+${Date.now()}@`)
-      : rawEmail
+      const rawEmail = (formData.get('email') as string).trim()
+      const password = formData.get('password') as string
+      const confirmPassword = formData.get('confirmPassword') as string
+      const username = (formData.get('username') as string).trim()
+      const birthDate = formData.get('birthDate') as string
+      const petBirthDate = formData.get('petBirthDate') as string
 
-    const firstName = formData.get('firstName') as string
-    const lastName = formData.get('lastName') as string
-    const username = formData.get('username') as string
-    const birthDate = formData.get('birthDate') as string
-    const city = formData.get('city') as string
-    const bio = formData.get('bio') as string
+      // 1. Kontrola shody hesel
+      if (password !== confirmPassword) {
+        setErrorMsg('Hesla se neshodují.')
+        setLoading(false)
+        return
+      }
 
-    const petName = formData.get('petName') as string
-    const petType = formData.get('petType') as string
-    const petBreed = formData.get('petBreed') as string
-    const petBirthDate = formData.get('petBirthDate') as string
-    const petGender = formData.get('petGender') as string
-    const petSize = formData.get('petSize') as string
-    const petNature = formData.get('petNature') as string
-    const petActivities = formData.get('petActivities') as string
+      // 2. Kontrola kalendáře (nesmí být v budoucnosti)
+      if (birthDate && birthDate > todayStr) {
+        setErrorMsg('Datum narození majitele nemůže být v budoucnosti.')
+        setLoading(false)
+        return
+      }
+      if (petBirthDate && petBirthDate > todayStr) {
+        setErrorMsg('Datum narození mazlíčka nemůže být v budoucnosti.')
+        setLoading(false)
+        return
+      }
 
-    // 1. Registrace uživatele v Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email: finalEmail,
-      password,
-      options: {
-        data: {
-          original_email: rawEmail,
-          username,
-          first_name: firstName,
-          last_name: lastName,
-          birth_date: birthDate,
-          city,
-          bio,
+      // 3. Generování unikátní e-mailové adresy pro Supabase Auth (umožní neomezené registrace)
+      const uniqueTag = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
+      const authEmail = rawEmail.includes('@')
+        ? rawEmail.replace('@', `+${uniqueTag}@`)
+        : `${rawEmail}+${uniqueTag}@pawmeet.local`
+
+      const firstName = formData.get('firstName') as string
+      const lastName = formData.get('lastName') as string
+      const city = formData.get('city') as string
+      const bio = formData.get('bio') as string
+
+      const petName = formData.get('petName') as string
+      const petType = formData.get('petType') as string
+      const petBreed = formData.get('petBreed') as string
+      const petGender = formData.get('petGender') as string
+      const petSize = formData.get('petSize') as string
+      const petNature = formData.get('petNature') as string
+      const petActivities = formData.get('petActivities') as string
+
+      // 4. Registrace uživatele v Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password,
+        options: {
+          data: {
+            email: rawEmail,
+            original_email: rawEmail,
+            username,
+            first_name: firstName,
+            last_name: lastName,
+            birth_date: birthDate || null,
+            city,
+            bio,
+          },
         },
-      },
-    })
-
-    if (error) {
-      setErrorMsg(error.message)
-      setLoading(false)
-      return
-    }
-
-    // 2. Uložení údajů o mazlíčkovi do tabulky 'pets'
-    if (data.user) {
-      const { error: petError } = await supabase.from('pets').insert({
-        user_id: data.user.id,
-        name: petName,
-        type: petType,
-        breed: petBreed,
-        birth_date: petBirthDate,
-        gender: petGender,
-        size: petSize,
-        nature: petNature,
-        activities: petActivities,
       })
 
-      if (petError) {
-        console.error('Chyba při ukládání mazlíčka:', petError.message)
+      if (error) {
+        setErrorMsg(error.message || 'Chyba při registrace do systému.')
+        setLoading(false)
+        return
       }
-    }
 
-    // 3. Okamžité přesměrování na domovský feed
-    router.push('/domu')
-    router.refresh()
+      // 5. Uložení údajů o mazlíčkovi do tabulky 'pets'
+      if (data.user) {
+        const { error: petError } = await supabase.from('pets').insert({
+          user_id: data.user.id,
+          name: petName,
+          type: petType,
+          breed: petBreed,
+          birth_date: petBirthDate,
+          gender: petGender,
+          size: petSize,
+          nature: petNature,
+          activities: petActivities,
+        })
+
+        if (petError) {
+          console.error('Chyba při ukládání mazlíčka:', petError.message)
+        }
+      }
+
+      // 6. Přesměrování
+      router.push('/domu')
+      router.refresh()
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Nastala neočekávaná chyba.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -165,33 +190,8 @@ export default function RegisterPage() {
                   type="email"
                   required
                   placeholder="vás@email.cz"
-                  onBlur={(e) => checkEmailExists(e.target.value)}
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
-                
-                {/* Indikátor kontroly e-mailu */}
-                {emailStatus === 'checking' && (
-                  <p className="text-xs text-gray-500 mt-1 ml-1">Ověřuji e-mail...</p>
-                )}
-                {emailStatus === 'valid' && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-1 font-medium">✓ E-mail je k dispozici</p>
-                )}
-                {emailStatus === 'exists' && (
-                  <div className="mt-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">
-                      ⚠️ Tento e-mail už v systému existuje.
-                    </p>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                      <input
-                        type="checkbox"
-                        checked={allowMultiAccount}
-                        onChange={(e) => setAllowMultiAccount(e.target.checked)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      Vytvořit další profil pod tímto e-mailem
-                    </label>
-                  </div>
-                )}
               </div>
 
               <div>
@@ -203,8 +203,18 @@ export default function RegisterPage() {
                   type="text"
                   required
                   placeholder="jannovak"
+                  onBlur={(e) => checkUsernameExists(e.target.value)}
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
+                {usernameStatus === 'checking' && (
+                  <p className="text-xs text-gray-500 mt-1 ml-1">Ověřuji jméno...</p>
+                )}
+                {usernameStatus === 'valid' && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-1 font-medium">✓ Uživatelské jméno je volné</p>
+                )}
+                {usernameStatus === 'exists' && (
+                  <p className="text-xs text-red-500 mt-1 ml-1 font-medium">⚠️ Toto jméno je již obsazené</p>
+                )}
               </div>
             </div>
 
@@ -277,6 +287,7 @@ export default function RegisterPage() {
                 <input
                   name="birthDate"
                   type="date"
+                  max={todayStr}
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
               </div>
@@ -365,6 +376,7 @@ export default function RegisterPage() {
                 <input
                   name="petBirthDate"
                   type="date"
+                  max={todayStr}
                   required
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                 />
@@ -433,7 +445,7 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={loading || (emailStatus === 'exists' && !allowMultiAccount)}
+            disabled={loading || usernameStatus === 'exists'}
             className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50 cursor-pointer"
           >
             {loading ? 'Vytvářím účet...' : 'Zaregistrovat se 🚀'}

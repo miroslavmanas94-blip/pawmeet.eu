@@ -24,22 +24,20 @@ export default function PremiumPage() {
   ]
 
   const handleCheckout = async () => {
+    if (loading) return
+    setLoading(true)
+
     try {
-      setLoading(true)
-
+      // Tichá kontrola přihlášení na pozadí bez přesměrovávání
       const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) {
-        alert('Pro nákup předplatného se musíte nejprve přihlásit.')
-        return
-      }
 
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: selectedPlan,
-          userId: user.id,
+          userId: user?.id || null,
+          email: user?.email || null,
         }),
       })
 
@@ -48,12 +46,12 @@ export default function PremiumPage() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert('Chyba při spuštění platby: ' + (data.error || 'Neznámá chyba'))
+        alert('Chyba při načítání platby: ' + (data.error || 'Neznámá chyba'))
+        setLoading(false)
       }
     } catch (error) {
       console.error('Chyba platby:', error)
       alert('Došlo k chybě při připojování k platební bráně.')
-    } finally {
       setLoading(false)
     }
   }
@@ -160,7 +158,7 @@ export default function PremiumPage() {
               className="w-full bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 hover:opacity-95 disabled:opacity-50 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-sm cursor-pointer"
             >
               {loading ? (
-                <span>Přesměrovávám na platbu...</span>
+                <span>Otevírám platební bránu...</span>
               ) : (
                 <>
                   <span>Aktivovat PawMeet Premium</span>
@@ -171,7 +169,7 @@ export default function PremiumPage() {
               )}
             </button>
             <p className="text-center text-[11px] text-slate-400">
-              Předplatné lze kdykoliv zrušit v nastavení účtu.
+              Platba probíhá přes zabezpečenou bránu Stripe. Předplatné lze kdykoliv zrušit.
             </p>
           </div>
 

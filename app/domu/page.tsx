@@ -306,6 +306,12 @@ export default function HomeFeed() {
   const [selectedPostForDetail, setSelectedPostForDetail] = useState<Post | null>(null)
   const [selectedPostForComments, setSelectedPostForComments] = useState<Post | null>(null)
 
+  const [activePostMenuId, setActivePostMenuId] = useState<string | null>(null)
+
+  const [reportPostId, setReportPostId] = useState<string | null>(null)
+  const [reportEmail, setReportEmail] = useState('')
+  const [reportReason, setReportReason] = useState('')
+
   const [activeStoryGroupIndex, setActiveStoryGroupIndex] = useState<number | null>(null)
   const [activeStoryItemIndex, setActiveStoryItemIndex] = useState<number>(0)
   const [storyCommentInput, setStoryCommentInput] = useState('')
@@ -647,7 +653,7 @@ export default function HomeFeed() {
     if (activeStoryGroupIndex === null) return
     const timer = setTimeout(() => {
       handleNextStory()
-    }, 5500)
+    }, 60000)
     return () => clearTimeout(timer)
   }, [activeStoryGroupIndex, activeStoryItemIndex, handleNextStory])
 
@@ -906,6 +912,19 @@ export default function HomeFeed() {
     showToast('Příspěvek smazán')
   }
 
+  const handleSendReport = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!reportEmail || !reportReason) return
+
+    const mailtoUrl = `mailto:info@pawmeet.eu?subject=Nahlášení příspěvku ${reportPostId}&body=E-mail oznamovatele: ${encodeURIComponent(reportEmail)}%0D%0ADůvod nahlášení: ${encodeURIComponent(reportReason)}`
+    window.location.href = mailtoUrl
+
+    showToast('Nahlášení odesláno na info@pawmeet.eu')
+    setReportPostId(null)
+    setReportEmail('')
+    setReportReason('')
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
@@ -953,47 +972,45 @@ export default function HomeFeed() {
     setIsUploading(true)
     try {
       const uploadedMediaUrls: PostMedia[] = []
+      
       for (const file of uploadFiles) {
         const fileExt = file.name.split('.').pop()
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
         const bucketName = createTab === 'story' ? 'stories' : 'posts'
 
-        const { error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, file)
+        const { error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        })
+        
         if (uploadError) {
-          console.error('Chyba nahrávání souboru:', uploadError.message)
-        } else {
-          const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName)
-          uploadedMediaUrls.push({ 
-            url: data.publicUrl, 
-            type: file.type.startsWith('video') ? 'video' : 'image',
-            overlay_text: imageOverlayText || undefined,
-            text_x: textPos.x,
-            text_y: textPos.y,
-            text_size: textSize,
-            text_color: textColor,
-            text_bg: textBg
-          })
+          console.error('Chyba nahrávání souboru:', uploadError)
+          throw new Error(`Nahrávání selhalo: ${uploadError.message}`)
         }
+
+        const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName)
+        
+        uploadedMediaUrls.push({ 
+          url: data.publicUrl, 
+          type: file.type.startsWith('video') ? 'video' : 'image',
+          overlay_text: imageOverlayText || undefined,
+          text_x: textPos.x,
+          text_y: textPos.y,
+          text_size: textSize,
+          text_color: textColor,
+          text_bg: textBg
+        })
       }
 
-      const mediaToSave = uploadedMediaUrls.length > 0 
-        ? uploadedMediaUrls 
-        : previewItems.map(i => ({ 
-            url: i.url, 
-            type: i.type, 
-            overlay_text: imageOverlayText || undefined,
-            text_x: textPos.x,
-            text_y: textPos.y,
-            text_size: textSize,
-            text_color: textColor,
-            text_bg: textBg
-          }))
+      if (uploadedMediaUrls.length === 0) {
+        throw new Error('Nepodařilo se nahrát žádný soubor')
+      }
 
       if (createTab === 'story') {
         const { error: storyErr } = await supabase.from('stories').insert({
           user_id: currentUser.id,
-          media_url: mediaToSave[0].url,
-          media_type: mediaToSave[0].type,
+          media_url: uploadedMediaUrls[0].url,
+          media_type: uploadedMediaUrls[0].type,
           overlay_text: imageOverlayText || null,
           text_x: textPos.x,
           text_y: textPos.y,
@@ -1001,31 +1018,43 @@ export default function HomeFeed() {
           text_color: textColor,
           text_bg: textBg
         })
+        
         if (storyErr) throw storyErr
         showToast('Příběh publikován!')
       } else {
         const { error: postErr } = await supabase.from('posts').insert({
           user_id: currentUser.id,
-          media_url: JSON.stringify(mediaToSave),
-          media_type: createTab === 'reel' ? 'video' : mediaToSave[0].type,
-          caption: createCaption,
-          location: createLocation || null,
-          overlay_text: imageOverlayText || null,
-          text_x: textPos.x,
-          text_y: textPos.y,
-          text_size: textSize,
-          text_color: textColor,
-          text_bg: textBg
+          media_url: JSON.stringify(uploadedMediaUrls),
+          media_type: createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
+          caption: createCaption || null,
+          location: createLocation || null
         })
+        
         if (postErr) throw postErr
         showToast(createTab === 'reel' ? 'Reel publikován!' : 'Příspěvek publikován!')
       }
 
       resetCreateModal()
       await fetchFeedData()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Chyba při publikování:', err)
-      showToast(`Ukládání selhalo: ${err.message || 'Chyba databáze'}`)
+
+      let errorMessage = 'Neznámá chyba'
+
+      if (err instanceof Error) {
+        errorMessage = err.message
+      } else if (typeof err === 'string') {
+        errorMessage = err
+      } else if (err && typeof err === 'object') {
+        const e = err as any
+        errorMessage = e.message || e.error_description || e.details || e.hint || JSON.stringify(err)
+      }
+
+      if (!errorMessage || errorMessage === '{}' || errorMessage === '[object Object]') {
+        errorMessage = 'Chyba databáze (zkontrolujte RLS politiky a schéma tabulky)'
+      }
+
+      showToast(`Ukládání selhalo: ${errorMessage}`)
     } finally {
       setIsUploading(false)
     }
@@ -1242,15 +1271,41 @@ export default function HomeFeed() {
                       </div>
                     </div>
 
-                    {isOwner && (
+                    <div className="relative">
                       <button
-                        onClick={() => handleDeletePost(post.id, post.user_id)}
-                        className="text-slate-400 hover:text-rose-600 text-xs font-bold p-1 transition cursor-pointer"
-                        title="Smazat příspěvek"
+                        onClick={() => setActivePostMenuId(activePostMenuId === post.id ? null : post.id)}
+                        className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer font-bold text-base leading-none"
+                        title="Možnosti"
                       >
-                        🗑️
+                        •••
                       </button>
-                    )}
+
+                      {activePostMenuId === post.id && (
+                        <div className="absolute right-0 top-8 w-40 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 overflow-hidden">
+                          {isOwner ? (
+                            <button
+                              onClick={() => {
+                                setActivePostMenuId(null)
+                                handleDeletePost(post.id, post.user_id)
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition cursor-pointer"
+                            >
+                              <span>🗑️</span> Smazat
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setActivePostMenuId(null)
+                                setReportPostId(post.id)
+                              }}
+                              className="w-full text-left px-3.5 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
+                            >
+                              <span>🚩</span> Nahlásit
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div
@@ -1537,6 +1592,53 @@ export default function HomeFeed() {
         </div>
       )}
 
+      {/* Modal pro Nahlášení příspěvku */}
+      {reportPostId && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 shadow-2xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <span className="font-extrabold text-xs text-slate-900">Nahlásit příspěvek</span>
+              <button onClick={() => setReportPostId(null)} className="text-slate-400 font-bold text-xs p-1">✕</button>
+            </div>
+
+            <form onSubmit={handleSendReport} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Váš e-mail:</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="vás@email.cz"
+                  value={reportEmail}
+                  onChange={(e) => setReportEmail(e.target.value)}
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none focus:border-violet-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Důvod nahlášení:</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Popište důvod nahlášení..."
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none resize-none focus:border-violet-500 font-medium"
+                />
+              </div>
+
+              <p className="text-[10px] text-slate-400">Nahlášení bude odesláno na <strong>info@pawmeet.eu</strong>.</p>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" onClick={() => setReportPostId(null)} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
+                <button type="submit" className="px-4 py-2 text-xs font-extrabold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition shadow">
+                  Odeslat
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Vytvoření příspěvku Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
@@ -1568,20 +1670,20 @@ export default function HomeFeed() {
                 onTouchStart={() => setIsDraggingText(true)}
                 onTouchEnd={() => setIsDraggingText(false)}
                 onTouchMove={handleTouchOrMouseMove}
-                className="relative border-2 border-dashed border-slate-200 hover:border-violet-400 rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition"
+                className="relative border-2 border-dashed border-slate-200 hover:border-violet-400 rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition cursor-crosshair"
               >
                 <input
                   type="file"
                   multiple={createTab === 'post'}
                   accept={createTab === 'reel' ? 'video/*' : 'image/*,video/*'}
                   onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-30"
+                  className={`absolute inset-0 opacity-0 cursor-pointer w-full h-full ${previewItems.length > 0 ? 'pointer-events-none z-0' : 'z-30'}`}
                 />
 
                 {previewItems.length > 0 ? (
                   <div className="relative w-full h-56 bg-slate-900 flex items-center justify-center overflow-hidden">
                     {previewItems[0].type === 'video' ? (
-                      <video src={previewItems[0].url} autoPlay loop muted controls className="w-full h-full object-contain pointer-events-none" />
+                      <video src={previewItems[0].url} autoPlay loop muted className="w-full h-full object-contain pointer-events-none" />
                     ) : (
                       <img src={previewItems[0].url} alt="" className="w-full h-full object-contain pointer-events-none" />
                     )}
@@ -1602,6 +1704,17 @@ export default function HomeFeed() {
                         </span>
                       </div>
                     )}
+
+                    <label className="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer z-30 backdrop-blur-sm border border-white/20">
+                      Změnit soubor
+                      <input
+                        type="file"
+                        multiple={createTab === 'post'}
+                        accept={createTab === 'reel' ? 'video/*' : 'image/*,video/*'}
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
                 ) : (
                   <div className="p-6 text-center text-slate-400 flex flex-col items-center pointer-events-none">

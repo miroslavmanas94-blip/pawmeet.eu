@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 
@@ -10,7 +10,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Načte požadovanou cílovou adresu z URL, případně použije '/domu'
+  const redirectTo = searchParams.get('redirectTo') || '/domu'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +32,8 @@ export default function LoginPage() {
       setError(loginError.message)
       setLoading(false)
     } else {
-      router.push('/domu')
+      // Přesměruje na dynamickou adresu podle parametru redirectTo
+      router.push(redirectTo)
       router.refresh()
     }
   }
