@@ -3,7 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
 const  = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-08-26.dahlia',
+  apiVersion: '2024-06-20',
 })
 
 // Servisní klient Supabase pro zápis do databáze bez omezení RLS
