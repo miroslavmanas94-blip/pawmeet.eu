@@ -311,10 +311,14 @@ export default function HomeFeed() {
   const [selectedPostForComments, setSelectedPostForComments] = useState<Post | null>(null)
 
   const [activePostMenuId, setActivePostMenuId] = useState<string | null>(null)
+  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null)
 
-  const [reportPostId, setReportPostId] = useState<string | null>(null)
+  const [reportItem, setReportItem] = useState<{ id: string; type: 'post' | 'comment' } | null>(null)
   const [reportEmail, setReportEmail] = useState('')
   const [reportReason, setReportReason] = useState('')
+
+  const [chatUsers, setChatUsers] = useState<Profile[]>([])
+  const [sentToUsers, setSentToUsers] = useState<Record<string, boolean>>({})
 
   const [activeStoryGroupIndex, setActiveStoryGroupIndex] = useState<number | null>(null)
   const [activeStoryItemIndex, setActiveStoryItemIndex] = useState<number>(0)
@@ -334,9 +338,16 @@ export default function HomeFeed() {
   }
 
   const markNotificationsAsRead = async () => {
-    if (notifications.some(n => !n.is_read) && currentUser && currentUser.id !== 'guest') {
+    if (currentUser && currentUser.id !== 'guest') {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-      await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false)
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', currentUser.id)
+      } catch (e) {
+        console.error('Chyba při aktualizaci oznámení v databázi:', e)
+      }
     }
   }
 
@@ -369,6 +380,86 @@ export default function HomeFeed() {
           postElement.scrollIntoView({ behavior: 'smooth' })
         }
       }
+    }
+  }
+
+  const fetchChatUsers = useCallback(async () => {
+    if (!currentUser || currentUser.id === 'guest') return
+    try {
+      const { data: sentMsgs } = await supabase
+        .from('messages')
+        .select('receiver_id, recipient_id')
+        .eq('sender_id', currentUser.id)
+        
+      const { data: recvMsgs } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .or(`receiver_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+
+      const partnerIds = new Set<string>()
+      sentMsgs?.forEach((m: any) => {
+        const rid = m.receiver_id || m.recipient_id
+        if (rid && rid !== currentUser.id) partnerIds.add(rid)
+      })
+      recvMsgs?.forEach((m: any) => {
+        if (m.sender_id && m.sender_id !== currentUser.id) partnerIds.add(m.sender_id)
+      })
+
+      if (partnerIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', Array.from(partnerIds))
+
+        if (profiles) {
+          setChatUsers(profiles.map(p => ({
+            id: p.id,
+            username: p.username || p.full_name || 'Uživatel',
+            avatar_url: p.avatar_url || '',
+            is_verified: false
+          })))
+        }
+      }
+    } catch (err) {
+      console.error('Chyba při načítání uživatelů z chatu:', err)
+    }
+  }, [currentUser, supabase])
+
+  useEffect(() => {
+    if (selectedPostForShare) {
+      fetchChatUsers()
+    }
+  }, [selectedPostForShare, fetchChatUsers])
+
+  const handleSendToChat = async (recipientId: string) => {
+    if (!currentUser || !selectedPostForShare) return
+    const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/domu#post-${selectedPostForShare.id}` : ''
+    const messageText = `Podívej se na tento příspěvek: ${postUrl}`
+
+    try {
+      const { error } = await supabase.from('messages').insert([
+        {
+          sender_id: currentUser.id,
+          receiver_id: recipientId,
+          content: messageText
+        }
+      ])
+
+      if (error) {
+        await supabase.from('messages').insert([
+          {
+            sender_id: currentUser.id,
+            recipient_id: recipientId,
+            content: messageText
+          }
+        ])
+      }
+
+      setSentToUsers(prev => ({ ...prev, [recipientId]: true }))
+      showToast('Příspěvek poslán do chatu!')
+    } catch (err) {
+      console.error('Chyba při odesílání do chatu:', err)
+      showToast('Chyba při odesílání příspěvku do chatu')
     }
   }
 
@@ -958,16 +1049,70 @@ export default function HomeFeed() {
 
   const handleSendReport = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!reportEmail || !reportReason) return
+    if (!reportEmail || !reportReason || !reportItem) return
 
-    const mailtoUrl = `mailto:info@pawmeet.eu?subject=Nahlášení příspěvku ${reportPostId}&body=E-mail oznamovatele: ${encodeURIComponent(reportEmail)}%0D%0ADůvod nahlášení: ${encodeURIComponent(reportReason)}`
+    const typeText = reportItem.type === 'comment' ? 'komentáře' : 'příspěvku'
+    const mailtoUrl = `mailto:info@pawmeet.eu?subject=Nahlášení ${typeText} ${reportItem.id}&body=E-mail oznamovatele: ${encodeURIComponent(reportEmail)}%0D%0ADůvod nahlášení: ${encodeURIComponent(reportReason)}`
     window.location.href = mailtoUrl
 
     showToast('Nahlášení odesláno na info@pawmeet.eu')
-    setReportPostId(null)
+    setReportItem(null)
     setReportEmail('')
     setReportReason('')
   }
+
+  const renderCommentWithMenu = (c: Comment, postId: string) => (
+    <div key={c.id} className="flex items-center justify-between text-xs text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
+      <div className="flex items-center gap-2 truncate">
+        <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 shrink-0 hover:underline">
+          {c.user.username}:
+        </Link>
+        <span className="truncate text-slate-700">{c.text}</span>
+      </div>
+
+      <div className="relative shrink-0 ml-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            setActiveCommentMenuId(activeCommentMenuId === c.id ? null : c.id)
+          }}
+          className="text-slate-400 hover:text-slate-700 font-bold text-xs p-1 cursor-pointer leading-none"
+          title="Možnosti"
+        >
+          •••
+        </button>
+
+        {activeCommentMenuId === c.id && (
+          <div className="absolute right-0 top-6 w-32 bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 overflow-hidden">
+            {currentUser && c.user_id === currentUser.id ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCommentMenuId(null)
+                  handleDeleteComment(postId, c.id)
+                }}
+                className="w-full text-left px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <span>🗑️</span> Smazat
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCommentMenuId(null)
+                  setReportItem({ id: c.id, type: 'comment' })
+                }}
+                className="w-full text-left px-3 py-1.5 text-[11px] font-bold text-amber-600 hover:bg-amber-50 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <span>🚩</span> Nahlásit
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -1366,7 +1511,7 @@ export default function HomeFeed() {
                             <button
                               onClick={() => {
                                 setActivePostMenuId(null)
-                                setReportPostId(post.id)
+                                setReportItem({ id: post.id, type: 'post' })
                               }}
                               className="w-full text-left px-3.5 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 flex items-center gap-2 transition cursor-pointer"
                             >
@@ -1509,19 +1654,7 @@ export default function HomeFeed() {
                           Komentáře ({post.comments.length}):
                         </span>
 
-                        {post.comments.map(c => (
-                          <div key={c.id} className="flex items-center justify-between text-xs text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
-                            <div className="flex items-center gap-2 truncate">
-                              <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 shrink-0 hover:underline">
-                                {c.user.username}:
-                              </Link>
-                              <span className="truncate text-slate-700">{c.text}</span>
-                            </div>
-                            {currentUser && c.user_id === currentUser.id && (
-                              <button onClick={() => handleDeleteComment(post.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
-                            )}
-                          </div>
-                        ))}
+                        {post.comments.map(c => renderCommentWithMenu(c, post.id))}
                       </div>
                     )}
                   </div>
@@ -1632,14 +1765,46 @@ export default function HomeFeed() {
                         </Link>
                         {sc.text}
                       </span>
-                      {currentUser && sc.user_id === currentUser.id && (
+                      
+                      <div className="relative shrink-0 ml-2">
                         <button
-                          onClick={() => handleDeleteStoryComment(activeStory.id, sc.id)}
-                          className="text-slate-400 hover:text-rose-500 font-bold ml-2 cursor-pointer"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setActiveCommentMenuId(activeCommentMenuId === sc.id ? null : sc.id)
+                          }}
+                          className="text-slate-400 hover:text-white font-bold text-xs p-1 cursor-pointer leading-none"
                         >
-                          ✕
+                          •••
                         </button>
-                      )}
+                        {activeCommentMenuId === sc.id && (
+                          <div className="absolute right-0 bottom-6 w-28 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-40 py-1 overflow-hidden">
+                            {currentUser && sc.user_id === currentUser.id ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveCommentMenuId(null)
+                                  handleDeleteStoryComment(activeStory.id, sc.id)
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-rose-400 hover:bg-slate-800 flex items-center gap-1.5"
+                              >
+                                <span>🗑️</span> Smazat
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveCommentMenuId(null)
+                                  setReportItem({ id: sc.id, type: 'comment' })
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-[10px] font-bold text-amber-400 hover:bg-slate-800 flex items-center gap-1.5"
+                              >
+                                <span>🚩</span> Nahlásit
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -1668,13 +1833,15 @@ export default function HomeFeed() {
         </div>
       )}
 
-      {/* Modal pro Nahlášení příspěvku */}
-      {reportPostId && (
+      {/* Modal pro Nahlášení */}
+      {reportItem && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <span className="font-extrabold text-xs text-slate-900">Nahlásit příspěvek</span>
-              <button onClick={() => setReportPostId(null)} className="text-slate-400 font-bold text-xs p-1">✕</button>
+              <span className="font-extrabold text-xs text-slate-900">
+                Nahlásit {reportItem.type === 'comment' ? 'komentář' : 'příspěvek'}
+              </span>
+              <button onClick={() => setReportItem(null)} className="text-slate-400 font-bold text-xs p-1">✕</button>
             </div>
 
             <form onSubmit={handleSendReport} className="space-y-3">
@@ -1705,7 +1872,7 @@ export default function HomeFeed() {
               <p className="text-[10px] text-slate-400">Nahlášení bude odesláno na <strong>info@pawmeet.eu</strong>.</p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={() => setReportPostId(null)} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
+                <button type="button" onClick={() => setReportItem(null)} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
                 <button type="submit" className="px-4 py-2 text-xs font-extrabold bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition shadow">
                   Odeslat
                 </button>
@@ -1972,19 +2139,7 @@ export default function HomeFeed() {
                     {selectedPostForDetail.caption}
                   </p>
                 )}
-                {selectedPostForDetail.comments.map(c => (
-                  <div key={c.id} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center">
-                    <div>
-                      <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 block hover:underline">
-                        {c.user.username}
-                      </Link>
-                      <span className="text-slate-700">{c.text}</span>
-                    </div>
-                    {currentUser && c.user_id === currentUser.id && (
-                      <button onClick={() => handleDeleteComment(selectedPostForDetail.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
-                    )}
-                  </div>
-                ))}
+                {selectedPostForDetail.comments.map(c => renderCommentWithMenu(c, selectedPostForDetail.id))}
               </div>
 
               <div className="p-3.5 border-t border-slate-100 bg-slate-50 flex gap-2">
@@ -2018,19 +2173,7 @@ export default function HomeFeed() {
             </div>
 
             <div className="flex-1 p-3 overflow-y-auto space-y-2">
-              {selectedPostForComments.comments.map(c => (
-                <div key={c.id} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center">
-                  <div>
-                    <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 block hover:underline">
-                      {c.user.username}
-                    </Link>
-                    <span className="text-slate-700">{c.text}</span>
-                  </div>
-                  {currentUser && c.user_id === currentUser.id && (
-                    <button onClick={() => handleDeleteComment(selectedPostForComments.id, c.id)} className="text-slate-400 hover:text-rose-600 font-bold ml-2 cursor-pointer">✕</button>
-                  )}
-                </div>
-              ))}
+              {selectedPostForComments.comments.map(c => renderCommentWithMenu(c, selectedPostForComments.id))}
             </div>
 
             <div className="p-3 border-t border-slate-100 bg-slate-50 flex gap-2">
@@ -2056,13 +2199,13 @@ export default function HomeFeed() {
       {/* Sdílení Modal */}
       {selectedPostForShare && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
-          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 shadow-2xl p-4 space-y-3">
+          <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 shadow-2xl p-4 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <span className="font-extrabold text-xs text-slate-900">Sdílet příspěvek</span>
               <button onClick={() => setSelectedPostForShare(null)} className="text-slate-400 font-bold text-xs p-1">✕</button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div 
                 onClick={() => {
                   if (typeof window !== 'undefined') {
@@ -2075,6 +2218,37 @@ export default function HomeFeed() {
               >
                 <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center font-bold text-xs">🔗</div>
                 <div className="text-xs font-bold text-slate-800">Kopírovat odkaz</div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-extrabold text-slate-500 block mb-2">Poslat do chatu:</span>
+                {chatUsers.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2">Zatím nemáte žádné konverzace v chatu.</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {chatUsers.map(chatUser => (
+                      <div key={chatUser.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs">
+                            {chatUser.avatar_url ? (
+                              <img src={chatUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              chatUser.username[0]?.toUpperCase()
+                            )}
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 truncate">{chatUser.username}</span>
+                        </div>
+                        <button
+                          onClick={() => handleSendToChat(chatUser.id)}
+                          disabled={sentToUsers[chatUser.id]}
+                          className="px-3 py-1 bg-violet-600 text-white font-extrabold text-[11px] rounded-lg hover:bg-violet-700 transition disabled:opacity-50 shrink-0 cursor-pointer"
+                        >
+                          {sentToUsers[chatUser.id] ? 'Odesláno ✓' : 'Poslat'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
