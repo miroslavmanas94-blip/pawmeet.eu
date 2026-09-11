@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import BottomNav from '@/components/BottomNav'
 
@@ -89,6 +91,7 @@ interface NotificationItem {
   text: string
   created_at: string
   is_read: boolean
+  post_id?: string
 }
 
 const SAMPLE_LOCATIONS = [
@@ -273,6 +276,7 @@ function FeedVideoPlayer({ src }: { src: string }) {
 
 export default function HomeFeed() {
   const supabase = createClient()
+  const router = useRouter()
 
   const [isMounted, setIsMounted] = useState(false)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
@@ -329,6 +333,45 @@ export default function HomeFeed() {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
+  const markNotificationsAsRead = async () => {
+    if (notifications.some(n => !n.is_read) && currentUser && currentUser.id !== 'guest') {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id).eq('is_read', false)
+    }
+  }
+
+  const toggleNotifications = () => {
+    if (isNotificationsOpen) {
+      markNotificationsAsRead()
+      setIsNotificationsOpen(false)
+    } else {
+      setIsNotificationsOpen(true)
+    }
+  }
+
+  const handleNotificationClick = (n: NotificationItem) => {
+    markNotificationsAsRead()
+    setIsNotificationsOpen(false)
+
+    if (n.type === 'follow') {
+      router.push(`/profil/${n.user.username}`)
+    } else if ((n.type === 'like' || n.type === 'comment') && n.post_id) {
+      const targetPost = posts.find(p => p.id === n.post_id)
+      if (targetPost) {
+        if (n.type === 'comment') {
+          setSelectedPostForComments(targetPost)
+        } else {
+          setSelectedPostForDetail(targetPost)
+        }
+      } else {
+        const postElement = document.getElementById(`post-${n.post_id}`)
+        if (postElement) {
+          postElement.scrollIntoView({ behavior: 'smooth' })
+        }
+      }
+    }
+  }
+
   const fetchFeedData = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -361,7 +404,7 @@ export default function HomeFeed() {
 
         const { data: rawNotifs } = await supabase
           .from('notifications')
-          .select('id, type, text, created_at, is_read, sender_id')
+          .select('id, type, text, created_at, is_read, sender_id, post_id')
           .eq('user_id', authUser.id)
           .order('created_at', { ascending: false })
           .limit(10)
@@ -375,11 +418,12 @@ export default function HomeFeed() {
           }
           setNotifications(rawNotifs.map((n: any) => ({
             id: n.id,
-            user: senderMap.get(n.sender_id) || { id: '', username: 'Uživatel', avatar_url: '' },
+            user: senderMap.get(n.sender_id) || { id: n.sender_id || '', username: 'Uživatel', avatar_url: '' },
             type: n.type,
             text: n.text,
             created_at: getRelativeTime(n.created_at),
-            is_read: n.is_read
+            is_read: n.is_read,
+            post_id: n.post_id
           })))
         }
       } else {
@@ -1108,7 +1152,7 @@ export default function HomeFeed() {
           </button>
 
           <button
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            onClick={toggleNotifications}
             className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 cursor-pointer transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1124,7 +1168,7 @@ export default function HomeFeed() {
           <div className="absolute right-4 sm:right-8 top-16 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-3">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-2">
               <span className="font-extrabold text-xs text-slate-900">Upozornění</span>
-              <button onClick={() => setIsNotificationsOpen(false)} className="text-slate-400 hover:text-slate-700 text-xs font-bold">✕</button>
+              <button onClick={toggleNotifications} className="text-slate-400 hover:text-slate-700 text-xs font-bold">✕</button>
             </div>
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {notifications.length === 0 ? (
@@ -1132,18 +1176,42 @@ export default function HomeFeed() {
               ) : (
                 notifications.map(n => (
                   <div key={n.id} className="flex items-center gap-2.5 text-xs p-2.5 hover:bg-slate-50 rounded-xl transition border border-transparent hover:border-slate-100">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-rose-500 p-[1.5px] shrink-0">
-                      <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center font-bold text-slate-700">
-                        {n.user.avatar_url ? (
-                          <img src={n.user.avatar_url} alt={n.user.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <span>{n.user.username[0]?.toUpperCase()}</span>
-                        )}
+                    <Link
+                      href={`/profil/${n.user.username}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        markNotificationsAsRead()
+                        setIsNotificationsOpen(false)
+                      }}
+                      className="shrink-0 hover:opacity-80 transition cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500 to-rose-500 p-[1.5px]">
+                        <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center font-bold text-slate-700">
+                          {n.user.avatar_url ? (
+                            <img src={n.user.avatar_url} alt={n.user.username} className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{n.user.username[0]?.toUpperCase()}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-bold text-slate-900 block truncate">{n.user.username}</span>
-                      <span className="text-slate-500 text-[11px]">{n.text}</span>
+                    </Link>
+
+                    <div 
+                      onClick={() => handleNotificationClick(n)}
+                      className="flex-1 min-w-0 cursor-pointer"
+                    >
+                      <Link
+                        href={`/profil/${n.user.username}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          markNotificationsAsRead()
+                          setIsNotificationsOpen(false)
+                        }}
+                        className="font-bold text-slate-900 hover:underline inline-block truncate max-w-full"
+                      >
+                        {n.user.username}
+                      </Link>
+                      <span className="text-slate-500 text-[11px] block truncate">{n.text}</span>
                     </div>
                   </div>
                 ))
@@ -1252,23 +1320,25 @@ export default function HomeFeed() {
                 <article id={`post-${post.id}`} key={post.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden w-full shadow-sm transition hover:shadow-md">
                   <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-white">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full p-[1.5px] bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-rose-500 shadow-sm shrink-0">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center font-bold text-slate-800">
-                          {post.user.avatar_url ? (
-                            <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-xs font-black">{post.user.username[0]?.toUpperCase()}</span>
-                          )}
+                      <Link href={`/profil/${post.user.username}`} className="flex items-center gap-3 group">
+                        <div className="w-9 h-9 rounded-full p-[1.5px] bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-rose-500 shadow-sm shrink-0">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center font-bold text-slate-800">
+                            {post.user.avatar_url ? (
+                              <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-black">{post.user.username[0]?.toUpperCase()}</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-black text-slate-900 tracking-wide">{post.user.username}</span>
-                          {post.user.is_verified && <span className="text-violet-600 text-xs">✓</span>}
-                          <span className="text-slate-400 text-[11px]">• {post.created_at}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black text-slate-900 tracking-wide group-hover:underline">{post.user.username}</span>
+                            {post.user.is_verified && <span className="text-violet-600 text-xs">✓</span>}
+                            <span className="text-slate-400 text-[11px]">• {post.created_at}</span>
+                          </div>
+                          {post.location && <span className="text-[11px] font-semibold text-rose-500 block">{post.location}</span>}
                         </div>
-                        {post.location && <span className="text-[11px] font-semibold text-rose-500 block">{post.location}</span>}
-                      </div>
+                      </Link>
                     </div>
 
                     <div className="relative">
@@ -1426,7 +1496,9 @@ export default function HomeFeed() {
                   <div className="px-4 py-3 space-y-1.5 bg-white">
                     {post.caption && (
                       <p className="text-xs text-slate-800 leading-relaxed">
-                        <span className="font-extrabold mr-1.5 text-slate-900">{post.user.username}</span>
+                        <Link href={`/profil/${post.user.username}`} className="font-extrabold mr-1.5 text-slate-900 hover:underline">
+                          {post.user.username}
+                        </Link>
                         {post.caption}
                       </p>
                     )}
@@ -1440,7 +1512,9 @@ export default function HomeFeed() {
                         {post.comments.map(c => (
                           <div key={c.id} className="flex items-center justify-between text-xs text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
                             <div className="flex items-center gap-2 truncate">
-                              <span className="font-extrabold text-slate-900 shrink-0">{c.user.username}:</span>
+                              <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 shrink-0 hover:underline">
+                                {c.user.username}:
+                              </Link>
                               <span className="truncate text-slate-700">{c.text}</span>
                             </div>
                             {currentUser && c.user_id === currentUser.id && (
@@ -1494,7 +1568,7 @@ export default function HomeFeed() {
             </div>
 
             <div className="absolute top-6 left-4 right-4 z-30 flex justify-between items-center text-white">
-              <div className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+              <Link href={`/profil/${activeGroup.user.username}`} className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 hover:bg-black/70 transition">
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-white/30 bg-slate-800 flex items-center justify-center">
                   {activeGroup.user.avatar_url ? (
                     <img src={activeGroup.user.avatar_url} alt={activeGroup.user.username} className="w-full h-full object-cover" />
@@ -1504,7 +1578,7 @@ export default function HomeFeed() {
                 </div>
                 <span className="text-xs font-extrabold">{activeGroup.user.username}</span>
                 <span className="text-[10px] text-white/70">• {getRelativeTime(activeStory.created_at)}</span>
-              </div>
+              </Link>
 
               <button
                 onClick={() => setActiveStoryGroupIndex(null)}
@@ -1553,7 +1627,9 @@ export default function HomeFeed() {
                   activeStory.comments.map(sc => (
                     <div key={sc.id} className="flex justify-between items-center text-[11px] bg-slate-950/90 px-3 py-1.5 rounded-xl text-white border border-slate-800">
                       <span className="truncate">
-                        <strong className="mr-1.5 text-violet-400">{sc.user.username}:</strong>
+                        <Link href={`/profil/${sc.user.username}`} className="mr-1.5 text-violet-400 font-bold hover:underline">
+                          {sc.user.username}:
+                        </Link>
                         {sc.text}
                       </span>
                       {currentUser && sc.user_id === currentUser.id && (
@@ -1874,7 +1950,7 @@ export default function HomeFeed() {
 
             <div className="w-full md:w-80 flex flex-col h-full bg-white border-l border-slate-200">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                <div className="flex items-center gap-2.5">
+                <Link href={`/profil/${selectedPostForDetail.user.username}`} className="flex items-center gap-2.5 hover:underline">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200">
                     {selectedPostForDetail.user.avatar_url ? (
                       <img src={selectedPostForDetail.user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -1883,21 +1959,25 @@ export default function HomeFeed() {
                     )}
                   </div>
                   <span className="text-xs font-black text-slate-900">{selectedPostForDetail.user.username}</span>
-                </div>
+                </Link>
                 <button onClick={() => setSelectedPostForDetail(null)} className="text-slate-400 font-bold text-xs p-1">✕</button>
               </div>
 
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
                 {selectedPostForDetail.caption && (
                   <p className="text-xs text-slate-800 border-b border-slate-100 pb-3">
-                    <span className="font-extrabold mr-1.5 text-slate-900">{selectedPostForDetail.user.username}</span>
+                    <Link href={`/profil/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-slate-900 hover:underline">
+                      {selectedPostForDetail.user.username}
+                    </Link>
                     {selectedPostForDetail.caption}
                   </p>
                 )}
                 {selectedPostForDetail.comments.map(c => (
                   <div key={c.id} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center">
                     <div>
-                      <span className="font-extrabold text-slate-900 block">{c.user.username}</span>
+                      <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 block hover:underline">
+                        {c.user.username}
+                      </Link>
                       <span className="text-slate-700">{c.text}</span>
                     </div>
                     {currentUser && c.user_id === currentUser.id && (
@@ -1941,7 +2021,9 @@ export default function HomeFeed() {
               {selectedPostForComments.comments.map(c => (
                 <div key={c.id} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center">
                   <div>
-                    <span className="font-extrabold text-slate-900 block">{c.user.username}</span>
+                    <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 block hover:underline">
+                      {c.user.username}
+                    </Link>
                     <span className="text-slate-700">{c.text}</span>
                   </div>
                   {currentUser && c.user_id === currentUser.id && (
