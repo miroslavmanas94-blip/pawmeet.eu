@@ -4,13 +4,13 @@ import { Suspense, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-type Profile = {
+export type Profile = {
   id: string
   username: string
   avatar_url?: string
 }
 
-type Message = {
+export type Message = {
   id: string
   sender_id: string
   receiver_id: string
@@ -18,71 +18,26 @@ type Message = {
   created_at: string
 }
 
-type Contact = Profile & {
+export type Contact = Profile & {
   lastMessage?: string
   lastMessageTime?: string
 }
 
-function ChatContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const activeUserId = searchParams.get('userId')
-
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+// SDÍLENÝ HOOK PRO ZÍSKÁNÍ SEZNAMU KONTAKTŮ Z CHATU
+export function useChatUsers(activeUserId?: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loadingContacts, setLoadingContacts] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const router = useRouter()
 
-  const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
-  const [loadingMessages, setLoadingMessages] = useState(false)
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
-
-  // WebRTC / Hovory
-  const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
-  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
-
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const localVideoRef = useRef<HTMLVideoElement>(null)
-  const remoteVideoRef = useRef<HTMLVideoElement>(null)
-  const peerConnection = useRef<RTCPeerConnection | null>(null)
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  // 1. OKAMŽITÉ NAČTENÍ AKTIVNÍHO PROFILU PODLE ID Z URL
   useEffect(() => {
-    if (!activeUserId) {
-      setActiveProfile(null)
-      return
-    }
-
-    const fetchActiveProfile = async () => {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('id', activeUserId)
-        .single()
-
-      if (data) setActiveProfile(data)
-    }
-
-    fetchActiveProfile()
-  }, [activeUserId])
-
-  // 2. INICIALIZATE UŽIVATELE A KONTAKTŮ
-  useEffect(() => {
-    const initData = async () => {
+    const fetchContacts = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/login')
+        if (router) router.push('/login')
+        setLoadingContacts(false)
         return
       }
       setCurrentUserId(user.id)
@@ -124,10 +79,64 @@ function ChatContent() {
       setLoadingContacts(false)
     }
 
-    initData()
+    fetchContacts()
   }, [activeUserId, router])
 
-  // 3. NAČTENÍ ZPRÁV AKTIVNÍHO CHATU
+  return { contacts, loadingContacts, currentUserId }
+}
+
+function ChatContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const activeUserId = searchParams.get('userId')
+
+  // Načtení kontaktů pomocí sdíleného hooku
+  const { contacts, loadingContacts, currentUserId } = useChatUsers(activeUserId)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+
+  // WebRTC / Hovory
+  const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
+  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
+
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const peerConnection = useRef<RTCPeerConnection | null>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Načtení aktivního profilu podle ID z URL
+  useEffect(() => {
+    if (!activeUserId) {
+      setActiveProfile(null)
+      return
+    }
+
+    const fetchActiveProfile = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', activeUserId)
+        .single()
+
+      if (data) setActiveProfile(data)
+    }
+
+    fetchActiveProfile()
+  }, [activeUserId])
+
+  // Načtení zpráv aktivního chatu
   useEffect(() => {
     if (!currentUserId || !activeUserId) return
 
@@ -149,12 +158,11 @@ function ChatContent() {
     loadMessages()
   }, [activeUserId, currentUserId])
 
-  // 4. SUPABASE REALTIME (ZPRÁVY + ONLINE PRESENCE + WEBRTC SIGNALIZACE)
+  // Realtime zprávy, online uživatelé a hovory
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
 
-    // Realtime Zprávy
     const msgChannel = supabase.channel('global-chat')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new as Message
@@ -168,7 +176,6 @@ function ChatContent() {
       })
       .subscribe()
 
-    // Online Presence
     const presenceChannel = supabase.channel('online-presence', {
       config: { presence: { key: currentUserId } }
     })
@@ -186,7 +193,6 @@ function ChatContent() {
         }
       })
 
-    // WebRTC Signalizace pro hovory
     const callChannel = supabase.channel(`user_call_${currentUserId}`)
       .on('broadcast', { event: 'call-offer' }, async ({ payload }) => {
         setCallType(payload.type)
@@ -204,7 +210,6 @@ function ChatContent() {
     }
   }, [currentUserId, activeUserId])
 
-  // 5. INICIALIZACE WEBRTC A ZAHÁJENÍ HOVORU
   const startCall = async (type: 'audio' | 'video') => {
     if (!activeUserId || !currentUserId) return
     setCallType(type)
@@ -268,7 +273,6 @@ function ChatContent() {
     }
   }
 
-  // Odeslání zprávy
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
@@ -370,7 +374,6 @@ function ChatContent() {
           </div>
         ) : (
           <>
-            {/* HLAVIČKA CHATU S TLAČÍTKY HLASOVÉHO A VIDEO HOVORU */}
             <div className="h-[72px] px-4 border-b border-neutral-200/80 flex items-center justify-between bg-white/95 backdrop-blur-sm z-10 shadow-sm">
               <div className="flex items-center gap-3">
                 <button onClick={() => router.push('/chat')} className="md:hidden w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center font-bold">
@@ -404,7 +407,6 @@ function ChatContent() {
                 </div>
               </div>
 
-              {/* TLAČÍTKA PRO HOVORY */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => startCall('audio')}
@@ -423,7 +425,6 @@ function ChatContent() {
               </div>
             </div>
 
-            {/* VÝPIS ZPRÁV */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa] relative">
               {loadingMessages ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#f8f9fa]/80 backdrop-blur-sm z-10">
@@ -463,7 +464,6 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* VKLÁDÁNÍ ZPRÁVY */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-neutral-200 flex items-center gap-3">
               <input
                 type="text"
@@ -484,7 +484,7 @@ function ChatContent() {
         )}
       </div>
 
-      {/* OVERLAY PRO AUDIO / VIDEO HOVORY */}
+      {/* OVERLAY PRO HOVORY */}
       {callStatus !== 'idle' && (
         <div className="fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-6">
@@ -496,7 +496,6 @@ function ChatContent() {
             </p>
           </div>
 
-          {/* VIDEO PROSTORY */}
           {callType === 'video' && (
             <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl">
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
@@ -504,7 +503,6 @@ function ChatContent() {
             </div>
           )}
 
-          {/* OVLÁDÁNÍ HOVORU */}
           <div className="flex items-center gap-6 mb-8">
             {callStatus === 'incoming' ? (
               <>
