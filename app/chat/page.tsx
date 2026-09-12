@@ -49,7 +49,6 @@ export type Contact = Profile & {
   lastMessage?: string
 }
 
-// Pomocná funkce pro lidské zobrazení času "Naposledy online"
 function formatLastSeen(dateString?: string) {
   if (!dateString) return 'Offline'
   const date = new Date(dateString)
@@ -74,7 +73,6 @@ function ChatContent() {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   
-  // Sledování stavu online uživatelů a jejich posledního zastižení
   const [onlineUsers, setOnlineUsers] = useState<Map<string, string>>(new Map())
 
   // Indikátor psaní
@@ -112,6 +110,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  // Načtení profilů a automatický výběr první konverzace
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -128,12 +127,16 @@ function ChatContent() {
         .select('id, username, avatar_url, last_seen')
         .neq('id', user.id)
 
-      if (profiles) {
+      if (profiles && profiles.length > 0) {
         setContacts(profiles)
+        // Pokud není zvolen žádný userId, otevřeme hned první konverzaci
+        if (!activeUserId) {
+          router.replace(`/chat?userId=${profiles[0].id}`)
+        }
       }
     }
     init()
-  }, [router])
+  }, [router, activeUserId])
 
   useEffect(() => {
     if (!activeUserId) {
@@ -529,8 +532,8 @@ function ChatContent() {
             <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl font-black">
               💬
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Zabezpečený živý chat</h3>
-            <p className="text-xs text-slate-400 max-w-sm">Zprávy existují pouze v reálném čase. Vyberte kontakt a začněte konverzaci.</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Žádná konverzace</h3>
+            <p className="text-xs text-slate-400 max-w-sm">Zatím nebyl nalezen žádný kontakt.</p>
           </div>
         ) : (
           <>
@@ -604,10 +607,10 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* SEKCIE PRO PSANÍ A INDIKÁTOR PSANÍ HLAVNÍ LIŠTĚ */}
+            {/* SPODNÍ SEKCIE S LIŠTOU A INDIKÁTOREM PSANÍ */}
             <div className="bg-white border-t border-slate-100 sticky bottom-0 left-0 right-0 z-10">
               
-              {/* Indikátor se 3 tečkami přesně NAD hlavní lištou na levé straně */}
+              {/* Indikátor psaní přímo NAD lištou na levé straně */}
               {isTyping && (
                 <div className="px-4 pt-2.5 flex items-center gap-2 text-slate-500">
                   <div className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-xs">
@@ -619,7 +622,7 @@ function ChatContent() {
                 </div>
               )}
 
-              {/* HLAVNÍ LIŠTA PRO PSANÍ ZPRÁVY */}
+              {/* FORMULÁŘ PRO PÍSÁNÍ */}
               <form onSubmit={handleSendMessage} className="p-4 flex items-center gap-3">
                 <label className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-all">
                   <PlusIcon />
