@@ -18,7 +18,7 @@ const PlusIcon = () => (
 )
 
 const SendIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
 )
 
 const PhoneOffIcon = () => (
@@ -41,7 +41,7 @@ const StickerIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><path d="M14 3v6h6"/></svg>
 )
 
-// --- KATEGORIE SAMOLEPEK ---
+// SAMOLEPKY
 const STICKER_CATEGORIES = [
   {
     name: '3D Emoji',
@@ -50,26 +50,6 @@ const STICKER_CATEGORIES = [
       { id: '3d_2', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Smiling%20Face%20with%20Heart-Eyes.png' },
       { id: '3d_3', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png' },
       { id: '3d_4', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Victory%20Hand.png' },
-      { id: '3d_5', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Fire.png' },
-      { id: '3d_6', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Exploding%20Head.png' },
-    ]
-  },
-  {
-    name: 'Animované (GIF)',
-    stickers: [
-      { id: 'gif_1', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/3o7TKsjRrfIPjei8wM/giphy.gif' },
-      { id: 'gif_2', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/l41fk5N7uT2m8oWly/giphy.gif' },
-      { id: 'gif_3', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/26u4b45b8KxyP56I8/giphy.gif' },
-      { id: 'gif_4', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/xT9IgG50Fb7Mi0prBC/giphy.gif' },
-    ]
-  },
-  {
-    name: 'Klasické',
-    stickers: [
-      { id: 'cl_1', url: 'https://cdn-icons-png.flaticon.com/512/742/742751.png' },
-      { id: 'cl_2', url: 'https://cdn-icons-png.flaticon.com/512/742/742752.png' },
-      { id: 'cl_3', url: 'https://cdn-icons-png.flaticon.com/512/742/742760.png' },
-      { id: 'cl_4', url: 'https://cdn-icons-png.flaticon.com/512/742/742784.png' },
     ]
   }
 ]
@@ -120,16 +100,13 @@ function ChatContent() {
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Nabídky
   const [showAttachMenu, setShowAttachMenu] = useState(false)
   const [showStickerPicker, setShowStickerPicker] = useState(false)
   const [activeStickerTab, setActiveStickerTab] = useState(0)
 
-  // Kontextové menu
   const [selectedMsgMenu, setSelectedMsgMenu] = useState<{ msg: Message; x: number; y: number } | null>(null)
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // WebRTC
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
@@ -160,7 +137,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Načtení všech profilů z tabulky profiles + seřazení podle historie správ
+  // NAČTENÍ POUZE AKTIVNÍCH CHATŮ (se kterými si už napsal)
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -172,57 +149,49 @@ function ChatContent() {
       }
       setCurrentUserId(user.id)
 
-      // 1. Načtení VŠECH profilů z tabulky profiles
-      const { data: allProfiles, error: profError } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', user.id)
-
-      if (profError) {
-        console.error('Chyba při načítání profilů:', profError)
-        return
-      }
-
-      if (!allProfiles) return
-
-      // 2. Načtení historie zpráv pro seřazení aktivních konverzací nahoru
-      const { data: userMessages } = await supabase
+      // Načteme zprávy uživatele pro nalezení partnerů
+      const { data: userMessages, error: msgError } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, created_at')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
-      // Extrakce ID partnerů, se kterými už proběhla zpráva
+      if (msgError || !userMessages) return
+
+      // Získáme unikátní ID lidí, se kterými proběhla konverzace
       const activePartnerIds = Array.from(
         new Set(
-          (userMessages || []).map((msg) =>
+          userMessages.map((msg) =>
             msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
           )
         )
       )
 
-      // Seřazení: nejprve ti, se kterými proběhla konverzace, potom zbytek
-      const activeProfiles = activePartnerIds
-        .map((id) => allProfiles.find((p) => p.id === id))
-        .filter((p): p is Profile => p !== undefined)
+      if (activePartnerIds.length === 0) {
+        setContacts([])
+        return
+      }
 
-      const remainingProfiles = allProfiles.filter(
-        (p) => !activePartnerIds.includes(p.id)
-      )
+      // Načteme profily JEN pro aktivní partnery
+      const { data: activeProfiles, error: profError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', activePartnerIds)
 
-      const sortedContacts = [...activeProfiles, ...remainingProfiles]
+      if (!profError && activeProfiles) {
+        // Zachováme pořadí podle nejnovější zprávy
+        const sorted = activePartnerIds
+          .map((id) => activeProfiles.find((p) => p.id === id))
+          .filter((p): p is Profile => p !== undefined)
 
-      setContacts(sortedContacts)
-
-      if (!activeUserId && sortedContacts.length > 0 && window.innerWidth >= 768) {
-        router.replace(`/chat?userId=${sortedContacts[0].id}`)
+        setContacts(sorted)
       }
     }
 
     init()
-  }, [router, activeUserId])
+  }, [router])
 
-  // Načtení konverzace a aktivního profilu
+  // Načtení detailu chatu
   useEffect(() => {
     if (!activeUserId || !currentUserId) {
       setActiveProfile(null)
@@ -248,7 +217,7 @@ function ChatContent() {
 
       if (!error && oldMessages) {
         setMessages(oldMessages)
-        setTimeout(scrollToBottom, 100)
+        setTimeout(scrollToBottom, 50)
       }
     }
 
@@ -409,17 +378,11 @@ function ChatContent() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Obrázek je příliš velký (max 5 MB).')
-      return
-    }
-
     const reader = new FileReader()
     reader.onload = () => {
       sendPayload({ media_url: reader.result as string })
       setShowAttachMenu(false)
     }
-
     reader.readAsDataURL(file)
     e.target.value = ''
   }
@@ -427,17 +390,6 @@ function ChatContent() {
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
     e.preventDefault()
     setSelectedMsgMenu({ msg, x: e.clientX, y: e.clientY })
-  }
-
-  const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
-    const touch = e.touches[0]
-    touchTimerRef.current = setTimeout(() => {
-      setSelectedMsgMenu({ msg, x: touch.clientX, y: touch.clientY })
-    }, 500)
-  }
-
-  const handleTouchEnd = () => {
-    if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
   }
 
   const copyMessage = () => {
@@ -575,11 +527,9 @@ function ChatContent() {
     if (msg.sticker_url) {
       return <img src={msg.sticker_url} alt="Samolepka" className="w-28 h-28 object-contain my-1" />
     }
-
     if (msg.media_url) {
       return <img src={msg.media_url} alt="Obrázek" className="rounded-2xl max-w-full max-h-72 object-cover shadow-sm" />
     }
-
     return msg.content
   }
 
@@ -589,301 +539,227 @@ function ChatContent() {
   })
 
   return (
-    <div className="flex w-full h-[calc(100vh-80px)] bg-slate-50 overflow-hidden max-w-[1400px] mx-auto border-x border-slate-200/80 shadow-2xl relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
+    <div className="flex w-full h-full min-h-screen bg-white overflow-hidden relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
       
-      {/* LEVÝ PANEL - KONTAKTNÍ SEZNAM */}
-      <div className={`w-full md:w-[360px] lg:w-[400px] flex-col border-r border-slate-200 bg-white ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
-        <div className="p-5 border-b border-slate-100">
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Konverzace</h1>
-          <div className="relative">
-            <span className="absolute left-3.5 top-3 text-slate-400">
-              <SearchIcon />
-            </span>
-            <input
-              type="text"
-              placeholder="Hledat v konverzacích..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-xs outline-none transition-all"
-            />
+      {/* SEZNAM AKTIVNÍCH CHATŮ */}
+      {!activeUserId && (
+        <div className="w-full flex flex-col h-full bg-white">
+          <div className="p-5 border-b border-slate-100">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Konverzace</h1>
+            <div className="relative">
+              <span className="absolute left-3.5 top-3 text-slate-400">
+                <SearchIcon />
+              </span>
+              <input
+                type="text"
+                placeholder="Hledat v konverzacích..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-xs outline-none transition-all"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {filteredContacts.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">Nenalezeni žádní uživatelé.</div>
-          ) : (
-            filteredContacts.map((contact) => {
-              const isOnline = onlineUsers.has(contact.id)
-              const displayName = contact.username || contact.first_name || 'Uživatel'
-              return (
-                <div
-                  key={contact.id}
-                  onClick={() => router.push(`/chat?userId=${contact.id}`)}
-                  className={`flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer transition-all ${
-                    contact.id === activeUserId 
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                      : 'hover:bg-slate-100/80 text-slate-700'
-                  }`}
-                >
-                  <div className="relative">
-                    <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-lg ${contact.id === activeUserId ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                      {contact.avatar_url ? (
-                        <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-                      ) : (
-                        displayName.substring(0, 2).toUpperCase()
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            {filteredContacts.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm font-medium">
+                Zatím nemáte žádné aktivní konverzace.
+              </div>
+            ) : (
+              filteredContacts.map((contact) => {
+                const isOnline = onlineUsers.has(contact.id)
+                const displayName = contact.username || contact.first_name || 'Uživatel'
+                return (
+                  <div
+                    key={contact.id}
+                    onClick={() => router.push(`/chat?userId=${contact.id}`)}
+                    className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
+                  >
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-indigo-600">
+                        {contact.avatar_url ? (
+                          <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          displayName.substring(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      {isOnline && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
                       )}
                     </div>
-                    {isOnline && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                    )}
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <h3 className="font-bold text-sm truncate">{displayName}</h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h3 className="font-bold text-sm truncate text-slate-900">{displayName}</h3>
+                      </div>
+                      <p className="text-xs truncate text-slate-400">
+                        {isOnline ? 'Aktivní nyní' : formatLastSeen(contact.last_seen)}
+                      </p>
                     </div>
-                    <p className={`text-xs truncate ${contact.id === activeUserId ? 'text-indigo-100' : 'text-slate-400'}`}>
-                      {isOnline ? 'Aktivní nyní' : formatLastSeen(contact.last_seen)}
-                    </p>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL CHATU VYPADACÍ JAKO NA OBRÁZKU */}
+      {activeUserId && (
+        <div className="w-full h-screen flex flex-col bg-white overflow-hidden">
+          
+          {/* HLAVIČKA CHATU (FIXNÍ) */}
+          <div className="h-16 px-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+            <button 
+              onClick={() => router.push('/chat')} 
+              className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 active:scale-95 transition-all"
+            >
+              <ArrowLeftIcon />
+            </button>
+
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center overflow-hidden mb-0.5 shadow-md shadow-indigo-600/20">
+                {activeProfile?.avatar_url ? (
+                  <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  (activeProfile?.username || activeProfile?.first_name || 'P').substring(0, 2).toUpperCase()
+                )}
+              </div>
+              <h2 className="font-bold text-slate-900 text-sm leading-none">{activeProfile?.username || activeProfile?.first_name || 'pawmeet'}</h2>
+              <span className="text-[10px] text-slate-400 font-medium">
+                {onlineUsers.has(activeProfile?.id || '') ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => startCall('audio')} 
+                className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-all"
+              >
+                <PhoneIcon />
+              </button>
+              <button 
+                onClick={() => startCall('video')} 
+                className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-all"
+              >
+                <VideoIcon />
+              </button>
+            </div>
+          </div>
+
+          {/* OBLAST ZPRÁV (JEDINÁ SCROLLUJÍCÍ ZÓNA) */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+            {messages.map((msg) => {
+              const isMine = msg.sender_id === currentUserId
+              return (
+                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div 
+                    onContextMenu={(e) => handleContextMenu(e, msg)}
+                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm font-medium transition-all select-none ${
+                      isMine 
+                        ? 'bg-[#4F46E5] text-white rounded-br-xs shadow-xs' 
+                        : 'bg-slate-100 text-slate-800 rounded-bl-xs'
+                    }`}
+                  >
+                    {renderMessageContent(msg)}
                   </div>
                 </div>
               )
-            })
-          )}
-        </div>
-      </div>
-
-      {/* PRAVÝ PANEL - DETAIL CHATU */}
-      <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
-        {!activeUserId ? (
-          <div className="text-center p-8">
-            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl font-black">
-              💬
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Vyberte uživatele</h3>
-            <p className="text-xs text-slate-400 max-w-sm">Klikněte na jakýkoliv profil ze seznamu vlevo a zahajte konverzaci.</p>
+            })}
+            <div ref={messagesEndRef} />
           </div>
-        ) : (
-          <>
-            {/* HLAVIČKA CHATU */}
-            <div className="h-20 px-4 md:px-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
-              <div className="flex items-center gap-3 md:gap-4">
-                <button 
-                  onClick={() => router.push('/chat')} 
-                  className="md:hidden p-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold active:scale-95 transition-all"
-                >
-                  <ArrowLeftIcon />
-                </button>
 
-                <div className="relative">
-                  <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center overflow-hidden">
-                    {activeProfile?.avatar_url ? (
-                      <img src={activeProfile.avatar_url} alt={activeProfile.username || 'Avatar'} className="w-full h-full object-cover" />
-                    ) : (
-                      (activeProfile?.username || activeProfile?.first_name || 'U').substring(0, 2).toUpperCase()
-                    )}
-                  </div>
-                  {onlineUsers.has(activeProfile?.id || '') && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                  )}
-                </div>
+          {/* SPODNÍ VSTUPNÍ POLE (FIXNÍ) */}
+          <div className="p-3 border-t border-slate-100 bg-white shrink-0">
+            {isTyping && (
+              <div className="px-2 pb-2 text-xs text-indigo-600 font-semibold animate-pulse">
+                píše zprávu...
+              </div>
+            )}
 
-                <div>
-                  <h2 className="font-bold text-slate-900 text-sm md:text-base">{activeProfile?.username || activeProfile?.first_name || 'Načítám...'}</h2>
-                  <div className="text-xs">
-                    {isTyping ? (
-                      <span className="text-indigo-600 font-semibold animate-pulse">píše zprávu...</span>
-                    ) : onlineUsers.has(activeProfile?.id || '') ? (
-                      <span className="text-emerald-600 font-medium">Aktivní nyní</span>
-                    ) : (
-                      <span className="text-slate-400">{formatLastSeen(activeProfile?.last_seen)}</span>
-                    )}
-                  </div>
+            {/* PIPELINE NABÍDEK */}
+            {showStickerPicker && (
+              <div className="p-3 border-b border-slate-100 bg-slate-50 rounded-2xl mb-2">
+                <div className="grid grid-cols-4 gap-2">
+                  {STICKER_CATEGORIES[0].stickers.map((s) => (
+                    <button key={s.id} onClick={() => handleSendSticker(s.url)} className="p-2 bg-white rounded-xl border border-slate-200 hover:bg-indigo-50">
+                      <img src={s.url} alt="Sticker" className="w-full h-full object-contain" />
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
 
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => startCall('audio')} 
-                  className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 flex items-center justify-center transition-all"
-                  title="Hlasový hovor"
-                >
-                  <PhoneIcon />
-                </button>
-                <button 
-                  onClick={() => startCall('video')} 
-                  className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 flex items-center justify-center transition-all"
-                  title="Video hovor"
-                >
-                  <VideoIcon />
+            {showAttachMenu && (
+              <div className="p-2 border-b border-slate-100 bg-white flex gap-2 mb-2">
+                <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
+                  <ImageIcon />
+                  <span>Obrázek</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+                <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold">
+                  <StickerIcon />
+                  <span>Samolepka</span>
                 </button>
               </div>
-            </div>
+            )}
 
-            {/* HISTORIE ZPRÁV */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/50">
-              {messages.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 text-xs">Žádné dosavadní zprávy. Napište první zprávu!</div>
-              ) : (
-                messages.map((msg) => {
-                  const isMine = msg.sender_id === currentUserId
-                  return (
-                    <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div 
-                        onContextMenu={(e) => handleContextMenu(e, msg)}
-                        onTouchStart={(e) => handleTouchStart(e, msg)}
-                        onTouchEnd={handleTouchEnd}
-                        className={`max-w-[80%] md:max-w-[70%] px-4 py-3 rounded-2xl text-sm shadow-sm transition-all select-none cursor-pointer ${
-                          isMine 
-                            ? 'bg-indigo-600 text-white rounded-br-xs' 
-                            : 'bg-white border border-slate-200/60 text-slate-800 rounded-bl-xs'
-                        }`}
-                      >
-                        {renderMessageContent(msg)}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAttachMenu(!showAttachMenu)
+                  setShowStickerPicker(false)
+                }}
+                className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-all"
+              >
+                <PlusIcon />
+              </button>
 
-            {/* DOLNÍ VSTUPNÍ POLE */}
-            <div className="bg-white border-t border-slate-100 sticky bottom-0 left-0 right-0 z-20 shadow-md">
-              
-              {isTyping && (
-                <div className="px-4 pt-2 flex items-center gap-2 text-slate-500">
-                  <div className="bg-slate-100 border border-slate-200/60 px-3 py-1 rounded-full flex items-center gap-1 shadow-xs">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                  </div>
-                  <span className="italic text-[11px] text-slate-400 font-medium">píše...</span>
-                </div>
-              )}
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleInputChange}
+                placeholder="Napište zprávu..."
+                className="flex-1 px-4 py-3 bg-slate-100/70 focus:bg-slate-100 border border-transparent rounded-2xl text-sm outline-none transition-all text-slate-900"
+              />
 
-              {/* NABÍDKA SAMOLEPEK */}
-              {showStickerPicker && (
-                <div className="p-3 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md">
-                  <div className="flex gap-2 mb-3 border-b border-slate-200/60 pb-2">
-                    {STICKER_CATEGORIES.map((cat, idx) => (
-                      <button
-                        key={cat.name}
-                        onClick={() => setActiveStickerTab(idx)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                          activeStickerTab === idx ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200/60'
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
+              <button 
+                type="submit" 
+                disabled={!newMessage.trim()} 
+                className="w-11 h-11 rounded-2xl bg-[#A5B4FC] disabled:opacity-50 text-white flex items-center justify-center shrink-0 transition-all shadow-sm"
+              >
+                <SendIcon />
+              </button>
+            </form>
+          </div>
 
-                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-48 overflow-y-auto p-1">
-                    {STICKER_CATEGORIES[activeStickerTab].stickers.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => handleSendSticker(s.url)}
-                        className="w-full aspect-square p-2 rounded-2xl bg-white border border-slate-200/80 hover:bg-indigo-50 hover:border-indigo-300 transition-all flex items-center justify-center shrink-0 shadow-xs active:scale-95"
-                      >
-                        <img src={s.url} alt="Sticker" className="w-full h-full object-contain" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* TLAČÍTKO PŘÍLOH */}
-              {showAttachMenu && (
-                <div className="p-3 border-b border-slate-100 bg-white flex items-center gap-3">
-                  <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer transition-all">
-                    <ImageIcon />
-                    <span>Obrázek</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  </label>
-
-                  <button
-                    onClick={() => setShowStickerPicker(!showStickerPicker)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-2xl text-xs font-bold transition-all"
-                  >
-                    <StickerIcon />
-                    <span>Samolepky & GIF</span>
-                  </button>
-                </div>
-              )}
-
-              <form onSubmit={handleSendMessage} className="p-3 md:p-4 flex items-center gap-2 md:gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAttachMenu(!showAttachMenu)
-                    setShowStickerPicker(false)
-                  }}
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0 ${
-                    showAttachMenu ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                  }`}
-                >
-                  <PlusIcon />
-                </button>
-
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={handleInputChange}
-                  placeholder="Napište zprávu..."
-                  className="flex-1 px-4 md:px-5 py-3 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-sm outline-none transition-all text-slate-900"
-                />
-
-                <button 
-                  type="submit" 
-                  disabled={!newMessage.trim()} 
-                  className="w-11 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all shrink-0"
-                >
-                  <SendIcon />
-                </button>
-              </form>
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* KONTEXTOVÉ MENU NA ZPRÁVĚ */}
       {selectedMsgMenu && (
         <div 
-          className="fixed z-[300] bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
-          style={{ top: Math.min(selectedMsgMenu.y, window.innerHeight - 120), left: Math.min(selectedMsgMenu.x, window.innerWidth - 180) }}
+          className="fixed z-[300] bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 min-w-[150px]"
+          style={{ top: selectedMsgMenu.y, left: selectedMsgMenu.x }}
         >
           {selectedMsgMenu.msg.content && (
-            <button 
-              onClick={copyMessage}
-              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-2"
-            >
+            <button onClick={copyMessage} className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl">
               📋 Zkopírovat
             </button>
           )}
-          <button 
-            onClick={deleteMessageLocally}
-            className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex items-center gap-2"
-          >
+          <button onClick={deleteMessageLocally} className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl">
             🗑️ Odstranit
           </button>
         </div>
       )}
 
-      {/* OVERLAY PRO VOICE/VIDEO CALL */}
+      {/* HOVOR OVERLAY */}
       {callStatus !== 'idle' && (
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex flex-col items-center justify-between p-8 text-white">
+        <div className="fixed inset-0 bg-slate-950/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-8">
-            <div className="w-24 h-24 rounded-3xl bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-3xl font-bold mx-auto mb-4 animate-pulse overflow-hidden">
-              {activeProfile?.avatar_url ? (
-                <img src={activeProfile.avatar_url} alt={activeProfile.username || 'Avatar'} className="w-full h-full object-cover" />
-              ) : (
-                (activeProfile?.username || activeProfile?.first_name || 'U').substring(0, 2).toUpperCase()
-              )}
-            </div>
             <h3 className="text-2xl font-black mb-1">{activeProfile?.username || activeProfile?.first_name}</h3>
-            <p className="text-xs tracking-wider uppercase font-semibold text-slate-400">
+            <p className="text-xs text-slate-400 uppercase font-semibold">
               {callStatus === 'calling' && 'Volám...'}
               {callStatus === 'incoming' && 'Příchozí hovor...'}
               {callStatus === 'connected' && 'Probíhá hovor'}
@@ -891,27 +767,24 @@ function ChatContent() {
           </div>
 
           {callType === 'video' && (
-            <div className="relative w-full max-w-2xl aspect-video bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl my-4">
+            <div className="relative w-full max-w-2xl aspect-video bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 my-4">
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-36 h-24 bg-slate-950 rounded-2xl border border-white/20 object-cover shadow-lg" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-20 bg-slate-950 rounded-2xl object-cover" />
             </div>
           )}
 
           <div className="flex items-center gap-6 mb-8">
             {callStatus === 'incoming' ? (
               <>
-                <button onClick={acceptCall} className="w-16 h-16 rounded-3xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-all hover:scale-105">
+                <button onClick={acceptCall} className="w-16 h-16 rounded-3xl bg-emerald-500 text-white flex items-center justify-center">
                   <PhoneIcon />
                 </button>
-                <button onClick={endCall} className="w-16 h-16 rounded-3xl bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 transition-all hover:scale-105">
+                <button onClick={endCall} className="w-16 h-16 rounded-3xl bg-rose-600 text-white flex items-center justify-center">
                   <PhoneOffIcon />
                 </button>
               </>
             ) : (
-              <button 
-                onClick={endCall} 
-                className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl shadow-xl shadow-rose-600/30 flex items-center gap-3 transition-all hover:scale-105"
-              >
+              <button onClick={endCall} className="px-8 py-4 bg-rose-600 text-white font-bold rounded-2xl flex items-center gap-3">
                 <PhoneOffIcon />
                 <span>Zavěsit</span>
               </button>
