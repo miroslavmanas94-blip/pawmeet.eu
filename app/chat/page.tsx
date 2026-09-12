@@ -76,7 +76,8 @@ const STICKER_CATEGORIES = [
 
 export type Profile = {
   id: string
-  username: string
+  username?: string
+  first_name?: string
   avatar_url?: string
   last_seen?: string
 }
@@ -159,7 +160,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // 1. Načtení pouze těch profilů, se kterými už proběhla konverzace
+  // Načtení všech profilů z tabulky profiles + seřazení podle historie správ
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -171,20 +172,28 @@ function ChatContent() {
       }
       setCurrentUserId(user.id)
 
-      // Získání všech zpráv, kde figuruje přihlášený uživatel
-      const { data: userMessages, error: msgError } = await supabase
+      // 1. Načtení VŠECH profilů z tabulky profiles
+      const { data: allProfiles, error: profError } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', user.id)
+
+      if (profError) {
+        console.error('Chyba při načítání profilů:', profError)
+        return
+      }
+
+      if (!allProfiles) return
+
+      // 2. Načtení historie zpráv pro seřazení aktivních konverzací nahoru
+      const { data: userMessages } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, created_at')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
-      if (msgError) {
-        console.error('Chyba při načítání konverzací:', msgError)
-        return
-      }
-
-      // Unikátní ID partnerů
-      const partnerIds = Array.from(
+      // Extrakce ID partnerů, se kterými už proběhla zpráva
+      const activePartnerIds = Array.from(
         new Set(
           (userMessages || []).map((msg) =>
             msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
@@ -192,39 +201,28 @@ function ChatContent() {
         )
       )
 
-      if (partnerIds.length === 0) {
-        setContacts([])
-        return
-      }
+      // Seřazení: nejprve ti, se kterými proběhla konverzace, potom zbytek
+      const activeProfiles = activePartnerIds
+        .map((id) => allProfiles.find((p) => p.id === id))
+        .filter((p): p is Profile => p !== undefined)
 
-      // Načtení profilů pro nalezená partner_id
-      const { data: profiles, error: profError } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, last_seen')
-        .in('id', partnerIds)
+      const remainingProfiles = allProfiles.filter(
+        (p) => !activePartnerIds.includes(p.id)
+      )
 
-      if (profError) {
-        console.error('Chyba při načítání profilů:', profError)
-        return
-      }
+      const sortedContacts = [...activeProfiles, ...remainingProfiles]
 
-      if (profiles) {
-        // Seřazení profilů podle nejnovější zprávy
-        const sortedProfiles = partnerIds
-          .map((id) => profiles.find((p) => p.id === id))
-          .filter((p): p is Profile => p !== undefined)
+      setContacts(sortedContacts)
 
-        setContacts(sortedProfiles)
-
-        if (!activeUserId && sortedProfiles.length > 0 && window.innerWidth >= 768) {
-          router.replace(`/chat?userId=${sortedProfiles[0].id}`)
-        }
+      if (!activeUserId && sortedContacts.length > 0 && window.innerWidth >= 768) {
+        router.replace(`/chat?userId=${sortedContacts[0].id}`)
       }
     }
+
     init()
   }, [router, activeUserId])
 
-  // 2. Načtení konverzace a profilu aktivního uživatele
+  // Načtení konverzace a aktivního profilu
   useEffect(() => {
     if (!activeUserId || !currentUserId) {
       setActiveProfile(null)
@@ -234,16 +232,14 @@ function ChatContent() {
     const fetchProfileAndMessages = async () => {
       const supabase = createClient()
       
-      // Načtení profilu aktivního partnera
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, last_seen')
+        .select('*')
         .eq('id', activeUserId)
         .single()
 
       if (profile) setActiveProfile(profile)
 
-      // Načtení historie zpráv
       const { data: oldMessages, error } = await supabase
         .from('messages')
         .select('*')
@@ -260,7 +256,7 @@ function ChatContent() {
     setIsTyping(false)
   }, [activeUserId, currentUserId])
 
-  // 3. Realtime poslech pro zprávy, psaní a hovory
+  // Realtime poslech
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -350,7 +346,6 @@ function ChatContent() {
     }, 2000)
   }
 
-  // Funkce pro ukládání a odesílání zpráv
   const sendPayload = async (payload: Partial<Message>) => {
     if (!currentUserId || !activeUserId) return
     const supabase = createClient()
@@ -364,20 +359,16 @@ function ChatContent() {
       created_at: new Date().toISOString()
     }
 
-    // 1. Uložení do Supabase
     const { data: savedMsg, error } = await supabase
       .from('messages')
       .insert(fullPayload)
       .select()
       .single()
 
-    if (error) {
-      console.error('Chyba při ukládání zprávy:', error)
-    }
+    if (error) console.error('Chyba při ukládání:', error)
 
     const msgToSend = savedMsg || { ...fullPayload, id: crypto.randomUUID() }
 
-    // 2. Broadcast příjemci
     await supabase.channel(`chat_signal_${activeUserId}`).send({
       type: 'broadcast',
       event: 'direct-message',
@@ -385,12 +376,6 @@ function ChatContent() {
     })
 
     setMessages((prev) => [...prev, msgToSend])
-
-    // 3. Přidání profilu do kontaktů, pokud tam ještě nebyl
-    if (activeProfile && !contacts.some((c) => c.id === activeProfile.id)) {
-      setContacts((prev) => [activeProfile, ...prev])
-    }
-
     scrollToBottom()
   }
 
@@ -598,14 +583,15 @@ function ChatContent() {
     return msg.content
   }
 
-  const filteredContacts = contacts.filter((c) =>
-    (c.username || '').toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredContacts = contacts.filter((c) => {
+    const name = c.username || c.first_name || 'Uživatel'
+    return name.toLowerCase().includes(searchQuery.toLowerCase())
+  })
 
   return (
     <div className="flex w-full h-[calc(100vh-80px)] bg-slate-50 overflow-hidden max-w-[1400px] mx-auto border-x border-slate-200/80 shadow-2xl relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
       
-      {/* LEVÝ PANEL - EXISTUJÍCÍ KONVERZACE Z PROFILES + MESSAGES */}
+      {/* LEVÝ PANEL - KONTAKTNÍ SEZNAM */}
       <div className={`w-full md:w-[360px] lg:w-[400px] flex-col border-r border-slate-200 bg-white ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-5 border-b border-slate-100">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Konverzace</h1>
@@ -625,10 +611,11 @@ function ChatContent() {
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
           {filteredContacts.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">Zatím nemáte žádné aktivní konverzace.</div>
+            <div className="text-center py-8 text-slate-400 text-xs">Nenalezeni žádní uživatelé.</div>
           ) : (
             filteredContacts.map((contact) => {
               const isOnline = onlineUsers.has(contact.id)
+              const displayName = contact.username || contact.first_name || 'Uživatel'
               return (
                 <div
                   key={contact.id}
@@ -642,9 +629,9 @@ function ChatContent() {
                   <div className="relative">
                     <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-lg ${contact.id === activeUserId ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
                       {contact.avatar_url ? (
-                        <img src={contact.avatar_url} alt={contact.username} className="w-full h-full object-cover" />
+                        <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                       ) : (
-                        (contact.username || 'U').substring(0, 2).toUpperCase()
+                        displayName.substring(0, 2).toUpperCase()
                       )}
                     </div>
                     {isOnline && (
@@ -654,7 +641,7 @@ function ChatContent() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <h3 className="font-bold text-sm truncate">{contact.username || 'Uživatel'}</h3>
+                      <h3 className="font-bold text-sm truncate">{displayName}</h3>
                     </div>
                     <p className={`text-xs truncate ${contact.id === activeUserId ? 'text-indigo-100' : 'text-slate-400'}`}>
                       {isOnline ? 'Aktivní nyní' : formatLastSeen(contact.last_seen)}
@@ -667,15 +654,15 @@ function ChatContent() {
         </div>
       </div>
 
-      {/* PRAVÝ PANEL - CHAT A MESSAGES */}
+      {/* PRAVÝ PANEL - DETAIL CHATU */}
       <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
         {!activeUserId ? (
           <div className="text-center p-8">
             <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl font-black">
               💬
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Vyberte konverzaci</h3>
-            <p className="text-xs text-slate-400 max-w-sm">Vyberte někoho ze seznamu vlevo a začněte si psát.</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Vyberte uživatele</h3>
+            <p className="text-xs text-slate-400 max-w-sm">Klikněte na jakýkoliv profil ze seznamu vlevo a zahajte konverzaci.</p>
           </div>
         ) : (
           <>
@@ -692,9 +679,9 @@ function ChatContent() {
                 <div className="relative">
                   <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center overflow-hidden">
                     {activeProfile?.avatar_url ? (
-                      <img src={activeProfile.avatar_url} alt={activeProfile.username} className="w-full h-full object-cover" />
+                      <img src={activeProfile.avatar_url} alt={activeProfile.username || 'Avatar'} className="w-full h-full object-cover" />
                     ) : (
-                      (activeProfile?.username || 'U').substring(0, 2).toUpperCase()
+                      (activeProfile?.username || activeProfile?.first_name || 'U').substring(0, 2).toUpperCase()
                     )}
                   </div>
                   {onlineUsers.has(activeProfile?.id || '') && (
@@ -703,7 +690,7 @@ function ChatContent() {
                 </div>
 
                 <div>
-                  <h2 className="font-bold text-slate-900 text-sm md:text-base">{activeProfile?.username || 'Načítám...'}</h2>
+                  <h2 className="font-bold text-slate-900 text-sm md:text-base">{activeProfile?.username || activeProfile?.first_name || 'Načítám...'}</h2>
                   <div className="text-xs">
                     {isTyping ? (
                       <span className="text-indigo-600 font-semibold animate-pulse">píše zprávu...</span>
@@ -734,7 +721,7 @@ function ChatContent() {
               </div>
             </div>
 
-            {/* ZPRÁVY Z TABULKY MESSAGES */}
+            {/* HISTORIE ZPRÁV */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/50">
               {messages.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-xs">Žádné dosavadní zprávy. Napište první zprávu!</div>
@@ -762,7 +749,7 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* PEVNÁ DOLNÍ PSACÍ LIŠTA */}
+            {/* DOLNÍ VSTUPNÍ POLE */}
             <div className="bg-white border-t border-slate-100 sticky bottom-0 left-0 right-0 z-20 shadow-md">
               
               {isTyping && (
@@ -776,7 +763,7 @@ function ChatContent() {
                 </div>
               )}
 
-              {/* STICKER PICKER */}
+              {/* NABÍDKA SAMOLEPEK */}
               {showStickerPicker && (
                 <div className="p-3 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md">
                   <div className="flex gap-2 mb-3 border-b border-slate-200/60 pb-2">
@@ -807,7 +794,7 @@ function ChatContent() {
                 </div>
               )}
 
-              {/* NABÍDKA PŘÍLOH */}
+              {/* TLAČÍTKO PŘÍLOH */}
               {showAttachMenu && (
                 <div className="p-3 border-b border-slate-100 bg-white flex items-center gap-3">
                   <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer transition-all">
@@ -826,7 +813,6 @@ function ChatContent() {
                 </div>
               )}
 
-              {/* FORMULÁŘ PRO ZPRÁVU */}
               <form onSubmit={handleSendMessage} className="p-3 md:p-4 flex items-center gap-2 md:gap-3">
                 <button
                   type="button"
@@ -891,12 +877,12 @@ function ChatContent() {
           <div className="text-center mt-8">
             <div className="w-24 h-24 rounded-3xl bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-3xl font-bold mx-auto mb-4 animate-pulse overflow-hidden">
               {activeProfile?.avatar_url ? (
-                <img src={activeProfile.avatar_url} alt={activeProfile.username} className="w-full h-full object-cover" />
+                <img src={activeProfile.avatar_url} alt={activeProfile.username || 'Avatar'} className="w-full h-full object-cover" />
               ) : (
-                (activeProfile?.username || 'U').substring(0, 2).toUpperCase()
+                (activeProfile?.username || activeProfile?.first_name || 'U').substring(0, 2).toUpperCase()
               )}
             </div>
-            <h3 className="text-2xl font-black mb-1">{activeProfile?.username}</h3>
+            <h3 className="text-2xl font-black mb-1">{activeProfile?.username || activeProfile?.first_name}</h3>
             <p className="text-xs tracking-wider uppercase font-semibold text-slate-400">
               {callStatus === 'calling' && 'Volám...'}
               {callStatus === 'incoming' && 'Příchozí hovor...'}
