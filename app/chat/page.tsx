@@ -15,6 +15,7 @@ export type Message = {
   sender_id: string
   receiver_id: string
   content: string
+  media_url?: string
   created_at: string
 }
 
@@ -23,7 +24,6 @@ export type Contact = Profile & {
   lastMessageTime?: string
 }
 
-// SDÍLENÝ HOOK PRO ZÍSKÁNÍ SEZNAMU KONTAKTŮ Z CHATU
 export function useChatUsers(activeUserId?: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loadingContacts, setLoadingContacts] = useState(true)
@@ -90,7 +90,6 @@ function ChatContent() {
   const router = useRouter()
   const activeUserId = searchParams.get('userId')
 
-  // Načtení kontaktů pomocí sdíleného hooku
   const { contacts, loadingContacts, currentUserId } = useChatUsers(activeUserId)
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -99,29 +98,33 @@ function ChatContent() {
   const [newMessage, setNewMessage] = useState('')
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  // Indikátor psaní
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // WebRTC / Hovory
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const peerConnection = useRef<RTCPeerConnection | null>(null)
+  const pendingCallSignal = useRef<any>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Načtení aktivního profilu podle ID z URL
+  // Načtení profilu
   useEffect(() => {
     if (!activeUserId) {
       setActiveProfile(null)
       return
     }
-
     const fetchActiveProfile = async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -132,18 +135,15 @@ function ChatContent() {
 
       if (data) setActiveProfile(data)
     }
-
     fetchActiveProfile()
   }, [activeUserId])
 
-  // Načtení zpráv aktivního chatu
+  // Načtení zpráv
   useEffect(() => {
     if (!currentUserId || !activeUserId) return
-
     const loadMessages = async () => {
       setLoadingMessages(true)
       const supabase = createClient()
-
       const { data: chatMsgs } = await supabase
         .from('messages')
         .select('*')
@@ -154,11 +154,10 @@ function ChatContent() {
       setLoadingMessages(false)
       scrollToBottom()
     }
-
     loadMessages()
   }, [activeUserId, currentUserId])
 
-  // Realtime zprávy, online uživatelé a hovory
+  // Realtime (Zprávy, Online, WebRTC, Psaní)
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -193,22 +192,92 @@ function ChatContent() {
         }
       })
 
-    const callChannel = supabase.channel(`user_call_${currentUserId}`)
-      .on('broadcast', { event: 'call-offer' }, async ({ payload }) => {
-        setCallType(payload.type)
-        setCallStatus('incoming')
+    // WebRTC & Typing signalizační kanál
+    const signalChannel = supabase.channel(`chat_signal_${currentUserId}`)
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.from === activeUserId) {
+          setIsTyping(payload.typing)
+        }
       })
-      .on('broadcast', { event: 'call-end' }, () => {
-        endCall()
+      .on('broadcast', { event: 'webrtc-signal' }, async ({ payload }) => {
+        if (payload.from !== activeUserId) return
+
+        if (payload.type === 'offer') {
+          setCallType(payload.callType)
+          setCallStatus('incoming')
+          pendingCallSignal.current = payload
+        } else if (payload.type === 'answer') {
+          if (peerConnection.current) {
+            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+            setCallStatus('connected')
+          }
+        } else if (payload.type === 'ice-candidate') {
+          if (peerConnection.current && payload.candidate) {
+            await peerConnection.current.addIceCandidate(new RTCIceCandidate(payload.candidate))
+          }
+        } else if (payload.type === 'end-call') {
+          endCall()
+        }
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(msgChannel)
       supabase.removeChannel(presenceChannel)
-      supabase.removeChannel(callChannel)
+      supabase.removeChannel(signalChannel)
     }
   }, [currentUserId, activeUserId])
+
+  // Indikátor psaní - odeslání události
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value)
+    if (!activeUserId || !currentUserId) return
+
+    const supabase = createClient()
+    supabase.channel(`chat_signal_${activeUserId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { from: currentUserId, typing: true }
+    })
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { from: currentUserId, typing: false }
+      })
+    }, 2000)
+  }
+
+  // WebRTC
+  const createPeerConnection = (targetUserId: string, stream: MediaStream) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    })
+
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream))
+
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0]
+      }
+    }
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && currentUserId) {
+        const supabase = createClient()
+        supabase.channel(`chat_signal_${targetUserId}`).send({
+          type: 'broadcast',
+          event: 'webrtc-signal',
+          payload: { from: currentUserId, type: 'ice-candidate', candidate: event.candidate }
+        })
+      }
+    }
+
+    peerConnection.current = pc
+    return pc
+  }
 
   const startCall = async (type: 'audio' | 'video') => {
     if (!activeUserId || !currentUserId) return
@@ -221,26 +290,30 @@ function ChatContent() {
         audio: true
       })
       setLocalStream(stream)
-
       if (localVideoRef.current && type === 'video') {
         localVideoRef.current.srcObject = stream
       }
 
+      const pc = createPeerConnection(activeUserId, stream)
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+
       const supabase = createClient()
-      supabase.channel(`user_call_${activeUserId}`).send({
+      supabase.channel(`chat_signal_${activeUserId}`).send({
         type: 'broadcast',
-        event: 'call-offer',
-        payload: { from: currentUserId, type }
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'offer', sdp: offer, callType: type }
       })
     } catch (err) {
-      console.error('Kamera/mikrofon nedostupný:', err)
-      alert('Nepodařilo se přistoupit k mikrofonu nebo kameře.')
+      console.error(err)
       endCall()
     }
   }
 
   const acceptCall = async () => {
+    if (!activeUserId || !currentUserId || !pendingCallSignal.current) return
     setCallStatus('connected')
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: callType === 'video',
@@ -250,6 +323,19 @@ function ChatContent() {
       if (localVideoRef.current && callType === 'video') {
         localVideoRef.current.srcObject = stream
       }
+
+      const pc = createPeerConnection(activeUserId, stream)
+      await pc.setRemoteDescription(new RTCSessionDescription(pendingCallSignal.current.sdp))
+
+      const answer = await pc.createAnswer()
+      await pc.setLocalDescription(answer)
+
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'answer', sdp: answer }
+      })
     } catch (err) {
       console.error(err)
       endCall()
@@ -257,14 +343,16 @@ function ChatContent() {
   }
 
   const endCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
+    if (activeUserId && currentUserId) {
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'end-call' }
+      })
     }
-    if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => track.stop())
-    }
+    if (localStream) localStream.getTracks().forEach((t) => t.stop())
     setLocalStream(null)
-    setRemoteStream(null)
     setCallStatus('idle')
     setCallType(null)
     if (peerConnection.current) {
@@ -273,6 +361,30 @@ function ChatContent() {
     }
   }
 
+  // Nahrávání fotky
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUserId || !activeUserId) return
+
+    setUploadingImage(true)
+    const supabase = createClient()
+    const filePath = `chat/${Date.now()}_${file.name}`
+
+    const { data, error } = await supabase.storage.from('chat-media').upload(filePath, file)
+
+    if (data) {
+      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
+      await supabase.from('messages').insert({
+        sender_id: currentUserId,
+        receiver_id: activeUserId,
+        content: '',
+        media_url: urlData.publicUrl
+      })
+    }
+    setUploadingImage(false)
+  }
+
+  // Odeslání textové zprávy
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
@@ -290,8 +402,42 @@ function ChatContent() {
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return ''
-    const date = new Date(isoString)
-    return date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+    return new Date(isoString).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  // Renderování obsahu zprávy (Fotky / Reels / Příspěvky / Text)
+  const renderMessageContent = (msg: Message) => {
+    if (msg.media_url) {
+      return (
+        <img src={msg.media_url} alt="Příloha" className="rounded-xl max-w-full max-h-60 object-cover shadow-sm" />
+      )
+    }
+
+    const reelMatch = msg.content.match(/https?:\/\/[^\s]+\/(reel|reels)\/([a-zA-Z0-9_-]+)/)
+    if (reelMatch) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-bold text-xs">🎬 Reel</div>
+          <a href={msg.content} target="_blank" rel="noreferrer" className="block p-3 bg-black/10 rounded-xl text-xs underline truncate">
+            {msg.content}
+          </a>
+        </div>
+      )
+    }
+
+    const postMatch = msg.content.match(/https?:\/\/[^\s]+\/(p|post)\/([a-zA-Z0-9_-]+)/)
+    if (postMatch) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 font-bold text-xs">📌 Příspěvek</div>
+          <a href={msg.content} target="_blank" rel="noreferrer" className="block p-3 bg-neutral-100 rounded-xl text-xs underline truncate text-neutral-800">
+            {msg.content}
+          </a>
+        </div>
+      )
+    }
+
+    return msg.content
   }
 
   const filteredContacts = contacts.filter((c) =>
@@ -309,96 +455,57 @@ function ChatContent() {
             <span className="absolute left-3 top-2.5 text-neutral-400">🔍</span>
             <input
               type="text"
-              placeholder="Hledat konverzaci..."
+              placeholder="Hledat..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-neutral-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full pl-9 pr-4 py-2.5 bg-neutral-100 rounded-2xl text-xs outline-none"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
           {loadingContacts ? (
-            <div className="text-center text-xs text-neutral-400 mt-10">Načítám zprávy...</div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="text-center text-xs text-neutral-400 mt-10">Žádné konverzace.</div>
+            <div className="text-center text-xs text-neutral-400 mt-10">Načítám...</div>
           ) : (
-            filteredContacts.map((contact) => {
-              const isActiveChat = contact.id === activeUserId
-              const isOnline = onlineUsers.has(contact.id)
-
-              return (
-                <div
-                  key={contact.id}
-                  onClick={() => router.push(`/chat?userId=${contact.id}`)}
-                  className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all mb-1 ${
-                    isActiveChat ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-neutral-100/80 border border-transparent'
-                  }`}
-                >
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-white border border-neutral-200 overflow-hidden flex items-center justify-center">
-                      {contact.avatar_url ? (
-                        <img src={contact.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xl">🐾</span>
-                      )}
-                    </div>
-                    {isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <h3 className="font-bold text-sm truncate">{contact.username}</h3>
-                      <span className="text-[10px] text-neutral-400">{formatTime(contact.lastMessageTime)}</span>
-                    </div>
-                    <p className={`text-xs truncate ${isActiveChat ? 'text-indigo-600 font-medium' : 'text-neutral-500'}`}>
-                      {contact.lastMessage || 'Začněte chatovat...'}
-                    </p>
-                  </div>
+            filteredContacts.map((contact) => (
+              <div
+                key={contact.id}
+                onClick={() => router.push(`/chat?userId=${contact.id}`)}
+                className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all mb-1 ${
+                  contact.id === activeUserId ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-neutral-100/80 border border-transparent'
+                }`}
+              >
+                <div className="w-12 h-12 rounded-full bg-white border overflow-hidden flex items-center justify-center">
+                  {contact.avatar_url ? <img src={contact.avatar_url} className="w-full h-full object-cover" /> : '🐾'}
                 </div>
-              )
-            })
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm truncate">{contact.username}</h3>
+                  <p className="text-xs truncate text-neutral-500">{contact.lastMessage || 'Začněte chatovat...'}</p>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
 
-      {/* AKTIVNÍ CHAT */}
+      {/* CHAT OKNO */}
       <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
         {!activeUserId ? (
-          <div className="text-center text-neutral-400 flex flex-col items-center">
-            <div className="w-24 h-24 bg-neutral-50 rounded-full flex items-center justify-center text-4xl mb-4 border border-neutral-100">💬</div>
-            <h2 className="text-lg font-bold text-neutral-700">Vaše zprávy</h2>
-            <p className="text-sm mt-1">Vyberte konverzaci ze seznamu.</p>
-          </div>
+          <div className="text-neutral-400 text-center">Vyberte konverzaci.</div>
         ) : (
           <>
-            <div className="h-[72px] px-4 border-b border-neutral-200/80 flex items-center justify-between bg-white/95 backdrop-blur-sm z-10 shadow-sm">
+            <div className="h-[72px] px-4 border-b flex items-center justify-between bg-white shadow-sm">
               <div className="flex items-center gap-3">
-                <button onClick={() => router.push('/chat')} className="md:hidden w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center font-bold">
-                  ←
-                </button>
-                
-                <div className="relative">
-                  <div className="w-11 h-11 rounded-full bg-neutral-100 border border-neutral-200 overflow-hidden flex items-center justify-center cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
-                    {activeProfile?.avatar_url ? (
-                      <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-lg">🐾</span>
-                    )}
-                  </div>
-                  {onlineUsers.has(activeProfile?.id || '') && (
-                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                  )}
+                <button onClick={() => router.push('/chat')} className="md:hidden font-bold">←</button>
+                <div className="w-11 h-11 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center">
+                  {activeProfile?.avatar_url ? <img src={activeProfile.avatar_url} className="w-full h-full object-cover" /> : '🐾'}
                 </div>
-
-                <div className="cursor-pointer" onClick={() => router.push(`/profile/${activeProfile?.id}`)}>
-                  <h2 className="font-bold text-base leading-tight">
-                    {activeProfile?.username || 'Načítám jméno...'}
-                  </h2>
-                  <div className="text-[11px] font-medium flex items-center gap-1.5 mt-0.5">
-                    {onlineUsers.has(activeProfile?.id || '') ? (
+                <div>
+                  <h2 className="font-bold text-base">{activeProfile?.username || 'Načítám...'}</h2>
+                  <div className="text-[11px]">
+                    {isTyping ? (
+                      <span className="text-indigo-600 font-semibold animate-pulse">píše...</span>
+                    ) : onlineUsers.has(activeProfile?.id || '') ? (
                       <span className="text-green-500">Aktivní nyní</span>
                     ) : (
                       <span className="text-neutral-400">Offline</span>
@@ -407,77 +514,47 @@ function ChatContent() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => startCall('audio')}
-                  className="w-10 h-10 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-base transition-all"
-                  title="Hlasový hovor"
-                >
-                  📞
-                </button>
-                <button
-                  onClick={() => startCall('video')}
-                  className="w-10 h-10 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center text-base transition-all"
-                  title="Video hovor"
-                >
-                  📹
-                </button>
+              <div className="flex gap-2">
+                <button onClick={() => startCall('audio')} className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center">📞</button>
+                <button onClick={() => startCall('video')} className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center">📹</button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa] relative">
-              {loadingMessages ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#f8f9fa]/80 backdrop-blur-sm z-10">
-                  <span className="text-neutral-500 text-sm font-medium">Načítám...</span>
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-neutral-400 space-y-3">
-                  <div className="text-5xl">👋</div>
-                  <p className="text-sm font-medium">Napište první zprávu!</p>
-                </div>
-              ) : (
-                messages.map((msg, index) => {
-                  const isMine = msg.sender_id === currentUserId
-                  const showTime = index === 0 || new Date(msg.created_at).getTime() - new Date(messages[index-1].created_at).getTime() > 5 * 60000
-
-                  return (
-                    <div key={msg.id} className="flex flex-col">
-                      {showTime && (
-                        <div className="text-center text-[10px] font-semibold text-neutral-400 my-3">
-                          {formatTime(msg.created_at)}
-                        </div>
-                      )}
-                      <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                            isMine
-                              ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-sm'
-                              : 'bg-white border border-neutral-200/80 text-neutral-800 rounded-bl-sm'
-                          }`}
-                        >
-                          {msg.content}
-                        </div>
-                      </div>
+            {/* ZPRÁVY */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa]">
+              {messages.map((msg, index) => {
+                const isMine = msg.sender_id === currentUserId
+                return (
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm ${
+                        isMine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white border text-neutral-800 rounded-bl-sm'
+                      }`}
+                    >
+                      {renderMessageContent(msg)}
                     </div>
-                  )
-                })
-              )}
+                  </div>
+                )
+              })}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-neutral-200 flex items-center gap-3">
+            {/* INPUT FORM */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t flex items-center gap-3">
+              <label className="cursor-pointer text-xl p-2 hover:bg-neutral-100 rounded-full">
+                📷
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+              </label>
+
               <input
                 type="text"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={handleInputChange}
                 placeholder="Napište zprávu..."
-                className="flex-1 px-5 py-3 bg-neutral-100 rounded-full text-sm outline-none border border-transparent focus:border-indigo-400 focus:bg-white transition-all shadow-inner"
+                className="flex-1 px-5 py-3 bg-neutral-100 rounded-full text-sm outline-none"
               />
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white disabled:opacity-50 hover:bg-indigo-700 transition-all shadow-md"
-              >
-                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+
+              <button type="submit" disabled={!newMessage.trim()} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+                ➔
               </button>
             </form>
           </>
@@ -488,35 +565,25 @@ function ChatContent() {
       {callStatus !== 'idle' && (
         <div className="fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-6">
-            <h3 className="text-2xl font-bold mb-2">{activeProfile?.username || 'Uživatel'}</h3>
-            <p className="text-sm text-neutral-400">
-              {callStatus === 'calling' && 'Volám...'}
-              {callStatus === 'incoming' && 'Příchozí hovor...'}
-              {callStatus === 'connected' && 'Probíhá hovor'}
-            </p>
+            <h3 className="text-2xl font-bold">{activeProfile?.username || 'Uživatel'}</h3>
+            <p className="text-sm text-neutral-400">{callStatus}</p>
           </div>
 
           {callType === 'video' && (
-            <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl">
+            <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden">
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border border-white/20 object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border object-cover" />
             </div>
           )}
 
           <div className="flex items-center gap-6 mb-8">
             {callStatus === 'incoming' ? (
               <>
-                <button onClick={acceptCall} className="w-16 h-16 rounded-full bg-green-500 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
-                  📞
-                </button>
-                <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
-                  ❌
-                </button>
+                <button onClick={acceptCall} className="w-16 h-16 rounded-full bg-green-500 text-2xl">📞</button>
+                <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl">❌</button>
               </>
             ) : (
-              <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-110 transition-transform">
-                🛑
-              </button>
+              <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl">🛑</button>
             )}
           </div>
         </div>
@@ -528,7 +595,7 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center text-neutral-400 text-sm">Načítám chat...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-neutral-400">Načítám chat...</div>}>
       <ChatContent />
     </Suspense>
   )
