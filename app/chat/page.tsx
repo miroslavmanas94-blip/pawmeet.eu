@@ -104,7 +104,7 @@ function ChatContent() {
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // WebRTC / Hovory
+  // WebRTC / Hovory / Zvuky vyzvánění
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
@@ -114,12 +114,28 @@ function ChatContent() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const peerConnection = useRef<RTCPeerConnection | null>(null)
   const pendingCallSignal = useRef<any>(null)
+  const ringtoneAudio = useRef<HTMLAudioElement | null>(null)
+
+  // Spuštění / zastavení vyzvánění
+  const playRingtone = () => {
+    if (!ringtoneAudio.current) {
+      ringtoneAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1361/1361-preview.mp3')
+      ringtoneAudio.current.loop = true
+    }
+    ringtoneAudio.current.play().catch(() => {})
+  }
+
+  const stopRingtone = () => {
+    if (ringtoneAudio.current) {
+      ringtoneAudio.current.pause()
+      ringtoneAudio.current.currentTime = 0
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Načtení profilu
   useEffect(() => {
     if (!activeUserId) {
       setActiveProfile(null)
@@ -138,7 +154,6 @@ function ChatContent() {
     fetchActiveProfile()
   }, [activeUserId])
 
-  // Načtení zpráv
   useEffect(() => {
     if (!currentUserId || !activeUserId) return
     const loadMessages = async () => {
@@ -157,7 +172,6 @@ function ChatContent() {
     loadMessages()
   }, [activeUserId, currentUserId])
 
-  // Realtime (Zprávy, Online, WebRTC, Psaní)
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -192,7 +206,6 @@ function ChatContent() {
         }
       })
 
-    // WebRTC & Typing signalizační kanál
     const signalChannel = supabase.channel(`chat_signal_${currentUserId}`)
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (payload.from === activeUserId) {
@@ -205,8 +218,10 @@ function ChatContent() {
         if (payload.type === 'offer') {
           setCallType(payload.callType)
           setCallStatus('incoming')
+          playRingtone()
           pendingCallSignal.current = payload
         } else if (payload.type === 'answer') {
+          stopRingtone()
           if (peerConnection.current) {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.sdp))
             setCallStatus('connected')
@@ -228,7 +243,6 @@ function ChatContent() {
     }
   }, [currentUserId, activeUserId])
 
-  // Indikátor psaní - odeslání události
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
     if (!activeUserId || !currentUserId) return
@@ -250,7 +264,6 @@ function ChatContent() {
     }, 2000)
   }
 
-  // WebRTC
   const createPeerConnection = (targetUserId: string, stream: MediaStream) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -283,6 +296,7 @@ function ChatContent() {
     if (!activeUserId || !currentUserId) return
     setCallType(type)
     setCallStatus('calling')
+    playRingtone()
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -312,6 +326,7 @@ function ChatContent() {
 
   const acceptCall = async () => {
     if (!activeUserId || !currentUserId || !pendingCallSignal.current) return
+    stopRingtone()
     setCallStatus('connected')
 
     try {
@@ -343,6 +358,7 @@ function ChatContent() {
   }
 
   const endCall = () => {
+    stopRingtone()
     if (activeUserId && currentUserId) {
       const supabase = createClient()
       supabase.channel(`chat_signal_${activeUserId}`).send({
@@ -368,11 +384,11 @@ function ChatContent() {
 
     setUploadingImage(true)
     const supabase = createClient()
-    const filePath = `chat/${Date.now()}_${file.name}`
+    const filePath = `${currentUserId}/${Date.now()}_${file.name}`
 
-    const { data, error } = await supabase.storage.from('chat-media').upload(filePath, file)
+    const { error: uploadErr } = await supabase.storage.from('chat-media').upload(filePath, file)
 
-    if (data) {
+    if (!uploadErr) {
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
       await supabase.from('messages').insert({
         sender_id: currentUserId,
@@ -380,11 +396,12 @@ function ChatContent() {
         content: '',
         media_url: urlData.publicUrl
       })
+    } else {
+      alert('Nahrávání fotky selhalo. Ověřte existence bucketu chat-media v Supabase.')
     }
     setUploadingImage(false)
   }
 
-  // Odeslání textové zprávy
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
@@ -400,12 +417,6 @@ function ChatContent() {
     })
   }
 
-  const formatTime = (isoString?: string) => {
-    if (!isoString) return ''
-    return new Date(isoString).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  // Renderování obsahu zprávy (Fotky / Reels / Příspěvky / Text)
   const renderMessageContent = (msg: Message) => {
     if (msg.media_url) {
       return (
@@ -522,7 +533,7 @@ function ChatContent() {
 
             {/* ZPRÁVY */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8f9fa]">
-              {messages.map((msg, index) => {
+              {messages.map((msg) => {
                 const isMine = msg.sender_id === currentUserId
                 return (
                   <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -538,10 +549,10 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* INPUT FORM */}
+            {/* INPUT FORM - TLAČÍTKO PLUS */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white border-t flex items-center gap-3">
-              <label className="cursor-pointer text-xl p-2 hover:bg-neutral-100 rounded-full">
-                📷
+              <label className="cursor-pointer text-2xl font-bold text-neutral-500 w-10 h-10 flex items-center justify-center hover:bg-neutral-100 rounded-full transition-all">
+                +
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
               </label>
 
@@ -553,7 +564,7 @@ function ChatContent() {
                 className="flex-1 px-5 py-3 bg-neutral-100 rounded-full text-sm outline-none"
               />
 
-              <button type="submit" disabled={!newMessage.trim()} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+              <button type="submit" disabled={!newMessage.trim()} className="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
                 ➔
               </button>
             </form>
@@ -561,29 +572,42 @@ function ChatContent() {
         )}
       </div>
 
-      {/* OVERLAY PRO HOVORY */}
+      {/* OVERLAY PRO HOVORY - ČERVENÉ TLAČÍTKO PRO POLOŽENÍ */}
       {callStatus !== 'idle' && (
         <div className="fixed inset-0 bg-black/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-6">
-            <h3 className="text-2xl font-bold">{activeProfile?.username || 'Uživatel'}</h3>
-            <p className="text-sm text-neutral-400">{callStatus}</p>
+            <h3 className="text-2xl font-bold mb-1">{activeProfile?.username || 'Uživatel'}</h3>
+            <p className="text-sm text-neutral-400">
+              {callStatus === 'calling' && 'Volám...'}
+              {callStatus === 'incoming' && 'Příchozí hovor...'}
+              {callStatus === 'connected' && 'Probíhá hovor'}
+            </p>
           </div>
 
           {callType === 'video' && (
-            <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden">
+            <div className="relative w-full max-w-2xl aspect-video bg-neutral-900 rounded-3xl overflow-hidden border border-neutral-800 shadow-2xl">
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-32 h-24 bg-black rounded-xl border border-white/20 object-cover" />
             </div>
           )}
 
           <div className="flex items-center gap-6 mb-8">
             {callStatus === 'incoming' ? (
               <>
-                <button onClick={acceptCall} className="w-16 h-16 rounded-full bg-green-500 text-2xl">📞</button>
-                <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl">❌</button>
+                <button onClick={acceptCall} className="w-16 h-16 rounded-full bg-green-500 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-105 transition-transform">
+                  📞
+                </button>
+                <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl flex items-center justify-center font-bold shadow-lg hover:scale-105 transition-transform">
+                  📵
+                </button>
               </>
             ) : (
-              <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-600 text-2xl">🛑</button>
+              <button 
+                onClick={endCall} 
+                className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
+              >
+                <span className="text-xl">📵</span> Zavěsit
+              </button>
             )}
           </div>
         </div>
