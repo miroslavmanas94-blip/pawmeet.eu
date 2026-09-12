@@ -159,7 +159,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // 1. Načtení profilů z Supabase
+  // 1. Načtení pouze těch profilů, se kterými už proběhla konverzace
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -171,26 +171,60 @@ function ChatContent() {
       }
       setCurrentUserId(user.id)
 
-      const { data: profiles, error } = await supabase
+      // Získání všech zpráv, kde figuruje přihlášený uživatel
+      const { data: userMessages, error: msgError } = await supabase
+        .from('messages')
+        .select('sender_id, receiver_id, created_at')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
+
+      if (msgError) {
+        console.error('Chyba při načítání konverzací:', msgError)
+        return
+      }
+
+      // Unikátní ID partnerů
+      const partnerIds = Array.from(
+        new Set(
+          (userMessages || []).map((msg) =>
+            msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
+          )
+        )
+      )
+
+      if (partnerIds.length === 0) {
+        setContacts([])
+        return
+      }
+
+      // Načtení profilů pro nalezená partner_id
+      const { data: profiles, error: profError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, last_seen')
-        .neq('id', user.id)
+        .in('id', partnerIds)
 
-      if (error) {
-        console.error('Chyba při načítání uživatelů:', error)
+      if (profError) {
+        console.error('Chyba při načítání profilů:', profError)
+        return
       }
 
       if (profiles) {
-        setContacts(profiles)
-        if (!activeUserId && profiles.length > 0 && window.innerWidth >= 768) {
-          router.replace(`/chat?userId=${profiles[0].id}`)
+        // Seřazení profilů podle nejnovější zprávy
+        const sortedProfiles = partnerIds
+          .map((id) => profiles.find((p) => p.id === id))
+          .filter((p): p is Profile => p !== undefined)
+
+        setContacts(sortedProfiles)
+
+        if (!activeUserId && sortedProfiles.length > 0 && window.innerWidth >= 768) {
+          router.replace(`/chat?userId=${sortedProfiles[0].id}`)
         }
       }
     }
     init()
   }, [router, activeUserId])
 
-  // 2. Načtení konverzace a profilu aktivního uživatele z Supabase
+  // 2. Načtení konverzace a profilu aktivního uživatele
   useEffect(() => {
     if (!activeUserId || !currentUserId) {
       setActiveProfile(null)
@@ -200,7 +234,7 @@ function ChatContent() {
     const fetchProfileAndMessages = async () => {
       const supabase = createClient()
       
-      // Načtení detailu aktivního uživatele
+      // Načtení profilu aktivního partnera
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, last_seen')
@@ -209,7 +243,7 @@ function ChatContent() {
 
       if (profile) setActiveProfile(profile)
 
-      // Načtení zpráv mezi přihlášeným uživatelem a vybraným uživatelem
+      // Načtení historie zpráv
       const { data: oldMessages, error } = await supabase
         .from('messages')
         .select('*')
@@ -226,7 +260,7 @@ function ChatContent() {
     setIsTyping(false)
   }, [activeUserId, currentUserId])
 
-  // 3. Realtime poslech pro nové zprávy, indikátor psaní a hovory
+  // 3. Realtime poslech pro zprávy, psaní a hovory
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -316,7 +350,7 @@ function ChatContent() {
     }, 2000)
   }
 
-  // Funkce pro ukládání zprávy do Supabase i broadcast
+  // Funkce pro ukládání a odesílání zpráv
   const sendPayload = async (payload: Partial<Message>) => {
     if (!currentUserId || !activeUserId) return
     const supabase = createClient()
@@ -330,7 +364,7 @@ function ChatContent() {
       created_at: new Date().toISOString()
     }
 
-    // Uložení do Supabase
+    // 1. Uložení do Supabase
     const { data: savedMsg, error } = await supabase
       .from('messages')
       .insert(fullPayload)
@@ -343,7 +377,7 @@ function ChatContent() {
 
     const msgToSend = savedMsg || { ...fullPayload, id: crypto.randomUUID() }
 
-    // Odeslání příjemci v reálném čase
+    // 2. Broadcast příjemci
     await supabase.channel(`chat_signal_${activeUserId}`).send({
       type: 'broadcast',
       event: 'direct-message',
@@ -351,6 +385,12 @@ function ChatContent() {
     })
 
     setMessages((prev) => [...prev, msgToSend])
+
+    // 3. Přidání profilu do kontaktů, pokud tam ještě nebyl
+    if (activeProfile && !contacts.some((c) => c.id === activeProfile.id)) {
+      setContacts((prev) => [activeProfile, ...prev])
+    }
+
     scrollToBottom()
   }
 
@@ -565,7 +605,7 @@ function ChatContent() {
   return (
     <div className="flex w-full h-[calc(100vh-80px)] bg-slate-50 overflow-hidden max-w-[1400px] mx-auto border-x border-slate-200/80 shadow-2xl relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
       
-      {/* LEVÝ PANEL - KONTAKTY Z SUPABASE */}
+      {/* LEVÝ PANEL - EXISTUJÍCÍ KONVERZACE Z PROFILES + MESSAGES */}
       <div className={`w-full md:w-[360px] lg:w-[400px] flex-col border-r border-slate-200 bg-white ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-5 border-b border-slate-100">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Konverzace</h1>
@@ -575,7 +615,7 @@ function ChatContent() {
             </span>
             <input
               type="text"
-              placeholder="Hledat uživatele..."
+              placeholder="Hledat v konverzacích..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-xs outline-none transition-all"
@@ -585,7 +625,7 @@ function ChatContent() {
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
           {filteredContacts.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">Žádní uživatelé v databázi.</div>
+            <div className="text-center py-8 text-slate-400 text-xs">Zatím nemáte žádné aktivní konverzace.</div>
           ) : (
             filteredContacts.map((contact) => {
               const isOnline = onlineUsers.has(contact.id)
@@ -601,7 +641,11 @@ function ChatContent() {
                 >
                   <div className="relative">
                     <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-lg ${contact.id === activeUserId ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                      {contact.avatar_url ? <img src={contact.avatar_url} className="w-full h-full object-cover" /> : (contact.username || 'U').substring(0, 2).toUpperCase()}
+                      {contact.avatar_url ? (
+                        <img src={contact.avatar_url} alt={contact.username} className="w-full h-full object-cover" />
+                      ) : (
+                        (contact.username || 'U').substring(0, 2).toUpperCase()
+                      )}
                     </div>
                     {isOnline && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
@@ -647,7 +691,11 @@ function ChatContent() {
 
                 <div className="relative">
                   <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center overflow-hidden">
-                    {activeProfile?.avatar_url ? <img src={activeProfile.avatar_url} className="w-full h-full object-cover" /> : (activeProfile?.username || 'U').substring(0, 2).toUpperCase()}
+                    {activeProfile?.avatar_url ? (
+                      <img src={activeProfile.avatar_url} alt={activeProfile.username} className="w-full h-full object-cover" />
+                    ) : (
+                      (activeProfile?.username || 'U').substring(0, 2).toUpperCase()
+                    )}
                   </div>
                   {onlineUsers.has(activeProfile?.id || '') && (
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
@@ -842,7 +890,11 @@ function ChatContent() {
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-8">
             <div className="w-24 h-24 rounded-3xl bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-3xl font-bold mx-auto mb-4 animate-pulse overflow-hidden">
-              {activeProfile?.avatar_url ? <img src={activeProfile.avatar_url} className="w-full h-full object-cover" /> : (activeProfile?.username || 'U').substring(0, 2).toUpperCase()}
+              {activeProfile?.avatar_url ? (
+                <img src={activeProfile.avatar_url} alt={activeProfile.username} className="w-full h-full object-cover" />
+              ) : (
+                (activeProfile?.username || 'U').substring(0, 2).toUpperCase()
+              )}
             </div>
             <h3 className="text-2xl font-black mb-1">{activeProfile?.username}</h3>
             <p className="text-xs tracking-wider uppercase font-semibold text-slate-400">
