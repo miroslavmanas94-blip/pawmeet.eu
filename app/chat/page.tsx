@@ -33,6 +33,7 @@ export type Profile = {
   id: string
   username: string
   avatar_url?: string
+  last_seen?: string
 }
 
 export type Message = {
@@ -48,6 +49,19 @@ export type Contact = Profile & {
   lastMessage?: string
 }
 
+// Pomocná funkce pro lidské zobrazení času "Naposledy online"
+function formatLastSeen(dateString?: string) {
+  if (!dateString) return 'Offline'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return 'Před chvílí'
+  if (diffInSeconds < 3600) return `Před ${Math.floor(diffInSeconds / 60)} min`
+  if (diffInSeconds < 86400) return `Před ${Math.floor(diffInSeconds / 3600)} hod`
+  return `Před ${Math.floor(diffInSeconds / 86400)} dny`
+}
+
 function ChatContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -59,8 +73,9 @@ function ChatContent() {
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set())
-  const [uploadingImage, setUploadingImage] = useState(false)
+  
+  // Sledování stavu online uživatelů a jejich posledního zastižení
+  const [onlineUsers, setOnlineUsers] = useState<Map<string, string>>(new Map())
 
   // Indikátor psaní
   const [isTyping, setIsTyping] = useState(false)
@@ -78,7 +93,6 @@ function ChatContent() {
   const pendingCallSignal = useRef<any>(null)
   const ringtoneAudio = useRef<HTMLAudioElement | null>(null)
 
-  // Zvuk vyzvánění
   const playRingtone = () => {
     if (!ringtoneAudio.current) {
       ringtoneAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1361/1361-preview.mp3')
@@ -98,7 +112,6 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Načtení přihlášeného uživatele a kontaktů
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -112,7 +125,7 @@ function ChatContent() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, username, avatar_url, last_seen')
         .neq('id', user.id)
 
       if (profiles) {
@@ -122,7 +135,6 @@ function ChatContent() {
     init()
   }, [router])
 
-  // Načtení detailu aktivního profilu
   useEffect(() => {
     if (!activeUserId) {
       setActiveProfile(null)
@@ -132,22 +144,21 @@ function ChatContent() {
       const supabase = createClient()
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, username, avatar_url, last_seen')
         .eq('id', activeUserId)
         .single()
 
       if (data) setActiveProfile(data)
     }
     fetchActiveProfile()
-    setMessages([]) // Vyčištění správ při změně konverzace
+    setMessages([])
+    setIsTyping(false)
   }, [activeUserId])
 
-  // Realtime kanál: Zprávy v paměti, Online stav, Psaní, WebRTC Signalizace
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
 
-    // Online Presence
     const presenceChannel = supabase.channel('online-presence', {
       config: { presence: { key: currentUserId } }
     })
@@ -155,9 +166,12 @@ function ChatContent() {
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState()
-        const onlineIds = new Set<string>()
-        Object.keys(state).forEach((key) => onlineIds.add(key))
-        setOnlineUsers(onlineIds)
+        const userMap = new Map<string, string>()
+        Object.keys(state).forEach((key) => {
+          const userPresence = state[key][0] as any
+          userMap.set(key, userPresence?.online_at || new Date().toISOString())
+        })
+        setOnlineUsers(userMap)
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -165,17 +179,18 @@ function ChatContent() {
         }
       })
 
-    // Signální kanál pro zprávy, hovory a indikátor psaní
     const signalChannel = supabase.channel(`chat_signal_${currentUserId}`)
       .on('broadcast', { event: 'direct-message' }, ({ payload }) => {
         if (payload.sender_id === activeUserId) {
           setMessages((prev) => [...prev, payload])
+          setIsTyping(false)
           scrollToBottom()
         }
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (payload.from === activeUserId) {
           setIsTyping(payload.typing)
+          scrollToBottom()
         }
       })
       .on('broadcast', { event: 'webrtc-signal' }, async ({ payload }) => {
@@ -208,7 +223,6 @@ function ChatContent() {
     }
   }, [currentUserId, activeUserId])
 
-  // Indikátor psaní
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
     if (!activeUserId || !currentUserId) return
@@ -230,10 +244,17 @@ function ChatContent() {
     }, 2000)
   }
 
-  // Odeslání textové zprávy v reálném čase (BEZ UKLÁDÁNÍ DO DB)
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newMessage.trim() || !currentUserId || !activeUserId) return
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    const supabase = createClient()
+    supabase.channel(`chat_signal_${activeUserId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { from: currentUserId, typing: false }
+    })
 
     const textToSend = newMessage.trim()
     setNewMessage('')
@@ -246,7 +267,6 @@ function ChatContent() {
       created_at: new Date().toISOString()
     }
 
-    const supabase = createClient()
     await supabase.channel(`chat_signal_${activeUserId}`).send({
       type: 'broadcast',
       event: 'direct-message',
@@ -257,29 +277,29 @@ function ChatContent() {
     scrollToBottom()
   }
 
-  // Nahrání fotky a odeslání do chatu
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !currentUserId || !activeUserId) return
 
-    setUploadingImage(true)
-    const supabase = createClient()
-    const filePath = `${currentUserId}/${Date.now()}_${file.name}`
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Obrázek je příliš velký (max 5 MB).')
+      return
+    }
 
-    const { error: uploadErr } = await supabase.storage.from('chat-media').upload(filePath, file)
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const base64Image = reader.result as string
 
-    if (!uploadErr) {
-      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(filePath)
-      
       const msgPayload: Message = {
         id: crypto.randomUUID(),
         sender_id: currentUserId,
         receiver_id: activeUserId,
         content: '',
-        media_url: urlData.publicUrl,
+        media_url: base64Image,
         created_at: new Date().toISOString()
       }
 
+      const supabase = createClient()
       await supabase.channel(`chat_signal_${activeUserId}`).send({
         type: 'broadcast',
         event: 'direct-message',
@@ -288,13 +308,12 @@ function ChatContent() {
 
       setMessages((prev) => [...prev, msgPayload])
       scrollToBottom()
-    } else {
-      alert('Nahrání obrázku selhalo. Zkontrolujte, zda existuje Storage bucket "chat-media".')
     }
-    setUploadingImage(false)
+
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
-  // WebRTC logika
   const createPeerConnection = (targetUserId: string, stream: MediaStream) => {
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -494,7 +513,7 @@ function ChatContent() {
                     <h3 className="font-bold text-sm truncate">{contact.username}</h3>
                   </div>
                   <p className={`text-xs truncate ${contact.id === activeUserId ? 'text-indigo-100' : 'text-slate-400'}`}>
-                    {isOnline ? 'Aktivní nyní' : 'Offline'}
+                    {isOnline ? 'Aktivní nyní' : formatLastSeen(contact.last_seen)}
                   </p>
                 </div>
               </div>
@@ -534,9 +553,9 @@ function ChatContent() {
                     {isTyping ? (
                       <span className="text-indigo-600 font-semibold animate-pulse">píše zprávu...</span>
                     ) : onlineUsers.has(activeProfile?.id || '') ? (
-                      <span className="text-emerald-600 font-medium">Aktivní</span>
+                      <span className="text-emerald-600 font-medium">Aktivní nyní</span>
                     ) : (
-                      <span className="text-slate-400">Nedostupný</span>
+                      <span className="text-slate-400">{formatLastSeen(activeProfile?.last_seen)}</span>
                     )}
                   </div>
                 </div>
@@ -585,29 +604,45 @@ function ChatContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* FORMULÁŘ PRO ZPRÁVU */}
-            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 flex items-center gap-3">
-              <label className={`w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-all ${uploadingImage ? 'opacity-50' : ''}`}>
-                <PlusIcon />
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-              </label>
+            {/* SEKCIE PRO PSANÍ A INDIKÁTOR PSANÍ HLAVNÍ LIŠTĚ */}
+            <div className="bg-white border-t border-slate-100 sticky bottom-0 left-0 right-0 z-10">
+              
+              {/* Indikátor se 3 tečkami přesně NAD hlavní lištou na levé straně */}
+              {isTyping && (
+                <div className="px-4 pt-2.5 flex items-center gap-2 text-slate-500">
+                  <div className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-xs">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                  </div>
+                  <span className="italic text-[11px] text-slate-400 font-medium">píše...</span>
+                </div>
+              )}
 
-              <input
-                type="text"
-                value={newMessage}
-                onChange={handleInputChange}
-                placeholder="Napište zprávu..."
-                className="flex-1 px-5 py-3 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-sm outline-none transition-all"
-              />
+              {/* HLAVNÍ LIŠTA PRO PSANÍ ZPRÁVY */}
+              <form onSubmit={handleSendMessage} className="p-4 flex items-center gap-3">
+                <label className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer transition-all">
+                  <PlusIcon />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
 
-              <button 
-                type="submit" 
-                disabled={!newMessage.trim()} 
-                className="w-11 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all"
-              >
-                <SendIcon />
-              </button>
-            </form>
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  placeholder="Napište zprávu..."
+                  className="flex-1 px-5 py-3 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-sm outline-none transition-all text-slate-900"
+                />
+
+                <button 
+                  type="submit" 
+                  disabled={!newMessage.trim()} 
+                  className="w-11 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all"
+                >
+                  <SendIcon />
+                </button>
+              </form>
+            </div>
           </>
         )}
       </div>
