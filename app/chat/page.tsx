@@ -1,1926 +1,894 @@
 'use client'
 
-import {
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-/* =========================
-   IKONY
-========================= */
+// --- VLASTNÍ SVG IKONY ---
+const PhoneIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+)
 
-function ArrowLeftIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M15 18l-6-6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+const VideoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+)
 
-function SearchIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle
-        cx="11"
-        cy="11"
-        r="7"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M20 20l-4-4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
+const PlusIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+)
 
-function PlusIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
+const SendIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+)
 
-function SendIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M21 3L10.5 13.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M21 3l-6.7 18-3.8-7.5L3 9.7 21 3z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+const PhoneOffIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+)
 
-function ImageIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-      <rect
-        x="3"
-        y="4"
-        width="18"
-        height="16"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle
-        cx="8.5"
-        cy="9"
-        r="1.5"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M3 17l5-5 4 4 2.5-2.5L21 17"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+)
 
-function StickerIcon() {
-  return (
-    <svg width="21" height="21" viewBox="0 0 24 24" fill="none">
-      <rect
-        x="3"
-        y="3"
-        width="18"
-        height="18"
-        rx="4"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="9" cy="10" r="1.2" fill="currentColor" />
-      <circle cx="15" cy="10" r="1.2" fill="currentColor" />
-      <path
-        d="M8 15c1.2 1.5 2.5 2 4 2s2.8-.5 4-2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
+const ArrowLeftIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+)
 
-/* =========================
-   TYPY
-========================= */
+const ImageIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+)
+
+const StickerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><path d="M14 3v6h6"/></svg>
+)
+
+// --- KATEGORIE SAMOLEPEK ---
+const STICKER_CATEGORIES = [
+  {
+    name: '3D Emoji',
+    stickers: [
+      { id: '3d_1', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Grinning%20Face%20with%20Big%20Eyes.png' },
+      { id: '3d_2', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Smiling%20Face%20with%20Heart-Eyes.png' },
+      { id: '3d_3', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png' },
+      { id: '3d_4', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Victory%20Hand.png' },
+      { id: '3d_5', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Fire.png' },
+      { id: '3d_6', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Exploding%20Head.png' },
+    ]
+  },
+  {
+    name: 'Animované (GIF)',
+    stickers: [
+      { id: 'gif_1', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/3o7TKsjRrfIPjei8wM/giphy.gif' },
+      { id: 'gif_2', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/l41fk5N7uT2m8oWly/giphy.gif' },
+      { id: 'gif_3', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/26u4b45b8KxyP56I8/giphy.gif' },
+      { id: 'gif_4', url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3h5Z3E5ZzR3NXd5M3d5M3d5M3d5M3d5M3d5M3d5/xT9IgG50Fb7Mi0prBC/giphy.gif' },
+    ]
+  },
+  {
+    name: 'Klasické',
+    stickers: [
+      { id: 'cl_1', url: 'https://cdn-icons-png.flaticon.com/512/742/742751.png' },
+      { id: 'cl_2', url: 'https://cdn-icons-png.flaticon.com/512/742/742752.png' },
+      { id: 'cl_3', url: 'https://cdn-icons-png.flaticon.com/512/742/742760.png' },
+      { id: 'cl_4', url: 'https://cdn-icons-png.flaticon.com/512/742/742784.png' },
+    ]
+  }
+]
 
 export type Profile = {
   id: string
   username: string
-  avatar_url?: string | null
-  last_seen?: string | null
+  avatar_url?: string
+  last_seen?: string
 }
 
 export type Message = {
   id: string
-  chat_id?: string | null
   sender_id: string
   receiver_id: string
   content: string
-  media_url?: string | null
-  sticker_url?: string | null
+  media_url?: string
+  sticker_url?: string
   created_at: string
 }
 
-export type Chat = {
-  id: string
-  created_at: string
-  updated_at: string
-  profile: Profile
-  lastMessage?: Message | null
-}
-
-/* =========================
-   SAMOLEPKY
-========================= */
-
-const stickerCategories = [
-  {
-    name: '🐶',
-    stickers: [
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f436/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f431/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f43e/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f415/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f429/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f414/512.webp',
-    ],
-  },
-  {
-    name: '❤️',
-    stickers: [
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f496/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f497/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f498/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f499/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f49a/512.webp',
-    ],
-  },
-  {
-    name: '😂',
-    stickers: [
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f923/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f606/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f605/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f604/512.webp',
-      'https://fonts.gstatic.com/s/e/notoemoji/latest/1f60d/512.webp',
-    ],
-  },
-]
-
-/* =========================
-   POMOCNÉ FUNKCE
-========================= */
-
-function formatTime(date: string) {
-  return new Date(date).toLocaleTimeString('cs-CZ', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatLastSeen(date?: string | null) {
-  if (!date) return 'Offline'
-
-  const d = new Date(date)
+function formatLastSeen(dateString?: string) {
+  if (!dateString) return 'Offline'
+  const date = new Date(dateString)
   const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  const diff = now.getTime() - d.getTime()
-
-  if (diff < 60_000) return 'Právě online'
-
-  if (diff < 60 * 60_000) {
-    const minutes = Math.floor(diff / 60_000)
-    return `před ${minutes} min`
-  }
-
-  if (diff < 24 * 60 * 60_000) {
-    const hours = Math.floor(diff / (60 * 60_000))
-    return `před ${hours} h`
-  }
-
-  return d.toLocaleDateString('cs-CZ')
+  if (diffInSeconds < 60) return 'Před chvílí'
+  if (diffInSeconds < 3600) return `Před ${Math.floor(diffInSeconds / 60)} min`
+  if (diffInSeconds < 86400) return `Před ${Math.floor(diffInSeconds / 3600)} hod`
+  return `Před ${Math.floor(diffInSeconds / 86400)} dny`
 }
-
-/* =========================
-   HLAVNÍ KOMPONENTA
-========================= */
 
 function ChatContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-
+  const router = useRouter()
   const activeUserId = searchParams.get('userId')
 
-  const [currentUserId, setCurrentUserId] =
-    useState<string | null>(null)
-
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [contacts, setContacts] = useState<Profile[]>([])
-  const [chats, setChats] = useState<Chat[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  
+  const [onlineUsers, setOnlineUsers] = useState<Map<string, string>>(new Map())
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  const [activeProfile, setActiveProfile] =
-    useState<Profile | null>(null)
+  // Nabídky
+  const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [showStickerPicker, setShowStickerPicker] = useState(false)
+  const [activeStickerTab, setActiveStickerTab] = useState(0)
 
-  const [chatId, setChatId] =
-    useState<string | null>(null)
+  // Kontextové menu
+  const [selectedMsgMenu, setSelectedMsgMenu] = useState<{ msg: Message; x: number; y: number } | null>(null)
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  const [messages, setMessages] =
-    useState<Message[]>([])
+  // WebRTC
+  const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
+  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
 
-  const [newMessage, setNewMessage] =
-    useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const localVideoRef = useRef<HTMLVideoElement>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
+  const peerConnection = useRef<RTCPeerConnection | null>(null)
+  const pendingCallSignal = useRef<any>(null)
+  const ringtoneAudio = useRef<HTMLAudioElement | null>(null)
 
-  const [searchQuery, setSearchQuery] =
-    useState('')
+  const playRingtone = () => {
+    if (!ringtoneAudio.current) {
+      ringtoneAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/1361/1361-preview.mp3')
+      ringtoneAudio.current.loop = true
+    }
+    ringtoneAudio.current.play().catch(() => {})
+  }
 
-  const [loadingChats, setLoadingChats] =
-    useState(true)
-
-  const [loadingMessages, setLoadingMessages] =
-    useState(false)
-
-  const [onlineUsers, setOnlineUsers] =
-    useState<Map<string, string>>(new Map())
-
-  const [showAttachMenu, setShowAttachMenu] =
-    useState(false)
-
-  const [showStickerPicker, setShowStickerPicker] =
-    useState(false)
-
-  const [activeStickerTab, setActiveStickerTab] =
-    useState(0)
-
-  const [selectedMsgMenu, setSelectedMsgMenu] =
-    useState<{
-      msg: Message
-      x: number
-      y: number
-    } | null>(null)
-
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  /* =========================
-     SCROLL
-  ========================= */
+  const stopRingtone = () => {
+    if (ringtoneAudio.current) {
+      ringtoneAudio.current.pause()
+      ringtoneAudio.current.currentTime = 0
+    }
+  }
 
   const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: 'smooth',
-      })
-    }, 50)
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  /* =========================
-     NAČTENÍ PROFILŮ
-  ========================= */
-
-  const loadProfiles = async (userId: string) => {
-    const supabase = createClient()
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, username, avatar_url, last_seen')
-      .neq('id', userId)
-      .order('username', { ascending: true })
-
-    if (error) {
-      console.error('Chyba při načítání profilů:', error)
-      return
-    }
-
-    setContacts(data || [])
-  }
-
-  /* =========================
-     NAJDE EXISTUJÍCÍ CHAT
-  ========================= */
-
-  const findExistingChat = async (
-    userId: string,
-    otherUserId: string
-  ): Promise<string | null> => {
-    const supabase = createClient()
-
-    const { data: myParticipants, error: myError } =
-      await supabase
-        .from('chat_participants')
-        .select('chat_id')
-        .eq('user_id', userId)
-
-    if (myError) {
-      console.error(myError)
-      return null
-    }
-
-    const myChatIds =
-      myParticipants?.map((item) => item.chat_id) || []
-
-    if (myChatIds.length === 0) {
-      return null
-    }
-
-    const { data: otherParticipant, error } =
-      await supabase
-        .from('chat_participants')
-        .select('chat_id')
-        .eq('user_id', otherUserId)
-        .in('chat_id', myChatIds)
-        .limit(1)
-
-    if (error) {
-      console.error(error)
-      return null
-    }
-
-    return otherParticipant?.[0]?.chat_id || null
-  }
-
-  /* =========================
-     VYTVOŘENÍ / ZÍSKÁNÍ CHATU
-  ========================= */
-
-  const getOrCreateChat = async (
-    userId: string,
-    otherUserId: string
-  ): Promise<string | null> => {
-    const supabase = createClient()
-
-    const existingChat = await findExistingChat(
-      userId,
-      otherUserId
-    )
-
-    if (existingChat) {
-      return existingChat
-    }
-
-    const { data: newChat, error: chatError } =
-      await supabase
-        .from('chats')
-        .insert({
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single()
-
-    if (chatError || !newChat) {
-      console.error(
-        'Chyba při vytváření chatu:',
-        chatError
-      )
-      return null
-    }
-
-    const { error: participantError } =
-      await supabase
-        .from('chat_participants')
-        .insert([
-          {
-            chat_id: newChat.id,
-            user_id: userId,
-          },
-          {
-            chat_id: newChat.id,
-            user_id: otherUserId,
-          },
-        ])
-
-    if (participantError) {
-      console.error(
-        'Chyba při přidávání účastníků:',
-        participantError
-      )
-
-      await supabase
-        .from('chats')
-        .delete()
-        .eq('id', newChat.id)
-
-      return null
-    }
-
-    return newChat.id
-  }
-
-  /* =========================
-     NAČTENÍ CHATŮ
-  ========================= */
-
-  const loadChats = async (userId: string) => {
-    const supabase = createClient()
-
-    setLoadingChats(true)
-
-    try {
-      const { data: myParticipants, error } =
-        await supabase
-          .from('chat_participants')
-          .select('chat_id')
-          .eq('user_id', userId)
-
-      if (error) {
-        console.error(
-          'Chyba při načítání chatů:',
-          error
-        )
-        setChats([])
-        return
-      }
-
-      const chatIds =
-        myParticipants?.map((x) => x.chat_id) || []
-
-      if (chatIds.length === 0) {
-        setChats([])
-        return
-      }
-
-      const { data: participants } =
-        await supabase
-          .from('chat_participants')
-          .select('chat_id, user_id')
-          .in('chat_id', chatIds)
-          .neq('user_id', userId)
-
-      const otherUserIds =
-        participants?.map((x) => x.user_id) || []
-
-      if (otherUserIds.length === 0) {
-        setChats([])
-        return
-      }
-
-      const { data: profiles } =
-        await supabase
-          .from('profiles')
-          .select(
-            'id, username, avatar_url, last_seen'
-          )
-          .in('id', otherUserIds)
-
-      const { data: chatRows } =
-        await supabase
-          .from('chats')
-          .select(
-            'id, created_at, updated_at'
-          )
-          .in('id', chatIds)
-
-      const { data: lastMessages } =
-        await supabase
-          .from('messages')
-          .select(
-            'id, chat_id, sender_id, receiver_id, content, media_url, sticker_url, created_at'
-          )
-          .in('chat_id', chatIds)
-          .order('created_at', {
-            ascending: false,
-          })
-
-      const result: Chat[] = []
-
-      for (const chat of chatRows || []) {
-        const participant = participants?.find(
-          (p) => p.chat_id === chat.id
-        )
-
-        if (!participant) continue
-
-        const profile = profiles?.find(
-          (p) => p.id === participant.user_id
-        )
-
-        if (!profile) continue
-
-        const lastMessage =
-          lastMessages?.find(
-            (m) => m.chat_id === chat.id
-          ) || null
-
-        result.push({
-          id: chat.id,
-          created_at: chat.created_at,
-          updated_at: chat.updated_at,
-          profile,
-          lastMessage,
-        })
-      }
-
-      result.sort((a, b) => {
-        const aDate =
-          a.lastMessage?.created_at ||
-          a.updated_at
-
-        const bDate =
-          b.lastMessage?.created_at ||
-          b.updated_at
-
-        return (
-          new Date(bDate).getTime() -
-          new Date(aDate).getTime()
-        )
-      })
-
-      setChats(result)
-    } finally {
-      setLoadingChats(false)
-    }
-  }
-
-  /* =========================
-     INIT
-  ========================= */
-
+  // 1. Načtení profilů z Supabase
   useEffect(() => {
-    let mounted = true
-
     const init = async () => {
       const supabase = createClient()
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
         router.push('/login')
         return
       }
-
-      if (!mounted) return
-
       setCurrentUserId(user.id)
 
-      await Promise.all([
-        loadProfiles(user.id),
-        loadChats(user.id),
-      ])
-    }
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, last_seen')
+        .neq('id', user.id)
 
-    init()
-
-    return () => {
-      mounted = false
-    }
-  }, [router])
-
-  /* =========================
-     PRESENCE
-  ========================= */
-
-  useEffect(() => {
-    if (!currentUserId) return
-
-    const supabase = createClient()
-
-    const channel = supabase.channel(
-      'online-presence',
-      {
-        config: {
-          presence: {
-            key: currentUserId,
-          },
-        },
+      if (error) {
+        console.error('Chyba při načítání uživatelů:', error)
       }
-    )
 
-    channel
-      .on(
-        'presence',
-        {
-          event: 'sync',
-        },
-        () => {
-          const state = channel.presenceState()
-
-          const users = new Map<string, string>()
-
-          Object.entries(state).forEach(
-            ([userId, values]) => {
-              const first = values?.[0] as
-                | {
-                    online_at?: string
-                  }
-                | undefined
-
-              users.set(
-                userId,
-                first?.online_at ||
-                  new Date().toISOString()
-              )
-            }
-          )
-
-          setOnlineUsers(users)
+      if (profiles) {
+        setContacts(profiles)
+        if (!activeUserId && profiles.length > 0 && window.innerWidth >= 768) {
+          router.replace(`/chat?userId=${profiles[0].id}`)
         }
-      )
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            online_at:
-              new Date().toISOString(),
-          })
-        }
-      })
-
-    return () => {
-      supabase.removeChannel(channel)
+      }
     }
-  }, [currentUserId])
+    init()
+  }, [router, activeUserId])
 
-  /* =========================
-     AKTIVNÍ CHAT
-  ========================= */
-
+  // 2. Načtení konverzace a profilu aktivního uživatele z Supabase
   useEffect(() => {
-    if (!currentUserId || !activeUserId) {
+    if (!activeUserId || !currentUserId) {
       setActiveProfile(null)
-      setMessages([])
-      setChatId(null)
       return
     }
 
-    let cancelled = false
-
-    const loadActiveChat = async () => {
+    const fetchProfileAndMessages = async () => {
       const supabase = createClient()
+      
+      // Načtení detailu aktivního uživatele
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, last_seen')
+        .eq('id', activeUserId)
+        .single()
 
-      setLoadingMessages(true)
+      if (profile) setActiveProfile(profile)
 
-      const { data: profile } =
-        await supabase
-          .from('profiles')
-          .select(
-            'id, username, avatar_url, last_seen'
-          )
-          .eq('id', activeUserId)
-          .single()
+      // Načtení zpráv mezi přihlášeným uživatelem a vybraným uživatelem
+      const { data: oldMessages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`)
+        .order('created_at', { ascending: true })
 
-      if (cancelled) return
-
-      setActiveProfile(profile || null)
-
-      const existingChat =
-        await findExistingChat(
-          currentUserId,
-          activeUserId
-        )
-
-      if (cancelled) return
-
-      setChatId(existingChat)
-
-      let loadedMessages: Message[] = []
-
-      if (existingChat) {
-        const { data: chatMessages, error } =
-          await supabase
-            .from('messages')
-            .select(
-              'id, chat_id, sender_id, receiver_id, content, media_url, sticker_url, created_at'
-            )
-            .eq('chat_id', existingChat)
-            .order('created_at', {
-              ascending: true,
-            })
-
-        if (error) {
-          console.error(error)
-        }
-
-        loadedMessages =
-          (chatMessages as Message[]) || []
-
-        /*
-         * Načte i starší zprávy, které byly
-         * vytvořené ještě před zavedením chat_id.
-         */
-        const { data: legacyMessages } =
-          await supabase
-            .from('messages')
-            .select(
-              'id, chat_id, sender_id, receiver_id, content, media_url, sticker_url, created_at'
-            )
-            .is('chat_id', null)
-            .or(
-              `and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`
-            )
-            .order('created_at', {
-              ascending: true,
-            })
-
-        loadedMessages = [
-          ...loadedMessages,
-          ...((legacyMessages as Message[]) ||
-            []),
-        ]
-      } else {
-        /*
-         * Chat ještě neexistuje, ale pokud existují
-         * starší zprávy bez chat_id, zobrazíme je.
-         */
-        const { data: legacyMessages } =
-          await supabase
-            .from('messages')
-            .select(
-              'id, chat_id, sender_id, receiver_id, content, media_url, sticker_url, created_at'
-            )
-            .is('chat_id', null)
-            .or(
-              `and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`
-            )
-            .order('created_at', {
-              ascending: true,
-            })
-
-        loadedMessages =
-          (legacyMessages as Message[]) || []
-      }
-
-      const uniqueMessages = Array.from(
-        new Map(
-          loadedMessages.map((m) => [
-            m.id,
-            m,
-          ])
-        ).values()
-      )
-
-      uniqueMessages.sort(
-        (a, b) =>
-          new Date(a.created_at).getTime() -
-          new Date(b.created_at).getTime()
-      )
-
-      if (!cancelled) {
-        setMessages(uniqueMessages)
-        setLoadingMessages(false)
-
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({
-            behavior: 'auto',
-          })
-        }, 100)
+      if (!error && oldMessages) {
+        setMessages(oldMessages)
+        setTimeout(scrollToBottom, 100)
       }
     }
 
-    loadActiveChat()
+    fetchProfileAndMessages()
+    setIsTyping(false)
+  }, [activeUserId, currentUserId])
 
-    return () => {
-      cancelled = true
-    }
-  }, [currentUserId, activeUserId])
-
-  /* =========================
-     REALTIME ZPRÁVY
-  ========================= */
-
+  // 3. Realtime poslech pro nové zprávy, indikátor psaní a hovory
   useEffect(() => {
     if (!currentUserId) return
-
     const supabase = createClient()
 
-    const channel = supabase.channel(
-      `chat_signal_${currentUserId}`
-    )
+    const presenceChannel = supabase.channel('online-presence', {
+      config: { presence: { key: currentUserId } }
+    })
 
-    channel
-      .on(
-        'broadcast',
-        {
-          event: 'direct-message',
-        },
-        ({ payload }) => {
-          const message =
-            payload as Message
-
-          if (!message?.id) return
-
-          /*
-           * Zpráva patří tomuto uživateli.
-           */
-          if (
-            message.receiver_id !==
-            currentUserId
-          ) {
-            return
-          }
-
-          setMessages((prev) => {
-            if (
-              prev.some(
-                (m) => m.id === message.id
-              )
-            ) {
-              return prev
-            }
-
-            return [...prev, message]
-          })
-
-          loadChats(currentUserId)
-
-          if (
-            message.sender_id ===
-            activeUserId
-          ) {
-            scrollToBottom()
-          }
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState()
+        const userMap = new Map<string, string>()
+        Object.keys(state).forEach((key) => {
+          const userPresence = state[key][0] as any
+          userMap.set(key, userPresence?.online_at || new Date().toISOString())
+        })
+        setOnlineUsers(userMap)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({ online_at: new Date().toISOString() })
         }
-      )
+      })
+
+    const signalChannel = supabase.channel(`chat_signal_${currentUserId}`)
+      .on('broadcast', { event: 'direct-message' }, ({ payload }) => {
+        if (payload.sender_id === activeUserId) {
+          setMessages((prev) => [...prev, payload])
+          setIsTyping(false)
+          scrollToBottom()
+        }
+      })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.from === activeUserId) {
+          setIsTyping(payload.typing)
+          scrollToBottom()
+        }
+      })
+      .on('broadcast', { event: 'webrtc-signal' }, async ({ payload }) => {
+        if (payload.from !== activeUserId) return
+
+        if (payload.type === 'offer') {
+          setCallType(payload.callType)
+          setCallStatus('incoming')
+          playRingtone()
+          pendingCallSignal.current = payload
+        } else if (payload.type === 'answer') {
+          stopRingtone()
+          if (peerConnection.current) {
+            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+            setCallStatus('connected')
+          }
+        } else if (payload.type === 'ice-candidate') {
+          if (peerConnection.current && payload.candidate) {
+            await peerConnection.current.addIceCandidate(new RTCIceCandidate(payload.candidate))
+          }
+        } else if (payload.type === 'end-call') {
+          endCall()
+        }
+      })
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(presenceChannel)
+      supabase.removeChannel(signalChannel)
     }
   }, [currentUserId, activeUserId])
 
-  /* =========================
-     OTEVŘENÍ CHATU
-  ========================= */
-
-  const openChat = (userId: string) => {
-    setSearchQuery('')
-    router.push(`/chat?userId=${userId}`)
-  }
-
-  /* =========================
-     ODESLÁNÍ
-  ========================= */
-
-  const sendPayload = async (payload: {
-    content?: string
-    media_url?: string | null
-    sticker_url?: string | null
-  }) => {
-    if (
-      !currentUserId ||
-      !activeUserId
-    ) {
-      return
-    }
-
-    const content =
-      payload.content?.trim() || ''
-
-    if (
-      !content &&
-      !payload.media_url &&
-      !payload.sticker_url
-    ) {
-      return
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value)
+    if (!activeUserId || !currentUserId) return
 
     const supabase = createClient()
-
-    /*
-     * Pokud chat ještě neexistuje,
-     * automaticky ho vytvoříme.
-     */
-    let currentChatId = chatId
-
-    if (!currentChatId) {
-      currentChatId =
-        await getOrCreateChat(
-          currentUserId,
-          activeUserId
-        )
-
-      if (!currentChatId) {
-        alert(
-          'Nepodařilo se vytvořit chat.'
-        )
-        return
-      }
-
-      setChatId(currentChatId)
-    }
-
-    const fullPayload = {
-      chat_id: currentChatId,
-      sender_id: currentUserId,
-      receiver_id: activeUserId,
-      content,
-      media_url:
-        payload.media_url || null,
-      sticker_url:
-        payload.sticker_url || null,
-      created_at:
-        new Date().toISOString(),
-    }
-
-    const { data: savedMessage, error } =
-      await supabase
-        .from('messages')
-        .insert(fullPayload)
-        .select(
-          'id, chat_id, sender_id, receiver_id, content, media_url, sticker_url, created_at'
-        )
-        .single()
-
-    if (error || !savedMessage) {
-      console.error(
-        'Chyba při ukládání zprávy:',
-        error
-      )
-
-      alert(
-        'Zprávu se nepodařilo uložit.'
-      )
-
-      return
-    }
-
-    /*
-     * Aktualizace času chatu.
-     */
-    await supabase
-      .from('chats')
-      .update({
-        updated_at:
-          new Date().toISOString(),
-      })
-      .eq('id', currentChatId)
-
-    const message =
-      savedMessage as Message
-
-    /*
-     * Přidáme zprávu okamžitě u odesílatele.
-     */
-    setMessages((prev) => {
-      if (
-        prev.some(
-          (m) => m.id === message.id
-        )
-      ) {
-        return prev
-      }
-
-      return [...prev, message]
+    supabase.channel(`chat_signal_${activeUserId}`).send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { from: currentUserId, typing: true }
     })
 
-    /*
-     * Pošleme ji druhému uživateli přes realtime.
-     */
-    await supabase
-      .channel(
-        `chat_signal_${activeUserId}`
-      )
-      .send({
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = setTimeout(() => {
+      supabase.channel(`chat_signal_${activeUserId}`).send({
         type: 'broadcast',
-        event: 'direct-message',
-        payload: message,
+        event: 'typing',
+        payload: { from: currentUserId, typing: false }
       })
+    }, 2000)
+  }
 
-    setNewMessage('')
+  // Funkce pro ukládání zprávy do Supabase i broadcast
+  const sendPayload = async (payload: Partial<Message>) => {
+    if (!currentUserId || !activeUserId) return
+    const supabase = createClient()
 
-    setShowAttachMenu(false)
-    setShowStickerPicker(false)
+    const fullPayload = {
+      sender_id: currentUserId,
+      receiver_id: activeUserId,
+      content: payload.content || '',
+      media_url: payload.media_url || null,
+      sticker_url: payload.sticker_url || null,
+      created_at: new Date().toISOString()
+    }
 
-    await loadChats(currentUserId)
+    // Uložení do Supabase
+    const { data: savedMsg, error } = await supabase
+      .from('messages')
+      .insert(fullPayload)
+      .select()
+      .single()
 
+    if (error) {
+      console.error('Chyba při ukládání zprávy:', error)
+    }
+
+    const msgToSend = savedMsg || { ...fullPayload, id: crypto.randomUUID() }
+
+    // Odeslání příjemci v reálném čase
+    await supabase.channel(`chat_signal_${activeUserId}`).send({
+      type: 'broadcast',
+      event: 'direct-message',
+      payload: msgToSend
+    })
+
+    setMessages((prev) => [...prev, msgToSend])
     scrollToBottom()
   }
 
-  /* =========================
-     TEXT
-  ========================= */
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMessage.trim()) return
 
-  const handleSend = async () => {
-    await sendPayload({
-      content: newMessage,
-    })
-  }
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    if (activeUserId && currentUserId) {
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { from: currentUserId, typing: false }
+      })
     }
+
+    sendPayload({ content: newMessage.trim() })
+    setNewMessage('')
+    setShowAttachMenu(false)
+    setShowStickerPicker(false)
   }
 
-  /* =========================
-     OBRÁZEK
-  ========================= */
+  const handleSendSticker = (stickerUrl: string) => {
+    sendPayload({ sticker_url: stickerUrl })
+    setShowAttachMenu(false)
+    setShowStickerPicker(false)
+  }
 
-  const handleImageSelect = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-
     if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      alert(
-        'Vyber prosím obrázek.'
-      )
-      return
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      alert(
-        'Obrázek může mít maximálně 8 MB.'
-      )
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Obrázek je příliš velký (max 5 MB).')
       return
     }
 
     const reader = new FileReader()
-
-    reader.onload = async () => {
-      const result =
-        reader.result?.toString()
-
-      if (!result) return
-
-      await sendPayload({
-        media_url: result,
-      })
+    reader.onload = () => {
+      sendPayload({ media_url: reader.result as string })
+      setShowAttachMenu(false)
     }
 
     reader.readAsDataURL(file)
-
     e.target.value = ''
   }
 
-  /* =========================
-     SAMOLEPKA
-  ========================= */
-
-  const sendSticker = async (
-    stickerUrl: string
-  ) => {
-    await sendPayload({
-      sticker_url: stickerUrl,
-    })
+  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
+    e.preventDefault()
+    setSelectedMsgMenu({ msg, x: e.clientX, y: e.clientY })
   }
 
-  /* =========================
-     SMAZÁNÍ ZPRÁVY
-  ========================= */
+  const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
+    const touch = e.touches[0]
+    touchTimerRef.current = setTimeout(() => {
+      setSelectedMsgMenu({ msg, x: touch.clientX, y: touch.clientY })
+    }, 500)
+  }
 
-  const deleteMessage = async (
-    message: Message
-  ) => {
-    if (!currentUserId) return
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current)
+  }
 
-    if (
-      message.sender_id !==
-      currentUserId
-    ) {
-      setSelectedMsgMenu(null)
-      return
+  const copyMessage = () => {
+    if (selectedMsgMenu?.msg.content) {
+      navigator.clipboard.writeText(selectedMsgMenu.msg.content)
     }
-
-    const supabase = createClient()
-
-    const { error } = await supabase
-      .from('messages')
-      .delete()
-      .eq('id', message.id)
-      .eq(
-        'sender_id',
-        currentUserId
-      )
-
-    if (error) {
-      console.error(
-        'Chyba při mazání:',
-        error
-      )
-      return
-    }
-
-    setMessages((prev) =>
-      prev.filter(
-        (m) => m.id !== message.id
-      )
-    )
-
     setSelectedMsgMenu(null)
-
-    await loadChats(currentUserId)
   }
 
-  /* =========================
-     VYHLEDÁVÁNÍ
-  ========================= */
+  const deleteMessageLocally = async () => {
+    if (selectedMsgMenu) {
+      const msgId = selectedMsgMenu.msg.id
+      setMessages((prev) => prev.filter((m) => m.id !== msgId))
+      
+      const supabase = createClient()
+      await supabase.from('messages').delete().eq('id', msgId)
+    }
+    setSelectedMsgMenu(null)
+  }
 
-  const filteredChats = chats.filter(
-    (chat) =>
-      chat.profile.username
-        ?.toLowerCase()
-        .includes(
-          searchQuery.toLowerCase()
-        )
+  const createPeerConnection = (targetUserId: string, stream: MediaStream) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    })
+
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream))
+
+    pc.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0]
+      }
+    }
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate && currentUserId) {
+        const supabase = createClient()
+        supabase.channel(`chat_signal_${targetUserId}`).send({
+          type: 'broadcast',
+          event: 'webrtc-signal',
+          payload: { from: currentUserId, type: 'ice-candidate', candidate: event.candidate }
+        })
+      }
+    }
+
+    peerConnection.current = pc
+    return pc
+  }
+
+  const startCall = async (type: 'audio' | 'video') => {
+    if (!activeUserId || !currentUserId) return
+    setCallType(type)
+    setCallStatus('calling')
+    playRingtone()
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: type === 'video',
+        audio: true
+      })
+      setLocalStream(stream)
+      if (localVideoRef.current && type === 'video') {
+        localVideoRef.current.srcObject = stream
+      }
+
+      const pc = createPeerConnection(activeUserId, stream)
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'offer', sdp: offer, callType: type }
+      })
+    } catch (err) {
+      console.error(err)
+      endCall()
+    }
+  }
+
+  const acceptCall = async () => {
+    if (!activeUserId || !currentUserId || !pendingCallSignal.current) return
+    stopRingtone()
+    setCallStatus('connected')
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: callType === 'video',
+        audio: true
+      })
+      setLocalStream(stream)
+      if (localVideoRef.current && callType === 'video') {
+        localVideoRef.current.srcObject = stream
+      }
+
+      const pc = createPeerConnection(activeUserId, stream)
+      await pc.setRemoteDescription(new RTCSessionDescription(pendingCallSignal.current.sdp))
+
+      const answer = await pc.createAnswer()
+      await pc.setLocalDescription(answer)
+
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'answer', sdp: answer }
+      })
+    } catch (err) {
+      console.error(err)
+      endCall()
+    }
+  }
+
+  const endCall = () => {
+    stopRingtone()
+    if (activeUserId && currentUserId) {
+      const supabase = createClient()
+      supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'webrtc-signal',
+        payload: { from: currentUserId, type: 'end-call' }
+      })
+    }
+    if (localStream) localStream.getTracks().forEach((t) => t.stop())
+    setLocalStream(null)
+    setCallStatus('idle')
+    setCallType(null)
+    if (peerConnection.current) {
+      peerConnection.current.close()
+      peerConnection.current = null
+    }
+  }
+
+  const renderMessageContent = (msg: Message) => {
+    if (msg.sticker_url) {
+      return <img src={msg.sticker_url} alt="Samolepka" className="w-28 h-28 object-contain my-1" />
+    }
+
+    if (msg.media_url) {
+      return <img src={msg.media_url} alt="Obrázek" className="rounded-2xl max-w-full max-h-72 object-cover shadow-sm" />
+    }
+
+    return msg.content
+  }
+
+  const filteredContacts = contacts.filter((c) =>
+    (c.username || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredContacts =
-    contacts.filter(
-      (profile) =>
-        profile.username
-          ?.toLowerCase()
-          .includes(
-            searchQuery.toLowerCase()
-          )
-    )
-
-  const isSearching =
-    searchQuery.trim().length > 0
-
-  /* =========================
-     RENDER
-  ========================= */
-
   return (
-    <main className="fixed inset-0 bg-white text-gray-900 overflow-hidden">
-      <div className="flex h-full w-full">
-        {/* =====================
-            LEVÝ PANEL
-        ===================== */}
-
-        <aside
-          className={`
-            w-full md:w-[360px]
-            border-r border-gray-200
-            bg-white
-            flex flex-col
-            ${
-              activeUserId
-                ? 'hidden md:flex'
-                : 'flex'
-            }
-          `}
-        >
-          {/* HEADER */}
-
-          <div className="px-4 pt-5 pb-3">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">
-                Chat
-              </h1>
-            </div>
-
-            <div className="relative">
+    <div className="flex w-full h-[calc(100vh-80px)] bg-slate-50 overflow-hidden max-w-[1400px] mx-auto border-x border-slate-200/80 shadow-2xl relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
+      
+      {/* LEVÝ PANEL - KONTAKTY Z SUPABASE */}
+      <div className={`w-full md:w-[360px] lg:w-[400px] flex-col border-r border-slate-200 bg-white ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-5 border-b border-slate-100">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-4">Konverzace</h1>
+          <div className="relative">
+            <span className="absolute left-3.5 top-3 text-slate-400">
               <SearchIcon />
-
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                <SearchIcon />
-              </div>
-
-              <input
-                value={searchQuery}
-                onChange={(e) =>
-                  setSearchQuery(
-                    e.target.value
-                  )
-                }
-                placeholder="Hledat uživatele..."
-                className="w-full h-11 rounded-2xl bg-gray-100 pl-10 pr-4 outline-none focus:ring-2 focus:ring-black/10"
-              />
-            </div>
+            </span>
+            <input
+              type="text"
+              placeholder="Hledat uživatele..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-xs outline-none transition-all"
+            />
           </div>
+        </div>
 
-          {/* SEZNAM */}
-
-          <div className="flex-1 overflow-y-auto px-2 pb-4">
-            {loadingChats &&
-            !isSearching ? (
-              <div className="px-4 py-8 text-center text-gray-400">
-                Načítám chaty...
-              </div>
-            ) : isSearching ? (
-              <>
-                {filteredContacts.length ===
-                0 ? (
-                  <div className="px-4 py-8 text-center text-gray-400">
-                    Uživatel nenalezen
-                  </div>
-                ) : (
-                  <>
-                    <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Uživatelé
-                    </div>
-
-                    {filteredContacts.map(
-                      (profile) => {
-                        const isOnline =
-                          onlineUsers.has(
-                            profile.id
-                          )
-
-                        return (
-                          <button
-                            key={profile.id}
-                            onClick={() =>
-                              openChat(
-                                profile.id
-                              )
-                            }
-                            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-100 transition text-left"
-                          >
-                            <div className="relative shrink-0">
-                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
-                                {profile.avatar_url ? (
-                                  <img
-                                    src={
-                                      profile.avatar_url
-                                    }
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center font-bold text-gray-500">
-                                    {profile.username
-                                      ?.charAt(
-                                        0
-                                      )
-                                      ?.toUpperCase()}
-                                  </div>
-                                )}
-                              </div>
-
-                              {isOnline && (
-                                <span className="absolute right-0 bottom-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold truncate">
-                                {
-                                  profile.username
-                                }
-                              </div>
-
-                              <div className="text-sm text-gray-400">
-                                {isOnline
-                                  ? 'Online'
-                                  : formatLastSeen(
-                                      profile.last_seen
-                                    )}
-                              </div>
-                            </div>
-                          </button>
-                        )
-                      }
-                    )}
-                  </>
-                )}
-              </>
-            ) : filteredChats.length ===
-              0 ? (
-              <div className="px-6 py-12 text-center">
-                <div className="text-5xl mb-4">
-                  💬
-                </div>
-
-                <div className="font-semibold text-gray-700 mb-1">
-                  Zatím žádné chaty
-                </div>
-
-                <div className="text-sm text-gray-400">
-                  Vyhledej uživatele nahoře a
-                  začni konverzaci.
-                </div>
-              </div>
-            ) : (
-              <>
-                {filteredChats.map((chat) => {
-                  const profile =
-                    chat.profile
-
-                  const isOnline =
-                    onlineUsers.has(
-                      profile.id
-                    )
-
-                  const isActive =
-                    activeUserId ===
-                    profile.id
-
-                  let preview =
-                    'Začněte konverzaci'
-
-                  if (
-                    chat.lastMessage
-                  ) {
-                    if (
-                      chat.lastMessage
-                        .sticker_url
-                    ) {
-                      preview =
-                        'Samolepka'
-                    } else if (
-                      chat.lastMessage
-                        .media_url
-                    ) {
-                      preview =
-                        '📷 Obrázek'
-                    } else {
-                      preview =
-                        chat.lastMessage
-                          .content ||
-                        'Zpráva'
-                    }
-                  }
-
-                  return (
-                    <button
-                      key={chat.id}
-                      onClick={() =>
-                        openChat(
-                          profile.id
-                        )
-                      }
-                      className={`
-                        w-full flex items-center gap-3 p-3 rounded-2xl transition text-left
-                        ${
-                          isActive
-                            ? 'bg-gray-100'
-                            : 'hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      <div className="relative shrink-0">
-                        <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200">
-                          {profile.avatar_url ? (
-                            <img
-                              src={
-                                profile.avatar_url
-                              }
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-500">
-                              {profile.username
-                                ?.charAt(
-                                  0
-                                )
-                                ?.toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-
-                        {isOnline && (
-                          <span className="absolute right-0 bottom-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold truncate">
-                            {
-                              profile.username
-                            }
-                          </span>
-
-                          {chat.lastMessage && (
-                            <span className="text-[11px] text-gray-400 shrink-0">
-                              {formatTime(
-                                chat
-                                  .lastMessage
-                                  .created_at
-                              )}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-sm text-gray-400 truncate mt-0.5">
-                          {preview}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </>
-            )}
-          </div>
-        </aside>
-
-        {/* =====================
-            PRAVÝ PANEL
-        ===================== */}
-
-        <section
-          className={`
-            flex-1 min-w-0
-            flex flex-col
-            bg-white
-            ${
-              activeUserId
-                ? 'flex'
-                : 'hidden md:flex'
-            }
-          `}
-        >
-          {!activeUserId ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
-              <div className="text-center">
-                <div className="text-6xl mb-4">
-                  💬
-                </div>
-                <div className="font-semibold text-gray-600">
-                  Vyber chat
-                </div>
-              </div>
-            </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {filteredContacts.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-xs">Žádní uživatelé v databázi.</div>
           ) : (
-            <>
-              {/* CHAT HEADER */}
+            filteredContacts.map((contact) => {
+              const isOnline = onlineUsers.has(contact.id)
+              return (
+                <div
+                  key={contact.id}
+                  onClick={() => router.push(`/chat?userId=${contact.id}`)}
+                  className={`flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer transition-all ${
+                    contact.id === activeUserId 
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                      : 'hover:bg-slate-100/80 text-slate-700'
+                  }`}
+                >
+                  <div className="relative">
+                    <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center font-bold text-lg ${contact.id === activeUserId ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {contact.avatar_url ? <img src={contact.avatar_url} className="w-full h-full object-cover" /> : (contact.username || 'U').substring(0, 2).toUpperCase()}
+                    </div>
+                    {isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                    )}
+                  </div>
 
-              <header className="h-[72px] border-b border-gray-200 flex items-center gap-3 px-4 shrink-0">
-                <button
-                  onClick={() =>
-                    router.push('/chat')
-                  }
-                  className="md:hidden w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <h3 className="font-bold text-sm truncate">{contact.username || 'Uživatel'}</h3>
+                    </div>
+                    <p className={`text-xs truncate ${contact.id === activeUserId ? 'text-indigo-100' : 'text-slate-400'}`}>
+                      {isOnline ? 'Aktivní nyní' : formatLastSeen(contact.last_seen)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+
+      {/* PRAVÝ PANEL - CHAT A MESSAGES */}
+      <div className={`flex-1 flex-col bg-white ${!activeUserId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
+        {!activeUserId ? (
+          <div className="text-center p-8">
+            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 text-3xl font-black">
+              💬
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Vyberte konverzaci</h3>
+            <p className="text-xs text-slate-400 max-w-sm">Vyberte někoho ze seznamu vlevo a začněte si psát.</p>
+          </div>
+        ) : (
+          <>
+            {/* HLAVIČKA CHATU */}
+            <div className="h-20 px-4 md:px-6 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
+              <div className="flex items-center gap-3 md:gap-4">
+                <button 
+                  onClick={() => router.push('/chat')} 
+                  className="md:hidden p-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold active:scale-95 transition-all"
                 >
                   <ArrowLeftIcon />
                 </button>
 
-                <button
-                  onClick={() =>
-                    activeProfile &&
-                    router.push(
-                      `/profil/${activeProfile.username}`
-                    )
-                  }
-                  className="flex items-center gap-3 min-w-0 text-left"
-                >
-                  <div className="relative shrink-0">
-                    <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-200">
-                      {activeProfile?.avatar_url ? (
-                        <img
-                          src={
-                            activeProfile.avatar_url
-                          }
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center font-bold text-gray-500">
-                          {activeProfile?.username
-                            ?.charAt(0)
-                            ?.toUpperCase()}
-                        </div>
-                      )}
-                    </div>
+                <div className="relative">
+                  <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center overflow-hidden">
+                    {activeProfile?.avatar_url ? <img src={activeProfile.avatar_url} className="w-full h-full object-cover" /> : (activeProfile?.username || 'U').substring(0, 2).toUpperCase()}
+                  </div>
+                  {onlineUsers.has(activeProfile?.id || '') && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                  )}
+                </div>
 
-                    {onlineUsers.has(
-                      activeUserId
-                    ) && (
-                      <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
+                <div>
+                  <h2 className="font-bold text-slate-900 text-sm md:text-base">{activeProfile?.username || 'Načítám...'}</h2>
+                  <div className="text-xs">
+                    {isTyping ? (
+                      <span className="text-indigo-600 font-semibold animate-pulse">píše zprávu...</span>
+                    ) : onlineUsers.has(activeProfile?.id || '') ? (
+                      <span className="text-emerald-600 font-medium">Aktivní nyní</span>
+                    ) : (
+                      <span className="text-slate-400">{formatLastSeen(activeProfile?.last_seen)}</span>
                     )}
                   </div>
-
-                  <div className="min-w-0">
-                    <div className="font-bold truncate">
-                      {activeProfile?.username ||
-                        'Načítám...'}
-                    </div>
-
-                    <div className="text-xs text-gray-400">
-                      {onlineUsers.has(
-                        activeUserId
-                      )
-                        ? 'Online'
-                        : formatLastSeen(
-                            activeProfile?.last_seen
-                          )}
-                    </div>
-                  </div>
-                </button>
-              </header>
-
-              {/* ZPRÁVY */}
-
-              <div
-                className="flex-1 overflow-y-auto px-3 md:px-6 py-5"
-                onClick={() =>
-                  setSelectedMsgMenu(null)
-                }
-              >
-                {loadingMessages ? (
-                  <div className="h-full flex items-center justify-center text-gray-400">
-                    Načítám zprávy...
-                  </div>
-                ) : messages.length ===
-                  0 ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-gray-400">
-                      <div className="text-5xl mb-3">
-                        👋
-                      </div>
-                      <div className="font-semibold text-gray-600">
-                        Začni konverzaci
-                      </div>
-                      <div className="text-sm mt-1">
-                        Pošli první zprávu
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="max-w-3xl mx-auto space-y-2">
-                    {messages.map(
-                      (message) => {
-                        const own =
-                          message.sender_id ===
-                          currentUserId
-
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex ${
-                              own
-                                ? 'justify-end'
-                                : 'justify-start'
-                            }`}
-                          >
-                            <div
-                              className="max-w-[78%] md:max-w-[65%]"
-                              onContextMenu={(
-                                e
-                              ) => {
-                                e.preventDefault()
-
-                                setSelectedMsgMenu(
-                                  {
-                                    msg: message,
-                                    x: e.clientX,
-                                    y: e.clientY,
-                                  }
-                                )
-                              }}
-                              onDoubleClick={(
-                                e
-                              ) => {
-                                setSelectedMsgMenu(
-                                  {
-                                    msg: message,
-                                    x: e.clientX,
-                                    y: e.clientY,
-                                  }
-                                )
-                              }}
-                            >
-                              <div
-                                className={`
-                                  rounded-2xl overflow-hidden
-                                  ${
-                                    own
-                                      ? 'bg-black text-white rounded-br-md'
-                                      : 'bg-gray-100 text-gray-900 rounded-bl-md'
-                                  }
-                                `}
-                              >
-                                {message.media_url && (
-                                  <img
-                                    src={
-                                      message.media_url
-                                    }
-                                    alt="Obrázek"
-                                    className="max-w-full max-h-[350px] object-cover"
-                                  />
-                                )}
-
-                                {message.sticker_url && (
-                                  <div className="p-2">
-                                    <img
-                                      src={
-                                        message.sticker_url
-                                      }
-                                      alt="Samolepka"
-                                      className="w-28 h-28 object-contain"
-                                    />
-                                  </div>
-                                )}
-
-                                {message.content && (
-                                  <div className="px-4 py-2.5 whitespace-pre-wrap break-words">
-                                    {
-                                      message.content
-                                    }
-                                  </div>
-                                )}
-                              </div>
-
-                              <div
-                                className={`text-[10px] text-gray-400 mt-1 ${
-                                  own
-                                    ? 'text-right'
-                                    : 'text-left'
-                                }`}
-                              >
-                                {formatTime(
-                                  message.created_at
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      }
-                    )}
-
-                    <div
-                      ref={messagesEndRef}
-                    />
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* =====================
-                  STICKER PICKER
-              ===================== */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => startCall('audio')} 
+                  className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 flex items-center justify-center transition-all"
+                  title="Hlasový hovor"
+                >
+                  <PhoneIcon />
+                </button>
+                <button 
+                  onClick={() => startCall('video')} 
+                  className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 flex items-center justify-center transition-all"
+                  title="Video hovor"
+                >
+                  <VideoIcon />
+                </button>
+              </div>
+            </div>
 
+            {/* ZPRÁVY Z TABULKY MESSAGES */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/50">
+              {messages.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-xs">Žádné dosavadní zprávy. Napište první zprávu!</div>
+              ) : (
+                messages.map((msg) => {
+                  const isMine = msg.sender_id === currentUserId
+                  return (
+                    <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <div 
+                        onContextMenu={(e) => handleContextMenu(e, msg)}
+                        onTouchStart={(e) => handleTouchStart(e, msg)}
+                        onTouchEnd={handleTouchEnd}
+                        className={`max-w-[80%] md:max-w-[70%] px-4 py-3 rounded-2xl text-sm shadow-sm transition-all select-none cursor-pointer ${
+                          isMine 
+                            ? 'bg-indigo-600 text-white rounded-br-xs' 
+                            : 'bg-white border border-slate-200/60 text-slate-800 rounded-bl-xs'
+                        }`}
+                      >
+                        {renderMessageContent(msg)}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* PEVNÁ DOLNÍ PSACÍ LIŠTA */}
+            <div className="bg-white border-t border-slate-100 sticky bottom-0 left-0 right-0 z-20 shadow-md">
+              
+              {isTyping && (
+                <div className="px-4 pt-2 flex items-center gap-2 text-slate-500">
+                  <div className="bg-slate-100 border border-slate-200/60 px-3 py-1 rounded-full flex items-center gap-1 shadow-xs">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                  </div>
+                  <span className="italic text-[11px] text-slate-400 font-medium">píše...</span>
+                </div>
+              )}
+
+              {/* STICKER PICKER */}
               {showStickerPicker && (
-                <div className="border-t border-gray-200 bg-white px-3 pt-3">
-                  <div className="flex gap-2 mb-3">
-                    {stickerCategories.map(
-                      (
-                        category,
-                        index
-                      ) => (
-                        <button
-                          key={
-                            category.name
-                          }
-                          onClick={() =>
-                            setActiveStickerTab(
-                              index
-                            )
-                          }
-                          className={`
-                            w-10 h-10 rounded-xl
-                            ${
-                              activeStickerTab ===
-                              index
-                                ? 'bg-gray-200'
-                                : 'hover:bg-gray-100'
-                            }
-                          `}
-                        >
-                          {
-                            category.name
-                          }
-                        </button>
-                      )
-                    )}
+                <div className="p-3 border-b border-slate-100 bg-slate-50/90 backdrop-blur-md">
+                  <div className="flex gap-2 mb-3 border-b border-slate-200/60 pb-2">
+                    {STICKER_CATEGORIES.map((cat, idx) => (
+                      <button
+                        key={cat.name}
+                        onClick={() => setActiveStickerTab(idx)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                          activeStickerTab === idx ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
                   </div>
 
-                  <div className="flex gap-3 overflow-x-auto pb-3">
-                    {stickerCategories[
-                      activeStickerTab
-                    ].stickers.map(
-                      (sticker) => (
-                        <button
-                          key={sticker}
-                          onClick={() =>
-                            sendSticker(
-                              sticker
-                            )
-                          }
-                          className="w-16 h-16 rounded-xl hover:bg-gray-100 shrink-0 flex items-center justify-center"
-                        >
-                          <img
-                            src={sticker}
-                            alt=""
-                            className="w-12 h-12 object-contain"
-                          />
-                        </button>
-                      )
-                    )}
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-48 overflow-y-auto p-1">
+                    {STICKER_CATEGORIES[activeStickerTab].stickers.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => handleSendSticker(s.url)}
+                        className="w-full aspect-square p-2 rounded-2xl bg-white border border-slate-200/80 hover:bg-indigo-50 hover:border-indigo-300 transition-all flex items-center justify-center shrink-0 shadow-xs active:scale-95"
+                      >
+                        <img src={s.url} alt="Sticker" className="w-full h-full object-contain" />
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* =====================
-                  ATTACH MENU
-              ===================== */}
-
+              {/* NABÍDKA PŘÍLOH */}
               {showAttachMenu && (
-                <div className="border-t border-gray-200 bg-white px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        fileInputRef.current?.click()
-                      }
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200"
-                    >
-                      <ImageIcon />
-                      <span>
-                        Obrázek
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setShowAttachMenu(
-                          false
-                        )
-                        setShowStickerPicker(
-                          true
-                        )
-                      }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200"
-                    >
-                      <StickerIcon />
-                      <span>
-                        Samolepka
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* =====================
-                  INPUT
-              ===================== */}
-
-              <div className="border-t border-gray-200 p-3 md:p-4 shrink-0">
-                <div className="max-w-3xl mx-auto flex items-end gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={
-                      handleImageSelect
-                    }
-                    className="hidden"
-                  />
+                <div className="p-3 border-b border-slate-100 bg-white flex items-center gap-3">
+                  <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer transition-all">
+                    <ImageIcon />
+                    <span>Obrázek</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </label>
 
                   <button
-                    onClick={() => {
-                      setShowAttachMenu(
-                        (v) => !v
-                      )
-                      setShowStickerPicker(
-                        false
-                      )
-                    }}
-                    className="w-11 h-11 rounded-full hover:bg-gray-100 flex items-center justify-center shrink-0"
-                  >
-                    <PlusIcon />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowStickerPicker(
-                        (v) => !v
-                      )
-                      setShowAttachMenu(
-                        false
-                      )
-                    }}
-                    className={`
-                      w-11 h-11 rounded-full flex items-center justify-center shrink-0
-                      ${
-                        showStickerPicker
-                          ? 'bg-gray-200'
-                          : 'hover:bg-gray-100'
-                      }
-                    `}
+                    onClick={() => setShowStickerPicker(!showStickerPicker)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-2xl text-xs font-bold transition-all"
                   >
                     <StickerIcon />
+                    <span>Samolepky & GIF</span>
                   </button>
-
-                  <div className="flex-1 relative">
-                    <input
-                      value={newMessage}
-                      onChange={(e) =>
-                        setNewMessage(
-                          e.target.value
-                        )
-                      }
-                      onKeyDown={
-                        handleKeyDown
-                      }
-                      placeholder="Napiš zprávu..."
-                      className="w-full h-11 rounded-full bg-gray-100 px-4 pr-12 outline-none focus:ring-2 focus:ring-black/10"
-                    />
-
-                    <button
-                      onClick={
-                        handleSend
-                      }
-                      disabled={
-                        !newMessage.trim()
-                      }
-                      className="absolute right-1 top-1 w-9 h-9 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                      <SendIcon />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </section>
+              )}
+
+              {/* FORMULÁŘ PRO ZPRÁVU */}
+              <form onSubmit={handleSendMessage} className="p-3 md:p-4 flex items-center gap-2 md:gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAttachMenu(!showAttachMenu)
+                    setShowStickerPicker(false)
+                  }}
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all shrink-0 ${
+                    showAttachMenu ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  <PlusIcon />
+                </button>
+
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  placeholder="Napište zprávu..."
+                  className="flex-1 px-4 md:px-5 py-3 bg-slate-100/80 hover:bg-slate-100 focus:bg-white border border-transparent focus:border-indigo-500/30 rounded-2xl text-sm outline-none transition-all text-slate-900"
+                />
+
+                <button 
+                  type="submit" 
+                  disabled={!newMessage.trim()} 
+                  className="w-11 h-11 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20 transition-all shrink-0"
+                >
+                  <SendIcon />
+                </button>
+              </form>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* =====================
-          MENU ZPRÁVY
-      ===================== */}
-
+      {/* KONTEXTOVÉ MENU NA ZPRÁVĚ */}
       {selectedMsgMenu && (
-        <div
-          className="fixed z-[100] bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-[150px]"
-          style={{
-            left: Math.min(
-              selectedMsgMenu.x,
-              window.innerWidth - 170
-            ),
-            top: Math.min(
-              selectedMsgMenu.y,
-              window.innerHeight - 70
-            ),
-          }}
-          onClick={(e) =>
-            e.stopPropagation()
-          }
+        <div 
+          className="fixed z-[300] bg-white border border-slate-200 rounded-2xl shadow-2xl p-1.5 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+          style={{ top: Math.min(selectedMsgMenu.y, window.innerHeight - 120), left: Math.min(selectedMsgMenu.x, window.innerWidth - 180) }}
         >
-          {selectedMsgMenu.msg.sender_id ===
-            currentUserId && (
-            <button
-              onClick={() =>
-                deleteMessage(
-                  selectedMsgMenu.msg
-                )
-              }
-              className="w-full text-left px-4 py-2.5 text-red-500 hover:bg-red-50"
+          {selectedMsgMenu.msg.content && (
+            <button 
+              onClick={copyMessage}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-2"
             >
-              Smazat zprávu
+              📋 Zkopírovat
             </button>
           )}
-
-          <button
-            onClick={() =>
-              setSelectedMsgMenu(null)
-            }
-            className="w-full text-left px-4 py-2.5 hover:bg-gray-100"
+          <button 
+            onClick={deleteMessageLocally}
+            className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex items-center gap-2"
           >
-            Zrušit
+            🗑️ Odstranit
           </button>
         </div>
       )}
-    </main>
+
+      {/* OVERLAY PRO VOICE/VIDEO CALL */}
+      {callStatus !== 'idle' && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex flex-col items-center justify-between p-8 text-white">
+          <div className="text-center mt-8">
+            <div className="w-24 h-24 rounded-3xl bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-3xl font-bold mx-auto mb-4 animate-pulse overflow-hidden">
+              {activeProfile?.avatar_url ? <img src={activeProfile.avatar_url} className="w-full h-full object-cover" /> : (activeProfile?.username || 'U').substring(0, 2).toUpperCase()}
+            </div>
+            <h3 className="text-2xl font-black mb-1">{activeProfile?.username}</h3>
+            <p className="text-xs tracking-wider uppercase font-semibold text-slate-400">
+              {callStatus === 'calling' && 'Volám...'}
+              {callStatus === 'incoming' && 'Příchozí hovor...'}
+              {callStatus === 'connected' && 'Probíhá hovor'}
+            </p>
+          </div>
+
+          {callType === 'video' && (
+            <div className="relative w-full max-w-2xl aspect-video bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl my-4">
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-4 right-4 w-36 h-24 bg-slate-950 rounded-2xl border border-white/20 object-cover shadow-lg" />
+            </div>
+          )}
+
+          <div className="flex items-center gap-6 mb-8">
+            {callStatus === 'incoming' ? (
+              <>
+                <button onClick={acceptCall} className="w-16 h-16 rounded-3xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-all hover:scale-105">
+                  <PhoneIcon />
+                </button>
+                <button onClick={endCall} className="w-16 h-16 rounded-3xl bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-lg shadow-rose-600/30 transition-all hover:scale-105">
+                  <PhoneOffIcon />
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={endCall} 
+                className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl shadow-xl shadow-rose-600/30 flex items-center gap-3 transition-all hover:scale-105"
+              >
+                <PhoneOffIcon />
+                <span>Zavěsit</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+    </div>
   )
 }
 
-/* =========================
-   EXPORT
-========================= */
-
 export default function ChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="fixed inset-0 flex items-center justify-center bg-white text-gray-400">
-          Načítám chat...
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-slate-400 text-sm">Načítám rozhraní...</div>}>
       <ChatContent />
     </Suspense>
   )
