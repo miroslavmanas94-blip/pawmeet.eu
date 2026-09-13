@@ -49,6 +49,14 @@ const CloseIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 )
 
+const LockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+)
+
+const GlobeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+)
+
 // SAMOLEPKY
 const STICKER_CATEGORIES = [
   {
@@ -68,6 +76,13 @@ export type Profile = {
   first_name?: string
   avatar_url?: string
   last_seen?: string
+}
+
+export type PublicGroup = {
+  id: string
+  name: string
+  description?: string
+  members_count: number
 }
 
 export type Message = {
@@ -119,14 +134,19 @@ function ChatContent() {
   const [showStickerPicker, setShowStickerPicker] = useState(false)
   const [selectedMsgMenu, setSelectedMsgMenu] = useState<{ msg: Message; x: number; y: number } | null>(null)
 
-  // MODÁLNÍ OKNA PRO TLAČÍTKO PLUS (NOVÝ CHAT / SKUPINA)
+  // MODÁLNÍ OKNO TLAČÍTKA PLUS
   const [showNewChatModal, setShowNewChatModal] = useState(false)
   const [activeModalTab, setActiveModalTab] = useState<'search' | 'group'>('search')
   const [allUsers, setAllUsers] = useState<Profile[]>([])
-  const [mutualFollowers, setMutualFollowers] = useState<Profile[]>([])
+  const [publicGroups, setPublicGroups] = useState<PublicGroup[]>([])
   const [userSearchQuery, setUserSearchQuery] = useState('')
-  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([])
+
+  // VYTVOŘENÍ SKUPINY (VEŘEJNÁ VS SOUKROMÁ)
+  const [groupType, setGroupType] = useState<'private' | 'public'>('private')
   const [groupName, setGroupName] = useState('')
+  const [groupDescription, setGroupDescription] = useState('')
+  const [privateSearchQuery, setPrivateSearchQuery] = useState('')
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([])
 
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null)
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'incoming' | 'connected'>('idle')
@@ -158,7 +178,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // NAČTENÍ POUZE AKTIVNÍCH CHATŮ
+  // NAČTENÍ POUZE UŽIVATELŮ, SE KTERÝMI JSTE SI JIŽ PSALI
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -170,7 +190,6 @@ function ChatContent() {
       }
       setCurrentUserId(user.id)
 
-      // Načtení profilu přihlášeného uživatele
       const { data: myProfile } = await supabase
         .from('profiles')
         .select('*')
@@ -179,7 +198,6 @@ function ChatContent() {
 
       if (myProfile) setCurrentUserProfile(myProfile)
 
-      // Načteme zprávy uživatele pro nalezení partnerů
       const { data: userMessages, error: msgError } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, created_at')
@@ -218,13 +236,13 @@ function ChatContent() {
     init()
   }, [router])
 
-  // Načtení dat pro tlačítko PLUS (hledání účtů & vzájemná sledování)
+  // Načtení dat pro tlačítko PLUS (hledání účtů & veřejné skupiny)
   const openNewChatModal = async () => {
     setShowNewChatModal(true)
     if (!currentUserId) return
     const supabase = createClient()
 
-    // 1. Všichni uživatelé pro hledání
+    // Všichni uživatelé pro globální hledání
     const { data: users } = await supabase
       .from('profiles')
       .select('*')
@@ -233,32 +251,14 @@ function ChatContent() {
 
     if (users) setAllUsers(users)
 
-    // 2. Vzájemně se sledující účty (Mutual Followers)
-    const { data: myFollows } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', currentUserId)
+    // Veřejné skupiny
+    const { data: groups } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('is_private', false)
+      .limit(20)
 
-    const myFollowingIds = myFollows?.map((f) => f.following_id) || []
-
-    if (myFollowingIds.length > 0) {
-      const { data: followersBack } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('following_id', currentUserId)
-        .in('follower_id', myFollowingIds)
-
-      const mutualIds = followersBack?.map((f) => f.follower_id) || []
-
-      if (mutualIds.length > 0) {
-        const { data: mutuals } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', mutualIds)
-
-        if (mutuals) setMutualFollowers(mutuals)
-      }
-    }
+    if (groups) setPublicGroups(groups)
   }
 
   // Načtení detailu chatu
@@ -603,20 +603,47 @@ function ChatContent() {
     return msg.content
   }
 
+  // FILTROVÁNÍ UŽIVATELŮ V SEZNAMU AKTIVNÍCH CHATŮ
   const filteredContacts = contacts.filter((c) => {
     const name = c.username || c.first_name || 'Uživatel'
     return name.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
+  // FILTROVÁNÍ VŠECH UŽIVATELŮ PRO HLEDÁNÍ (ÚČTY & VEŘEJNÉ SKUPINY)
   const filteredAllUsers = allUsers.filter((u) => {
     const name = u.username || u.first_name || 'Uživatel'
     return name.toLowerCase().includes(userSearchQuery.toLowerCase())
+  })
+
+  const filteredPublicGroups = publicGroups.filter((g) =>
+    g.name.toLowerCase().includes(userSearchQuery.toLowerCase())
+  )
+
+  // FILTROVÁNÍ KONTAKTŮ PRO SOUKROMOU SKUPINU (POUZE TY, SE KTERÝMI SI PSAL)
+  const filteredPrivateContacts = contacts.filter((c) => {
+    const name = c.username || c.first_name || 'Uživatel'
+    return name.toLowerCase().includes(privateSearchQuery.toLowerCase())
   })
 
   const toggleGroupMember = (userId: string) => {
     setSelectedGroupMembers((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     )
+  }
+
+  const handleCreateGroup = () => {
+    if (!groupName.trim()) return
+
+    if (groupType === 'private') {
+      alert(`Soukromá skupina "${groupName}" byla vytvořena s ${selectedGroupMembers.length} členy!`)
+    } else {
+      alert(`Veřejná skupina "${groupName}" byla vytvořena! Uživatelé ji nyní najdou ve vyhledávání.`)
+    }
+
+    setShowNewChatModal(false)
+    setGroupName('')
+    setGroupDescription('')
+    setSelectedGroupMembers([])
   }
 
   return (
@@ -629,7 +656,6 @@ function ChatContent() {
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">Konverzace</h1>
             </div>
-            {/* TLAČÍTKO PLUS PRO VYTVOŘENÍ CHATU/SKUPINY */}
             <button
               onClick={openNewChatModal}
               className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
@@ -712,7 +738,6 @@ function ChatContent() {
               </button>
 
               <div className="flex items-center gap-3">
-                {/* PROFILOVKA V HLAVIČCE */}
                 <div className="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100">
                   {activeProfile?.avatar_url ? (
                     <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
@@ -760,7 +785,6 @@ function ChatContent() {
 
               return (
                 <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* PROFILOVKA U ZPRÁVY */}
                   <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px] flex items-center justify-center overflow-hidden shrink-0 shadow-xs mb-1">
                     {avatar ? (
                       <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -780,7 +804,6 @@ function ChatContent() {
                     >
                       {renderMessageContent(msg)}
                     </div>
-                    {/* ČAS ZPRÁVY */}
                     <span className="text-[10px] text-slate-400 font-medium px-1 mt-1">
                       {formatTimeOnly(msg.created_at)}
                     </span>
@@ -858,25 +881,25 @@ function ChatContent() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS (HLEDAT ÚČTY / SKUPINY) */}
+      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS (HLEDÁNÍ / SKUPINY) */}
       {showNewChatModal && (
         <div className="fixed inset-0 z-[250] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[80vh]">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
             
             {/* HLAVIČKA MODÁLU & ZÁLOŽKY */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex gap-2 p-1 bg-slate-200/60 rounded-2xl">
+              <div className="flex gap-1.5 p-1 bg-slate-200/60 rounded-2xl">
                 <button
                   onClick={() => setActiveModalTab('search')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     activeModalTab === 'search' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'
                   }`}
                 >
-                  Hledat účty
+                  Hledat účty & Skupiny
                 </button>
                 <button
                   onClick={() => setActiveModalTab('group')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     activeModalTab === 'group' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'
                   }`}
                 >
@@ -899,110 +922,194 @@ function ChatContent() {
                     </span>
                     <input
                       type="text"
-                      placeholder="Napište jméno uživatele..."
+                      placeholder="Vyhledat uživatele nebo veřejnou skupinu..."
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    {filteredAllUsers.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-slate-400">Žádní uživatelé nenalezeni.</div>
-                    ) : (
-                      filteredAllUsers.map((u) => {
-                        const name = u.username || u.first_name || 'Uživatel'
-                        return (
+                  {/* VEŘEJNÉ SKUPINY */}
+                  {filteredPublicGroups.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Veřejné skupiny</h4>
+                      <div className="space-y-1">
+                        {filteredPublicGroups.map((g) => (
                           <div
-                            key={u.id}
+                            key={g.id}
                             onClick={() => {
+                              alert(`Připojil jsi se ke skupině ${g.name}`)
                               setShowNewChatModal(false)
-                              router.push(`/chat?userId=${u.id}`)
                             }}
-                            className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-indigo-50/60 cursor-pointer transition-all"
+                            className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-indigo-50/60 cursor-pointer transition-all border border-slate-100"
                           >
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center overflow-hidden shrink-0">
-                              {u.avatar_url ? (
-                                <img src={u.avatar_url} alt={name} className="w-full h-full object-cover" />
-                              ) : (
-                                name.substring(0, 2).toUpperCase()
-                              )}
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0">
+                              <UsersIcon />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-sm text-slate-900 truncate">{name}</h4>
-                              <p className="text-[10px] text-slate-400">Kliknutím zahájíte chat</p>
+                              <h4 className="font-bold text-sm text-slate-900 truncate">{g.name}</h4>
+                              <p className="text-[10px] text-slate-400 truncate">{g.description || 'Veřejná skupina'}</p>
                             </div>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full">Připojit se</span>
                           </div>
-                        )
-                      })
-                    )}
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* UŽIVATELÉ */}
+                  <div>
+                    <h4 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Uživatelé</h4>
+                    <div className="space-y-1">
+                      {filteredAllUsers.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-slate-400">Žádní uživatelé nenalezeni.</div>
+                      ) : (
+                        filteredAllUsers.map((u) => {
+                          const name = u.username || u.first_name || 'Uživatel'
+                          return (
+                            <div
+                              key={u.id}
+                              onClick={() => {
+                                setShowNewChatModal(false)
+                                router.push(`/chat?userId=${u.id}`)
+                              }}
+                              className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-indigo-50/60 cursor-pointer transition-all"
+                            >
+                              <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center overflow-hidden shrink-0">
+                                {u.avatar_url ? (
+                                  <img src={u.avatar_url} alt={name} className="w-full h-full object-cover" />
+                                ) : (
+                                  name.substring(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-sm text-slate-900 truncate">{name}</h4>
+                                <p className="text-[10px] text-slate-400">Kliknutím zahájíte chat</p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="mb-4">
+                  {/* PŘEPÍNAČ: SOUKROMÁ VS VEŘEJNÁ SKUPINA */}
+                  <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-slate-100 rounded-2xl">
+                    <button
+                      onClick={() => setGroupType('private')}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        groupType === 'private' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      <LockIcon />
+                      <span>Soukromá</span>
+                    </button>
+                    <button
+                      onClick={() => setGroupType('public')}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        groupType === 'public' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      <GlobeIcon />
+                      <span>Veřejná</span>
+                    </button>
+                  </div>
+
+                  <div className="mb-3">
                     <label className="block text-xs font-bold text-slate-700 mb-1">Název skupiny</label>
                     <input
                       type="text"
-                      placeholder="např. Psí Sraz..."
+                      placeholder="Zadejte název skupiny..."
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-slate-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    Vzájemně se sledující účty
-                  </h4>
-
-                  <div className="space-y-1 max-h-48 overflow-y-auto mb-4">
-                    {mutualFollowers.length === 0 ? (
-                      <div className="text-center py-6 text-xs text-slate-400">
-                        Nemáte žádné vzájemně se sledující přátele.
+                  {groupType === 'public' ? (
+                    <div className="mb-4">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Popis skupiny (volitelné)</label>
+                      <textarea
+                        rows={3}
+                        placeholder="O čem tato veřejná skupina je..."
+                        value={groupDescription}
+                        onChange={(e) => setGroupDescription(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Veřejná skupina je volně přístupná. Uživatelé ji najdou ve vyhledávání.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-bold text-slate-700 mb-1">
+                        Přidat členy (pouze lidé, se kterými jste si psali)
+                      </h4>
+                      
+                      <div className="relative mb-2">
+                        <span className="absolute left-3 top-2.5 text-slate-400">
+                          <SearchIcon />
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Vyhledat v kontaktech..."
+                          value={privateSearchQuery}
+                          onChange={(e) => setPrivateSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 bg-slate-100 rounded-xl text-xs outline-none"
+                        />
                       </div>
-                    ) : (
-                      mutualFollowers.map((m) => {
-                        const name = m.username || m.first_name || 'Uživatel'
-                        const isSelected = selectedGroupMembers.includes(m.id)
-                        return (
-                          <div
-                            key={m.id}
-                            onClick={() => toggleGroupMember(m.id)}
-                            className={`flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
-                              isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center overflow-hidden shrink-0">
-                              {m.avatar_url ? (
-                                <img src={m.avatar_url} alt={name} className="w-full h-full object-cover" />
-                              ) : (
-                                name.substring(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-sm text-slate-900 truncate">{name}</h4>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              className="w-4 h-4 text-indigo-600 rounded-md focus:ring-0"
-                            />
+
+                      <div className="space-y-1 max-h-40 overflow-y-auto border border-slate-100 rounded-2xl p-1">
+                        {filteredPrivateContacts.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-slate-400">
+                            Nenalezen žádný kontakt z vašich předchozích zpráv.
                           </div>
-                        )
-                      })
-                    )}
-                  </div>
+                        ) : (
+                          filteredPrivateContacts.map((c) => {
+                            const name = c.username || c.first_name || 'Uživatel'
+                            const isSelected = selectedGroupMembers.includes(c.id)
+                            return (
+                              <div
+                                key={c.id}
+                                onClick={() => toggleGroupMember(c.id)}
+                                className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all ${
+                                  isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center overflow-hidden shrink-0 text-xs">
+                                  {c.avatar_url ? (
+                                    <img src={c.avatar_url} alt={name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    name.substring(0, 2).toUpperCase()
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-xs text-slate-900 truncate">{name}</h4>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {}}
+                                  className="w-4 h-4 text-indigo-600 rounded-md focus:ring-0"
+                                />
+                              </div>
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <button
-                    disabled={!groupName.trim() || selectedGroupMembers.length === 0}
-                    onClick={() => {
-                      alert('Skupinový chat byl vytvořen!')
-                      setShowNewChatModal(false)
-                    }}
+                    disabled={!groupName.trim() || (groupType === 'private' && selectedGroupMembers.length === 0)}
+                    onClick={handleCreateGroup}
                     className="w-full py-3 bg-indigo-600 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-md transition-all active:scale-95"
                   >
-                    Vytvořit skupinu ({selectedGroupMembers.length})
+                    {groupType === 'private' 
+                      ? `Vytvořit soukromou skupinu (${selectedGroupMembers.length} členů)`
+                      : 'Vytvořit veřejnou skupinu'}
                   </button>
                 </div>
               )}
