@@ -57,7 +57,21 @@ const GlobeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 )
 
-// SAMOLEPKY
+const SmileIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+)
+
+// 50+ CUSTOM & 3D EMOJI SEZNAM
+const CUSTOM_EMOJIS = [
+  '🔥', '✨', '⚡', '💥', '🚀', '🌟', '🎉', '🎊', '🎈', '🎁',
+  '💎', '👑', '🏆', '🥇', '🔮', '🧿', '🍀', '🌈', '☀️', '🌙',
+  '❤️‍🔥', '💖', '💘', '💝', '💗', '💓', '💕', '💞', '❣️', '💔',
+  '🤖', '👾', '👽', '👻', '💀', '☠️', '🤡', '👺', '👹', '🎭',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨',
+  '🦁', '🐯', '🦄', '🐝', '🦋', '🐞', '🐢', '🐍', '🐙', '🦑'
+]
+
+// SAMOLEPKY A 3D ANIMOVANÉ EMOJI
 const STICKER_CATEGORIES = [
   {
     name: '3D Emoji',
@@ -66,6 +80,8 @@ const STICKER_CATEGORIES = [
       { id: '3d_2', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Smiling%20Face%20with%20Heart-Eyes.png' },
       { id: '3d_3', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png' },
       { id: '3d_4', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Victory%20Hand.png' },
+      { id: '3d_5', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Fire.png' },
+      { id: '3d_6', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Rocket.png' },
     ]
   }
 ]
@@ -74,6 +90,7 @@ export type Profile = {
   id: string
   username?: string
   first_name?: string
+  full_name?: string
   avatar_url?: string
   last_seen?: string
 }
@@ -82,13 +99,15 @@ export type PublicGroup = {
   id: string
   name: string
   description?: string
-  members_count: number
+  members_count?: number
+  is_private?: boolean
 }
 
 export type Message = {
   id: string
   sender_id: string
-  receiver_id: string
+  receiver_id?: string
+  group_id?: string
   content: string
   media_url?: string
   sticker_url?: string
@@ -117,12 +136,15 @@ function ChatContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const activeUserId = searchParams.get('userId')
+  const activeGroupId = searchParams.get('groupId')
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null)
   const [contacts, setContacts] = useState<Profile[]>([])
+  const [myGroups, setMyGroups] = useState<PublicGroup[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null)
+  const [activeGroup, setActiveGroup] = useState<PublicGroup | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   
@@ -131,17 +153,18 @@ function ChatContent() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showStickerPicker, setShowStickerPicker] = useState(false)
   const [selectedMsgMenu, setSelectedMsgMenu] = useState<{ msg: Message; x: number; y: number } | null>(null)
 
-  // MODÁLNÍ OKNO TLAČÍTKA PLUS
+  // MODÁLNÍ OKNO PRO TLAČÍTKO PLUS
   const [showNewChatModal, setShowNewChatModal] = useState(false)
   const [activeModalTab, setActiveModalTab] = useState<'search' | 'group'>('search')
   const [allUsers, setAllUsers] = useState<Profile[]>([])
   const [publicGroups, setPublicGroups] = useState<PublicGroup[]>([])
   const [userSearchQuery, setUserSearchQuery] = useState('')
 
-  // VYTVOŘENÍ SKUPINY (VEŘEJNÁ VS SOUKROMÁ)
+  // STAVY PRO VYTVOŘENÍ SKUPINY
   const [groupType, setGroupType] = useState<'private' | 'public'>('private')
   const [groupName, setGroupName] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
@@ -178,7 +201,7 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // NAČTENÍ POUZE UŽIVATELŮ, SE KTERÝMI JSTE SI JIŽ PSALI
+  // NAČTENÍ KONTAKTŮ, SE KTERÝMI SI UŽIVATEL PSAL, A JEHO SKUPIN
   useEffect(() => {
     const init = async () => {
       const supabase = createClient()
@@ -198,51 +221,60 @@ function ChatContent() {
 
       if (myProfile) setCurrentUserProfile(myProfile)
 
-      const { data: userMessages, error: msgError } = await supabase
+      // Načtení aktivních uživatelů z historie chatu
+      const { data: userMessages } = await supabase
         .from('messages')
         .select('sender_id, receiver_id, created_at')
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order('created_at', { ascending: false })
 
-      if (msgError || !userMessages) return
-
-      const activePartnerIds = Array.from(
-        new Set(
-          userMessages.map((msg) =>
-            msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
+      if (userMessages) {
+        const activePartnerIds = Array.from(
+          new Set(
+            userMessages.map((msg) =>
+              msg.sender_id === user.id ? msg.receiver_id : msg.sender_id
+            ).filter(Boolean)
           )
         )
-      )
 
-      if (activePartnerIds.length === 0) {
-        setContacts([])
-        return
+        if (activePartnerIds.length > 0) {
+          const { data: activeProfiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', activePartnerIds)
+
+          if (activeProfiles) {
+            const sorted = activePartnerIds
+              .map((id) => activeProfiles.find((p) => p.id === id))
+              .filter((p): p is Profile => p !== undefined)
+            setContacts(sorted)
+          }
+        }
       }
 
-      const { data: activeProfiles, error: profError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', activePartnerIds)
+      // Načtení skupin, kterých je uživatel členem
+      const { data: groupMemberships } = await supabase
+        .from('group_members')
+        .select('group_id, groups(*)')
+        .eq('user_id', user.id)
 
-      if (!profError && activeProfiles) {
-        const sorted = activePartnerIds
-          .map((id) => activeProfiles.find((p) => p.id === id))
-          .filter((p): p is Profile => p !== undefined)
-
-        setContacts(sorted)
+      if (groupMemberships) {
+        const fetchedGroups = groupMemberships
+          .map((gm: any) => gm.groups)
+          .filter(Boolean)
+        setMyGroups(fetchedGroups)
       }
     }
 
     init()
   }, [router])
 
-  // Načtení dat pro tlačítko PLUS (hledání účtů & veřejné skupiny)
+  // NAČTENÍ ÚČTŮ A VEŘEJNÝCH SKUPIN PRO MODÁLNÍ OKNO
   const openNewChatModal = async () => {
     setShowNewChatModal(true)
     if (!currentUserId) return
     const supabase = createClient()
 
-    // Všichni uživatelé pro globální hledání
     const { data: users } = await supabase
       .from('profiles')
       .select('*')
@@ -251,7 +283,6 @@ function ChatContent() {
 
     if (users) setAllUsers(users)
 
-    // Veřejné skupiny
     const { data: groups } = await supabase
       .from('groups')
       .select('*')
@@ -261,41 +292,59 @@ function ChatContent() {
     if (groups) setPublicGroups(groups)
   }
 
-  // Načtení detailu chatu
+  // NAČTENÍ DETAILU SKUPINY NEBO PROFILU V CHATU
   useEffect(() => {
-    if (!activeUserId || !currentUserId) {
-      setActiveProfile(null)
-      return
-    }
+    if (!currentUserId) return
+    const supabase = createClient()
 
-    const fetchProfileAndMessages = async () => {
-      const supabase = createClient()
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', activeUserId)
-        .single()
+    const fetchProfileOrGroupMessages = async () => {
+      if (activeUserId) {
+        setActiveGroup(null)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', activeUserId)
+          .single()
 
-      if (profile) setActiveProfile(profile)
+        if (profile) setActiveProfile(profile)
 
-      const { data: oldMessages, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`)
-        .order('created_at', { ascending: true })
+        const { data: oldMessages } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`)
+          .order('created_at', { ascending: true })
 
-      if (!error && oldMessages) {
-        setMessages(oldMessages)
+        setMessages(oldMessages || [])
         setTimeout(scrollToBottom, 50)
+      } else if (activeGroupId) {
+        setActiveProfile(null)
+        const { data: group } = await supabase
+          .from('groups')
+          .select('*')
+          .eq('id', activeGroupId)
+          .single()
+
+        if (group) setActiveGroup(group)
+
+        const { data: groupMsgs } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('group_id', activeGroupId)
+          .order('created_at', { ascending: true })
+
+        setMessages(groupMsgs || [])
+        setTimeout(scrollToBottom, 50)
+      } else {
+        setActiveProfile(null)
+        setActiveGroup(null)
       }
     }
 
-    fetchProfileAndMessages()
+    fetchProfileOrGroupMessages()
     setIsTyping(false)
-  }, [activeUserId, currentUserId])
+  }, [activeUserId, activeGroupId, currentUserId])
 
-  // Realtime poslech
+  // REALTIME POSLECH PREZENCE A ZPRÁV
   useEffect(() => {
     if (!currentUserId) return
     const supabase = createClient()
@@ -322,7 +371,7 @@ function ChatContent() {
 
     const signalChannel = supabase.channel(`chat_signal_${currentUserId}`)
       .on('broadcast', { event: 'direct-message' }, ({ payload }) => {
-        if (payload.sender_id === activeUserId) {
+        if (payload.sender_id === activeUserId || (payload.group_id && payload.group_id === activeGroupId)) {
           setMessages((prev) => [...prev, payload])
           setIsTyping(false)
           scrollToBottom()
@@ -362,7 +411,7 @@ function ChatContent() {
       supabase.removeChannel(presenceChannel)
       supabase.removeChannel(signalChannel)
     }
-  }, [currentUserId, activeUserId])
+  }, [currentUserId, activeUserId, activeGroupId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
@@ -386,16 +435,23 @@ function ChatContent() {
   }
 
   const sendPayload = async (payload: Partial<Message>) => {
-    if (!currentUserId || !activeUserId) return
+    if (!currentUserId) return
     const supabase = createClient()
 
-    const fullPayload = {
+    const fullPayload: any = {
       sender_id: currentUserId,
-      receiver_id: activeUserId,
       content: payload.content || '',
       media_url: payload.media_url || null,
       sticker_url: payload.sticker_url || null,
       created_at: new Date().toISOString()
+    }
+
+    if (activeUserId) {
+      fullPayload.receiver_id = activeUserId
+    } else if (activeGroupId) {
+      fullPayload.group_id = activeGroupId
+    } else {
+      return
     }
 
     const { data: savedMsg, error } = await supabase
@@ -408,11 +464,13 @@ function ChatContent() {
 
     const msgToSend = savedMsg || { ...fullPayload, id: crypto.randomUUID() }
 
-    await supabase.channel(`chat_signal_${activeUserId}`).send({
-      type: 'broadcast',
-      event: 'direct-message',
-      payload: msgToSend
-    })
+    if (activeUserId) {
+      await supabase.channel(`chat_signal_${activeUserId}`).send({
+        type: 'broadcast',
+        event: 'direct-message',
+        payload: msgToSend
+      })
+    }
 
     setMessages((prev) => [...prev, msgToSend])
     scrollToBottom()
@@ -436,12 +494,18 @@ function ChatContent() {
     setNewMessage('')
     setShowAttachMenu(false)
     setShowStickerPicker(false)
+    setShowEmojiPicker(false)
+  }
+
+  const addEmoji = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji)
   }
 
   const handleSendSticker = (stickerUrl: string) => {
     sendPayload({ sticker_url: stickerUrl })
     setShowAttachMenu(false)
     setShowStickerPicker(false)
+    setShowEmojiPicker(false)
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -603,15 +667,51 @@ function ChatContent() {
     return msg.content
   }
 
-  // FILTROVÁNÍ UŽIVATELŮ V SEZNAMU AKTIVNÍCH CHATŮ
+  // REÁLNÉ VYTVOŘENÍ SKUPINY V SUPABASE
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || !currentUserId) return
+    const supabase = createClient()
+
+    // 1. Vytvoření záznamu skupiny
+    const { data: newGroup, error: groupErr } = await supabase
+      .from('groups')
+      .insert({
+        name: groupName.trim(),
+        description: groupDescription.trim() || null,
+        is_private: groupType === 'private',
+        created_by: currentUserId
+      })
+      .select()
+      .single()
+
+    if (groupErr || !newGroup) {
+      alert('Chyba při vytváření skupiny.')
+      return
+    }
+
+    // 2. Přidání členů do skupiny
+    const membersToInsert = Array.from(new Set([...selectedGroupMembers, currentUserId])).map((memberId) => ({
+      group_id: newGroup.id,
+      user_id: memberId
+    }))
+
+    await supabase.from('group_members').insert(membersToInsert)
+
+    setMyGroups((prev) => [...prev, newGroup])
+    setShowNewChatModal(false)
+    setGroupName('')
+    setGroupDescription('')
+    setSelectedGroupMembers([])
+    router.push(`/chat?groupId=${newGroup.id}`)
+  }
+
   const filteredContacts = contacts.filter((c) => {
-    const name = c.username || c.first_name || 'Uživatel'
+    const name = c.username || c.first_name || c.full_name || 'Uživatel'
     return name.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
-  // FILTROVÁNÍ VŠECH UŽIVATELŮ PRO HLEDÁNÍ (ÚČTY & VEŘEJNÉ SKUPINY)
   const filteredAllUsers = allUsers.filter((u) => {
-    const name = u.username || u.first_name || 'Uživatel'
+    const name = u.username || u.first_name || u.full_name || 'Uživatel'
     return name.toLowerCase().includes(userSearchQuery.toLowerCase())
   })
 
@@ -619,9 +719,8 @@ function ChatContent() {
     g.name.toLowerCase().includes(userSearchQuery.toLowerCase())
   )
 
-  // FILTROVÁNÍ KONTAKTŮ PRO SOUKROMOU SKUPINU (POUZE TY, SE KTERÝMI SI PSAL)
   const filteredPrivateContacts = contacts.filter((c) => {
-    const name = c.username || c.first_name || 'Uživatel'
+    const name = c.username || c.first_name || c.full_name || 'Uživatel'
     return name.toLowerCase().includes(privateSearchQuery.toLowerCase())
   })
 
@@ -631,26 +730,11 @@ function ChatContent() {
     )
   }
 
-  const handleCreateGroup = () => {
-    if (!groupName.trim()) return
-
-    if (groupType === 'private') {
-      alert(`Soukromá skupina "${groupName}" byla vytvořena s ${selectedGroupMembers.length} členy!`)
-    } else {
-      alert(`Veřejná skupina "${groupName}" byla vytvořena! Uživatelé ji nyní najdou ve vyhledávání.`)
-    }
-
-    setShowNewChatModal(false)
-    setGroupName('')
-    setGroupDescription('')
-    setSelectedGroupMembers([])
-  }
-
   return (
     <div className="flex w-full h-full min-h-screen bg-white overflow-hidden relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
       
-      {/* SEZNAM AKTIVNÍCH CHATŮ */}
-      {!activeUserId && (
+      {/* SEZNAM AKTIVNÍCH CHATŮ A SKUPIN */}
+      {(!activeUserId && !activeGroupId) && (
         <div className="w-full flex flex-col h-full bg-white">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
@@ -679,52 +763,82 @@ function ChatContent() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
-            {filteredContacts.length === 0 ? (
-              <div className="text-center py-16 text-slate-400 text-sm font-medium">
-                Zatím nemáte žádné aktivní konverzace.
+          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+            {/* Moje skupiny */}
+            {myGroups.length > 0 && (
+              <div>
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-2">Moje Skupiny</span>
+                <div className="mt-2 space-y-1">
+                  {myGroups.map((group) => (
+                    <div
+                      key={group.id}
+                      onClick={() => router.push(`/chat?groupId=${group.id}`)}
+                      className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
+                        👥
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-sm truncate text-slate-900">{group.name}</h3>
+                        <p className="text-xs truncate text-slate-400">{group.description || 'Skupinový chat'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              filteredContacts.map((contact) => {
-                const isOnline = onlineUsers.has(contact.id)
-                const displayName = contact.username || contact.first_name || 'Uživatel'
-                return (
-                  <div
-                    key={contact.id}
-                    onClick={() => router.push(`/chat?userId=${contact.id}`)}
-                    className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
-                  >
-                    <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-indigo-600">
-                        {contact.avatar_url ? (
-                          <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          displayName.substring(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      {isOnline && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <h3 className="font-bold text-sm truncate text-slate-900">{displayName}</h3>
-                      </div>
-                      <p className="text-xs truncate text-slate-400">
-                        {isOnline ? 'Online' : formatLastSeen(contact.last_seen)}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })
             )}
+
+            {/* Osobní chaty */}
+            <div>
+              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-2">Lidé</span>
+              <div className="mt-2 space-y-1">
+                {filteredContacts.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                    Zatím nemáte žádné aktivní osobní konverzace.
+                  </div>
+                ) : (
+                  filteredContacts.map((contact) => {
+                    const isOnline = onlineUsers.has(contact.id)
+                    const displayName = contact.username || contact.first_name || contact.full_name || 'Uživatel'
+                    return (
+                      <div
+                        key={contact.id}
+                        onClick={() => router.push(`/chat?userId=${contact.id}`)}
+                        className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
+                      >
+                        <div className="relative shrink-0">
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-indigo-600">
+                            {contact.avatar_url ? (
+                              <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                            ) : (
+                              displayName.substring(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          {isOnline && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <h3 className="font-bold text-sm truncate text-slate-900">{displayName}</h3>
+                          </div>
+                          <p className="text-xs truncate text-slate-400">
+                            {isOnline ? 'Online' : formatLastSeen(contact.last_seen)}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* DETAIL CHATU */}
-      {activeUserId && (
+      {(activeUserId || activeGroupId) && (
         <div className="w-full h-screen flex flex-col bg-white overflow-hidden">
           
           {/* HLAVIČKA CHATU */}
@@ -739,60 +853,50 @@ function ChatContent() {
 
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-sm border border-slate-100">
-                  {activeProfile?.avatar_url ? (
+                  {activeGroupId ? (
+                    '👥'
+                  ) : activeProfile?.avatar_url ? (
                     <img src={activeProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    (activeProfile?.username || activeProfile?.first_name || 'P').substring(0, 2).toUpperCase()
+                    (activeProfile?.username || activeProfile?.first_name || activeProfile?.full_name || 'P').substring(0, 2).toUpperCase()
                   )}
                 </div>
 
                 <div className="flex flex-col">
                   <h2 className="font-bold text-slate-900 text-base leading-snug truncate max-w-[160px] sm:max-w-[240px]">
-                    {activeProfile?.username || activeProfile?.first_name || 'Uživatel'}
+                    {activeGroupId ? activeGroup?.name : (activeProfile?.username || activeProfile?.first_name || activeProfile?.full_name || 'Uživatel')}
                   </h2>
                   <span className="text-xs text-slate-400 font-medium truncate">
-                    {onlineUsers.has(activeProfile?.id || '') 
-                      ? 'Online' 
-                      : formatLastSeen(activeProfile?.last_seen)}
+                    {activeGroupId ? (activeGroup?.description || 'Skupina') : onlineUsers.has(activeProfile?.id || '') ? 'Online' : formatLastSeen(activeProfile?.last_seen)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => startCall('audio')} 
-                className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all active:scale-95"
-              >
-                <PhoneIcon />
-              </button>
-              <button 
-                onClick={() => startCall('video')} 
-                className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all active:scale-95"
-              >
-                <VideoIcon />
-              </button>
-            </div>
+            {activeUserId && (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => startCall('audio')} 
+                  className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all active:scale-95"
+                >
+                  <PhoneIcon />
+                </button>
+                <button 
+                  onClick={() => startCall('video')} 
+                  className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all active:scale-95"
+                >
+                  <VideoIcon />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* OBLAST ZPRÁV */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
             {messages.map((msg) => {
               const isMine = msg.sender_id === currentUserId
-              const senderProfile = isMine ? currentUserProfile : activeProfile
-              const avatar = senderProfile?.avatar_url
-              const nameInitials = (senderProfile?.username || senderProfile?.first_name || '?').substring(0, 2).toUpperCase()
-
               return (
                 <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px] flex items-center justify-center overflow-hidden shrink-0 shadow-xs mb-1">
-                    {avatar ? (
-                      <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      nameInitials
-                    )}
-                  </div>
-
                   <div className={`flex flex-col max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
                     <div 
                       onContextMenu={(e) => handleContextMenu(e, msg)}
@@ -814,17 +918,33 @@ function ChatContent() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* SPODNÍ VSTUPNÍ POLE */}
-          <div className="p-3 border-t border-slate-100 bg-white shrink-0">
+          {/* SPODNÍ VSTUPNÍ POLE S CUSTOME/3D EMOJI A PŘÍLOHAMI */}
+          <div className="p-3 border-t border-slate-100 bg-white shrink-0 relative">
             {isTyping && (
               <div className="px-2 pb-2 text-xs text-indigo-600 font-semibold animate-pulse">
                 píše zprávu...
               </div>
             )}
 
+            {/* 50+ CUSTOM EMOJI PICKER */}
+            {showEmojiPicker && (
+              <div className="absolute bottom-20 left-4 bg-white border border-slate-200 p-3 rounded-2xl shadow-xl grid grid-cols-10 gap-2 max-h-48 overflow-y-auto w-80 z-20">
+                {CUSTOM_EMOJIS.map((emoji, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => addEmoji(emoji)}
+                    className="text-xl hover:scale-125 transition transform flex items-center justify-center p-1"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {showStickerPicker && (
               <div className="p-3 border-b border-slate-100 bg-slate-50 rounded-2xl mb-2">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-6 gap-2">
                   {STICKER_CATEGORIES[0].stickers.map((s) => (
                     <button key={s.id} onClick={() => handleSendSticker(s.url)} className="p-2 bg-white rounded-xl border border-slate-200 hover:bg-indigo-50">
                       <img src={s.url} alt="Sticker" className="w-full h-full object-contain" />
@@ -843,7 +963,7 @@ function ChatContent() {
                 </label>
                 <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold">
                   <StickerIcon />
-                  <span>Samolepka</span>
+                  <span>3D Samolepka</span>
                 </button>
               </div>
             )}
@@ -854,10 +974,23 @@ function ChatContent() {
                 onClick={() => {
                   setShowAttachMenu(!showAttachMenu)
                   setShowStickerPicker(false)
+                  setShowEmojiPicker(false)
                 }}
                 className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-all"
               >
                 <PlusIcon />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmojiPicker(!showEmojiPicker)
+                  setShowAttachMenu(false)
+                  setShowStickerPicker(false)
+                }}
+                className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-all text-lg"
+              >
+                <SmileIcon />
               </button>
 
               <input
@@ -881,12 +1014,11 @@ function ChatContent() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS (HLEDÁNÍ / SKUPINY) */}
+      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS (HLEDÁNÍ / VYTVOŘENÍ SKUPINY) */}
       {showNewChatModal && (
         <div className="fixed inset-0 z-[250] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
             
-            {/* HLAVIČKA MODÁLU & ZÁLOŽKY */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex gap-1.5 p-1 bg-slate-200/60 rounded-2xl">
                 <button
@@ -912,7 +1044,6 @@ function ChatContent() {
               </button>
             </div>
 
-            {/* OBSAH MODÁLU */}
             <div className="p-4 flex-1 overflow-y-auto">
               {activeModalTab === 'search' ? (
                 <div>
@@ -929,7 +1060,6 @@ function ChatContent() {
                     />
                   </div>
 
-                  {/* VEŘEJNÉ SKUPINY */}
                   {filteredPublicGroups.length > 0 && (
                     <div className="mb-4">
                       <h4 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Veřejné skupiny</h4>
@@ -938,8 +1068,8 @@ function ChatContent() {
                           <div
                             key={g.id}
                             onClick={() => {
-                              alert(`Připojil jsi se ke skupině ${g.name}`)
                               setShowNewChatModal(false)
+                              router.push(`/chat?groupId=${g.id}`)
                             }}
                             className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-indigo-50/60 cursor-pointer transition-all border border-slate-100"
                           >
@@ -950,14 +1080,13 @@ function ChatContent() {
                               <h4 className="font-bold text-sm text-slate-900 truncate">{g.name}</h4>
                               <p className="text-[10px] text-slate-400 truncate">{g.description || 'Veřejná skupina'}</p>
                             </div>
-                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full">Připojit se</span>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full">Otevřít</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* UŽIVATELÉ */}
                   <div>
                     <h4 className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Uživatelé</h4>
                     <div className="space-y-1">
@@ -965,7 +1094,7 @@ function ChatContent() {
                         <div className="text-center py-6 text-xs text-slate-400">Žádní uživatelé nenalezeni.</div>
                       ) : (
                         filteredAllUsers.map((u) => {
-                          const name = u.username || u.first_name || 'Uživatel'
+                          const name = u.username || u.first_name || u.full_name || 'Uživatel'
                           return (
                             <div
                               key={u.id}
@@ -995,7 +1124,6 @@ function ChatContent() {
                 </div>
               ) : (
                 <div>
-                  {/* PŘEPÍNAČ: SOUKROMÁ VS VEŘEJNÁ SKUPINA */}
                   <div className="grid grid-cols-2 gap-2 mb-4 p-1 bg-slate-100 rounded-2xl">
                     <button
                       onClick={() => setGroupType('private')}
@@ -1038,14 +1166,11 @@ function ChatContent() {
                         onChange={(e) => setGroupDescription(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-slate-100 rounded-2xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
                       />
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Veřejná skupina je volně přístupná. Uživatelé ji najdou ve vyhledávání.
-                      </p>
                     </div>
                   ) : (
                     <div className="mb-4">
                       <h4 className="text-xs font-bold text-slate-700 mb-1">
-                        Přidat členy (pouze lidé, se kterými jste si psali)
+                        Přidat členy (z uživatelů, se kterými jste si již psali)
                       </h4>
                       
                       <div className="relative mb-2">
@@ -1068,7 +1193,7 @@ function ChatContent() {
                           </div>
                         ) : (
                           filteredPrivateContacts.map((c) => {
-                            const name = c.username || c.first_name || 'Uživatel'
+                            const name = c.username || c.first_name || c.full_name || 'Uživatel'
                             const isSelected = selectedGroupMembers.includes(c.id)
                             return (
                               <div
@@ -1103,7 +1228,7 @@ function ChatContent() {
                   )}
 
                   <button
-                    disabled={!groupName.trim() || (groupType === 'private' && selectedGroupMembers.length === 0)}
+                    disabled={!groupName.trim()}
                     onClick={handleCreateGroup}
                     className="w-full py-3 bg-indigo-600 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-md transition-all active:scale-95"
                   >
@@ -1140,7 +1265,7 @@ function ChatContent() {
       {callStatus !== 'idle' && (
         <div className="fixed inset-0 bg-slate-950/90 z-[200] flex flex-col items-center justify-between p-8 text-white">
           <div className="text-center mt-8">
-            <h3 className="text-2xl font-black mb-1">{activeProfile?.username || activeProfile?.first_name}</h3>
+            <h3 className="text-2xl font-black mb-1">{activeProfile?.username || activeProfile?.first_name || activeProfile?.full_name}</h3>
             <p className="text-xs text-slate-400 uppercase font-semibold">
               {callStatus === 'calling' && 'Volám...'}
               {callStatus === 'incoming' && 'Příchozí hovor...'}
