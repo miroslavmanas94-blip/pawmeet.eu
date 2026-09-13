@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const activeUserId = searchParams.get('userId')
+
   const [user, setUser] = useState<any>(null)
   const supabase = createClient()
 
@@ -38,7 +41,8 @@ export default function BottomNav() {
     route === '/' ? pathname === '/' : pathname?.startsWith(route)
   )
 
-  if (isHidden) {
+  // Skryje navigaci, pokud je adresa na seznamu skrytých stránek, nebo pokud je aktivní konkrétní chat (?userId=...)
+  if (isHidden || activeUserId) {
     return null
   }
 
@@ -112,10 +116,8 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed left-0 z-[100] bg-white/95 backdrop-blur-xl border-neutral-200 shadow-sm select-none overflow-hidden
-        /* Mobilní pozice: spodní lišta */
         bottom-0 w-full border-t py-2 px-2 flex flex-row items-center justify-around h-auto
-        /* Desktop pozice: trvale viditelný levý panel */
-        md:top-0 md:bottom-0 md:h-screen md:w-[240px] xl:md:w-[260px] md:flex-col md:justify-between md:border-r md:border-t-0 md:p-4"
+        md:top-0 md:bottom-0 md:h-screen md:w-[240px] xl:md:w-[260px] md:flex-col md:justify-start md:border-r md:border-t-0 md:p-4"
     >
       <div className="flex flex-col gap-6 w-full overflow-hidden">
         {/* Hlavička s logem */}
@@ -148,21 +150,6 @@ export default function BottomNav() {
           })}
         </div>
       </div>
-
-      {/* Profilová lišta dole (Desktop) */}
-      {user && (
-        <div className="hidden md:flex pt-4 border-t border-neutral-200 px-2 w-full">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm flex-shrink-0">
-              {user.email?.[0].toUpperCase() || 'U'}
-            </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-xs font-bold text-neutral-800 truncate">{user.email?.split('@')[0]}</span>
-              <span className="text-[10px] text-neutral-500 truncate">{user.email}</span>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }
