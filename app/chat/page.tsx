@@ -37,10 +37,6 @@ const ImageIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
 )
 
-const StickerIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><path d="M14 3v6h6"/></svg>
-)
-
 const UsersIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 )
@@ -56,35 +52,6 @@ const LockIcon = () => (
 const GlobeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 )
-
-const SmileIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-)
-
-// 50+ CUSTOM & 3D EMOJI SEZNAM
-const CUSTOM_EMOJIS = [
-  '🔥', '✨', '⚡', '💥', '🚀', '🌟', '🎉', '🎊', '🎈', '🎁',
-  '💎', '👑', '🏆', '🥇', '🔮', '🧿', '🍀', '🌈', '☀️', '🌙',
-  '❤️‍🔥', '💖', '💘', '💝', '💗', '💓', '💕', '💞', '❣️', '💔',
-  '🤖', '👾', '👽', '👻', '💀', '☠️', '🤡', '👺', '👹', '🎭',
-  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨',
-  '🦁', '🐯', '🦄', '🐝', '🦋', '🐞', '🐢', '🐍', '🐙', '🦑'
-]
-
-// SAMOLEPKY A 3D ANIMOVANÉ EMOJI
-const STICKER_CATEGORIES = [
-  {
-    name: '3D Emoji',
-    stickers: [
-      { id: '3d_1', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Grinning%20Face%20with%20Big%20Eyes.png' },
-      { id: '3d_2', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Smiling%20Face%20with%20Heart-Eyes.png' },
-      { id: '3d_3', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png' },
-      { id: '3d_4', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Victory%20Hand.png' },
-      { id: '3d_5', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Fire.png' },
-      { id: '3d_6', url: 'https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Rocket.png' },
-    ]
-  }
-]
 
 export type Profile = {
   id: string
@@ -110,7 +77,6 @@ export type Message = {
   group_id?: string
   content: string
   media_url?: string
-  sticker_url?: string
   created_at: string
 }
 
@@ -153,8 +119,6 @@ function ChatContent() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const [showAttachMenu, setShowAttachMenu] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [showStickerPicker, setShowStickerPicker] = useState(false)
   const [selectedMsgMenu, setSelectedMsgMenu] = useState<{ msg: Message; x: number; y: number } | null>(null)
 
   // MODÁLNÍ OKNO PRO TLAČÍTKO PLUS
@@ -442,7 +406,6 @@ function ChatContent() {
       sender_id: currentUserId,
       content: payload.content || '',
       media_url: payload.media_url || null,
-      sticker_url: payload.sticker_url || null,
       created_at: new Date().toISOString()
     }
 
@@ -493,19 +456,6 @@ function ChatContent() {
     sendPayload({ content: newMessage.trim() })
     setNewMessage('')
     setShowAttachMenu(false)
-    setShowStickerPicker(false)
-    setShowEmojiPicker(false)
-  }
-
-  const addEmoji = (emoji: string) => {
-    setNewMessage((prev) => prev + emoji)
-  }
-
-  const handleSendSticker = (stickerUrl: string) => {
-    sendPayload({ sticker_url: stickerUrl })
-    setShowAttachMenu(false)
-    setShowStickerPicker(false)
-    setShowEmojiPicker(false)
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -658,21 +608,16 @@ function ChatContent() {
   }
 
   const renderMessageContent = (msg: Message) => {
-    if (msg.sticker_url) {
-      return <img src={msg.sticker_url} alt="Samolepka" className="w-28 h-28 object-contain my-1" />
-    }
     if (msg.media_url) {
       return <img src={msg.media_url} alt="Obrázek" className="rounded-2xl max-w-full max-h-72 object-cover shadow-sm" />
     }
     return msg.content
   }
 
-  // REÁLNÉ VYTVOŘENÍ SKUPINY V SUPABASE
   const handleCreateGroup = async () => {
     if (!groupName.trim() || !currentUserId) return
     const supabase = createClient()
 
-    // 1. Vytvoření záznamu skupiny
     const { data: newGroup, error: groupErr } = await supabase
       .from('groups')
       .insert({
@@ -689,7 +634,6 @@ function ChatContent() {
       return
     }
 
-    // 2. Přidání členů do skupiny
     const membersToInsert = Array.from(new Set([...selectedGroupMembers, currentUserId])).map((memberId) => ({
       group_id: newGroup.id,
       user_id: memberId
@@ -764,7 +708,6 @@ function ChatContent() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {/* Moje skupiny */}
             {myGroups.length > 0 && (
               <div>
                 <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-2">Moje Skupiny</span>
@@ -788,7 +731,6 @@ function ChatContent() {
               </div>
             )}
 
-            {/* Osobní chaty */}
             <div>
               <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider px-2">Lidé</span>
               <div className="mt-2 space-y-1">
@@ -841,7 +783,6 @@ function ChatContent() {
       {(activeUserId || activeGroupId) && (
         <div className="w-full h-screen flex flex-col bg-white overflow-hidden">
           
-          {/* HLAVIČKA CHATU */}
           <div className="h-20 px-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0 shadow-xs z-10">
             <div className="flex items-center gap-3">
               <button 
@@ -891,7 +832,6 @@ function ChatContent() {
             )}
           </div>
 
-          {/* OBLAST ZPRÁV */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
             {messages.map((msg) => {
               const isMine = msg.sender_id === currentUserId
@@ -918,39 +858,11 @@ function ChatContent() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* SPODNÍ VSTUPNÍ POLE S CUSTOME/3D EMOJI A PŘÍLOHAMI */}
+          {/* SPODNÍ VSTUPNÍ POLE POUZE S TLAČÍTKEM PLUS NA FOTKY */}
           <div className="p-3 border-t border-slate-100 bg-white shrink-0 relative">
             {isTyping && (
               <div className="px-2 pb-2 text-xs text-indigo-600 font-semibold animate-pulse">
                 píše zprávu...
-              </div>
-            )}
-
-            {/* 50+ CUSTOM EMOJI PICKER */}
-            {showEmojiPicker && (
-              <div className="absolute bottom-20 left-4 bg-white border border-slate-200 p-3 rounded-2xl shadow-xl grid grid-cols-10 gap-2 max-h-48 overflow-y-auto w-80 z-20">
-                {CUSTOM_EMOJIS.map((emoji, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => addEmoji(emoji)}
-                    className="text-xl hover:scale-125 transition transform flex items-center justify-center p-1"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {showStickerPicker && (
-              <div className="p-3 border-b border-slate-100 bg-slate-50 rounded-2xl mb-2">
-                <div className="grid grid-cols-6 gap-2">
-                  {STICKER_CATEGORIES[0].stickers.map((s) => (
-                    <button key={s.id} onClick={() => handleSendSticker(s.url)} className="p-2 bg-white rounded-xl border border-slate-200 hover:bg-indigo-50">
-                      <img src={s.url} alt="Sticker" className="w-full h-full object-contain" />
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
 
@@ -961,36 +873,16 @@ function ChatContent() {
                   <span>Obrázek</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
-                <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold">
-                  <StickerIcon />
-                  <span>3D Samolepka</span>
-                </button>
               </div>
             )}
 
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setShowAttachMenu(!showAttachMenu)
-                  setShowStickerPicker(false)
-                  setShowEmojiPicker(false)
-                }}
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
                 className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-all"
               >
                 <PlusIcon />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEmojiPicker(!showEmojiPicker)
-                  setShowAttachMenu(false)
-                  setShowStickerPicker(false)
-                }}
-                className="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-all text-lg"
-              >
-                <SmileIcon />
               </button>
 
               <input
@@ -1014,7 +906,7 @@ function ChatContent() {
         </div>
       )}
 
-      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS (HLEDÁNÍ / VYTVOŘENÍ SKUPINY) */}
+      {/* MODÁLNÍ OKNO PRO TLAČÍTKO PLUS */}
       {showNewChatModal && (
         <div className="fixed inset-0 z-[250] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
