@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-export default function BottomNav() {
+// Vnitřní komponenta, která bezpečně používá useSearchParams
+function BottomNavContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const activeUserId = searchParams.get('userId')
@@ -41,7 +42,6 @@ export default function BottomNav() {
     route === '/' ? pathname === '/' : pathname?.startsWith(route)
   )
 
-  // Skryje navigaci, pokud je adresa na seznamu skrytých stránek, nebo pokud je aktivní konkrétní chat (?userId=...)
   if (isHidden || activeUserId) {
     return null
   }
@@ -120,7 +120,6 @@ export default function BottomNav() {
         md:top-0 md:bottom-0 md:h-screen md:w-[240px] xl:md:w-[260px] md:flex-col md:justify-start md:border-r md:border-t-0 md:p-4"
     >
       <div className="flex flex-col gap-6 w-full overflow-hidden">
-        {/* Hlavička s logem */}
         <div className="hidden md:flex items-center px-3 pt-2">
           <Link href="/domu">
             <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 bg-clip-text text-transparent">
@@ -129,7 +128,6 @@ export default function BottomNav() {
           </Link>
         </div>
 
-        {/* Odkazy v navigaci */}
         <div className="flex flex-row md:flex-col justify-around md:justify-start gap-1 md:gap-1.5 w-full">
           {navItems.map((item) => {
             const isActive = pathname === item.href
@@ -151,5 +149,14 @@ export default function BottomNav() {
         </div>
       </div>
     </nav>
+  )
+}
+
+// Hlavní export s ošetřením v Suspense
+export default function BottomNav() {
+  return (
+    <Suspense fallback={null}>
+      <BottomNavContent />
+    </Suspense>
   )
 }
