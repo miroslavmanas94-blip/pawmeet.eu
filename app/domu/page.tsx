@@ -616,9 +616,7 @@ export default function HomeFeed() {
             is_saved: false,
             comments: postComments.map((c: any) => {
               const cUser = commentProfilesMap.get(c.user_id) || { username: 'Anonym', avatar_url: '' }
-              const cCleanUsername = cUser.username && !cUser.username.startsWith('user_')
-                ? cUser.username
-                : (cUser.full_name || 'Anonym')
+              const cCleanUsername = cUser.display_name || cUser.full_name || cUser.first_name || (cUser.username && !cUser.username.startsWith('user_') ? cUser.username : 'Pejskař')
 
               return {
                 id: c.id,
