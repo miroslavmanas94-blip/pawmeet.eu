@@ -103,6 +103,10 @@ export type Message = {
   group_id?: string
   content: string
   media_url?: string
+  media_type?: string
+  read_at?: string | null
+  reply_to_id?: string | null
+  reactions?: Record<string, string[]>
   created_at: string
 }
 
@@ -142,6 +146,11 @@ function ChatContent() {
   const [pickerMode, setPickerMode] = useState<'emoji' | 'stickers' | null>(null)
   const [stickerSearch, setStickerSearch] = useState('')
   const [stickerPage, setStickerPage] = useState(0)
+  const [messageSearch, setMessageSearch] = useState('')
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null)
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const voiceChunksRef = useRef<BlobPart[]>([])
   
   const [onlineUsers, setOnlineUsers] = useState<Map<string, string>>(new Map())
   const [isTyping, setIsTyping] = useState(false)
@@ -435,6 +444,8 @@ function ChatContent() {
       sender_id: currentUserId,
       content: payload.content || '',
       media_url: payload.media_url || null,
+      media_type: payload.media_type || null,
+      reply_to_id: payload.reply_to_id || null,
       created_at: new Date().toISOString()
     }
 
@@ -465,6 +476,7 @@ function ChatContent() {
     }
 
     setMessages((prev) => [...prev, msgToSend])
+    setReplyTarget(null)
     scrollToBottom()
   }
 
@@ -482,7 +494,7 @@ function ChatContent() {
       })
     }
 
-    sendPayload({ content: newMessage.trim() })
+    sendPayload({ content: newMessage.trim(), reply_to_id: replyTarget?.id || null })
     setNewMessage('')
     setShowAttachMenu(false)
   }
@@ -493,7 +505,7 @@ function ChatContent() {
 
     const reader = new FileReader()
     reader.onload = () => {
-      sendPayload({ media_url: reader.result as string })
+      sendPayload({ media_url: reader.result as string, media_type: file.type.startsWith('video/') ? 'video' : 'image', content: file.type.startsWith('video/') ? 'Video' : 'Fotografie' })
       setShowAttachMenu(false)
     }
     reader.readAsDataURL(file)
@@ -637,10 +649,52 @@ function ChatContent() {
   }
 
   const renderMessageContent = (msg: Message) => {
-    if (msg.media_url) {
-      return <img src={msg.media_url} alt="Obrázek" className="rounded-2xl max-w-full max-h-72 object-cover shadow-sm" />
+    if (msg.media_type === 'sticker') {
+      const match = msg.content.match(/^\[\[pawsticker:(\d+)\]\]$/)
+      const sticker = match ? PAWMEET_STICKERS[Number(match[1])] : null
+      return sticker ? <span className="inline-flex min-h-24 min-w-24 flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-[#f4f8e9] to-[#dcebd7] p-3 text-center"><span className="text-5xl">{sticker.emoji}{sticker.accent}</span><span className="mt-1 text-[10px] font-bold text-[#24563b]">{sticker.label}</span></span> : 'Samolepka'
     }
+    if (msg.media_type === 'voice' && msg.media_url) return <audio controls preload="metadata" src={msg.media_url} className="max-w-full" aria-label="Hlasová zpráva" />
+    if (msg.media_type === 'video' && msg.media_url) return <video controls playsInline src={msg.media_url} className="max-h-72 max-w-full rounded-2xl" />
+    if (msg.media_url) return <img src={msg.media_url} alt="Obrázek ve zprávě" className="rounded-2xl max-w-full max-h-72 object-cover shadow-sm" />
     return msg.content
+  }
+
+  const toggleMessageReaction = async (msg: Message, reaction: string) => {
+    if (!currentUserId) return
+    const previous = msg.reactions || {}
+    const current = previous[reaction] || []
+    const next = { ...previous, [reaction]: current.includes(currentUserId) ? current.filter(id => id !== currentUserId) : [...current, currentUserId] }
+    setMessages(items => items.map(item => item.id === msg.id ? { ...item, reactions: next } : item))
+    const { error } = await createClient().from('messages').update({ reactions: next }).eq('id', msg.id)
+    if (error) console.error('Reakci se nepodařilo uložit:', error)
+  }
+
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      voiceChunksRef.current = []
+      recorder.ondataavailable = event => { if (event.data.size) voiceChunksRef.current.push(event.data) }
+      recorder.onstop = () => {
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        const reader = new FileReader()
+        reader.onload = () => { void sendPayload({ content: 'Hlasová zpráva', media_url: reader.result as string, media_type: 'voice' }) }
+        reader.readAsDataURL(blob)
+        stream.getTracks().forEach(track => track.stop())
+      }
+      recorder.start()
+      setIsRecordingVoice(true)
+    } catch (error) {
+      console.error('Mikrofon není dostupný:', error)
+      window.alert('Pro hlasovou zprávu povol přístup k mikrofonu.')
+    }
+  }
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop()
+    setIsRecordingVoice(false)
   }
 
   const handleCreateGroup = async () => {
@@ -869,8 +923,11 @@ function ChatContent() {
             )}
           </div>
 
+          <div className="border-b border-[#dce6d8] bg-white/70 px-4 py-2">
+            <input value={messageSearch} onChange={e => setMessageSearch(e.target.value)} placeholder="Hledat ve starších zprávách…" aria-label="Hledat ve zprávách" className="w-full rounded-xl border border-[#d5e4ce] bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+          </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f2f6ed]/65">
-            {messages.map((msg) => {
+            {messages.filter(msg => !messageSearch.trim() || msg.content?.toLowerCase().includes(messageSearch.toLowerCase())).map((msg) => {
               const isMine = msg.sender_id === currentUserId
               return (
                 <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -883,11 +940,15 @@ function ChatContent() {
                           : 'bg-white text-slate-800 rounded-bl-none border border-slate-100 shadow-xs'
                       }`}
                     >
+                      {msg.reply_to_id && <div className="mb-2 rounded-lg border-l-2 border-[#9ec39b] bg-black/5 px-2 py-1 text-[10px] opacity-80">Odpověď na zprávu</div>}
                       {renderMessageContent(msg)}
                     </div>
-                    <span className="text-[10px] text-slate-400 font-medium px-1 mt-1">
-                      {formatTimeOnly(msg.created_at)}
-                    </span>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 px-1 text-[10px] text-slate-400">
+                      <span>{formatTimeOnly(msg.created_at)}</span>
+                      {isMine && msg.read_at && <span className="font-semibold text-[#4d8654]" title="Příjemce zprávu otevřel">Přečteno</span>}
+                      <button type="button" onClick={() => setReplyTarget(msg)} className="hover:text-[#286747]" aria-label="Odpovědět na zprávu">Odpovědět</button>
+                      {['❤️','🐾','👍'].map(reaction => <button key={reaction} type="button" onClick={() => void toggleMessageReaction(msg, reaction)} className="rounded-full px-1.5 py-0.5 hover:bg-[#edf3e8]" aria-label={'Reakce ' + reaction}>{reaction}{msg.reactions?.[reaction]?.length ? ' ' + msg.reactions[reaction].length : ''}</button>)}
+                    </div>
                   </div>
                 </div>
               )
@@ -921,7 +982,7 @@ function ChatContent() {
                     <input value={stickerSearch} onChange={e => { setStickerSearch(e.target.value); setStickerPage(0) }} placeholder="Hledat samolepku nebo náladu…" className="mb-3 w-full rounded-xl border border-[#d5e4ce] bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
                     <div className="grid max-h-56 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-5">
                       {PAWMEET_STICKERS.filter(sticker => !stickerSearch || sticker.label.toLowerCase().includes(stickerSearch.toLowerCase()) || sticker.emoji.includes(stickerSearch)).slice(stickerPage * 40, stickerPage * 40 + 40).map(sticker => (
-                        <button key={sticker.id} type="button" title={`Samolepka ${sticker.id + 1}: ${sticker.label}`} onClick={() => setNewMessage(value => value + sticker.emoji + sticker.accent)} className={`flex min-h-16 flex-col items-center justify-center rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md ${STICKER_BACKGROUNDS[sticker.theme]}`}>
+                        <button key={sticker.id} type="button" title={'Samolepka ' + (sticker.id + 1) + ': ' + sticker.label} onClick={() => { void sendPayload({ content: '[[pawsticker:' + sticker.id + ']]', media_type: 'sticker' }); setPickerMode(null) }} className={'flex min-h-16 flex-col items-center justify-center rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md ' + STICKER_BACKGROUNDS[sticker.theme]}>
                           <span className="text-2xl">{sticker.emoji}{sticker.accent}</span><span className="mt-1 text-[9px] font-semibold text-[#42684a]">{sticker.label}</span>
                         </button>
                       ))}
@@ -939,11 +1000,12 @@ function ChatContent() {
                 <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
                   <ImageIcon />
                   <span>Obrázek</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  <input type="file" accept="image/*,video/*" className="hidden" onChange={handleImageUpload} />
                 </label>
               </div>
             )}
 
+            {replyTarget && <div className="mb-2 flex items-center justify-between rounded-xl border border-[#d5e4ce] bg-[#f5f8ef] px-3 py-2 text-xs text-[#24563b]"><span className="truncate">Odpovídáš na: {replyTarget.content || 'Média'}</span><button type="button" onClick={() => setReplyTarget(null)} aria-label="Zrušit odpověď" className="ml-2 font-bold">✕</button></div>}
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <button
                 type="button"
