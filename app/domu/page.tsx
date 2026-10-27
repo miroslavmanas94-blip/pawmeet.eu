@@ -365,7 +365,7 @@ export default function HomeFeed() {
     setIsNotificationsOpen(false)
 
     if (n.type === 'follow') {
-      router.push(`/profil/${n.user.username}`)
+      router.push(`/profile/${n.user.username}`)
     } else if ((n.type === 'like' || n.type === 'comment') && n.post_id) {
       const targetPost = posts.find(p => p.id === n.post_id)
       if (targetPost) {
@@ -1064,7 +1064,7 @@ export default function HomeFeed() {
   const renderCommentWithMenu = (c: Comment, postId: string) => (
     <div key={c.id} className="flex items-center justify-between text-xs text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
       <div className="flex items-center gap-2 truncate">
-        <Link href={`/profil/${c.user.username}`} className="font-extrabold text-slate-900 shrink-0 hover:underline">
+        <Link href={`/profile/${c.user.username}`} className="font-extrabold text-slate-900 shrink-0 hover:underline">
           {c.user.username}:
         </Link>
         <span className="truncate text-slate-700">{c.text}</span>
@@ -1344,7 +1344,7 @@ export default function HomeFeed() {
                 notifications.map(n => (
                   <div key={n.id} className="flex items-center gap-2.5 text-xs p-2.5 hover:bg-slate-50 rounded-xl transition border border-transparent hover:border-slate-100">
                     <Link
-                      href={`/profil/${n.user.username}`}
+                      href={`/profile/${n.user.username}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         markNotificationsAsRead()
@@ -1368,7 +1368,7 @@ export default function HomeFeed() {
                       className="flex-1 min-w-0 cursor-pointer"
                     >
                       <Link
-                        href={`/profil/${n.user.username}`}
+                        href={`/profile/${n.user.username}`}
                         onClick={(e) => {
                           e.stopPropagation()
                           markNotificationsAsRead()
@@ -1487,7 +1487,7 @@ export default function HomeFeed() {
                 <article id={`post-${post.id}`} key={post.id} className="pawmeet-glass rounded-[1.6rem] overflow-hidden w-full shadow-sm transition hover:shadow-md">
                   <div className="flex justify-between items-center px-4 py-3 border-b border-[#d7e4d3] bg-[#f6f8ef]/80">
                     <div className="flex items-center gap-3">
-                      <Link href={`/profil/${post.user.username}`} className="flex items-center gap-3 group">
+                      <Link href={`/profile/${post.user.username}`} className="flex items-center gap-3 group">
                         <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#174b35] shadow-sm shrink-0">
                           <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center font-bold text-slate-800">
                             {post.user.avatar_url ? (
@@ -1664,7 +1664,7 @@ export default function HomeFeed() {
                   <div className="px-4 py-3 space-y-1.5 bg-white">
                     {post.caption && (
                       <p className="text-xs text-slate-800 leading-relaxed">
-                        <Link href={`/profil/${post.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                        <Link href={`/profile/${post.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
                           {post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}
                         </Link>
                         {post.caption}
@@ -1724,7 +1724,7 @@ export default function HomeFeed() {
             </div>
 
             <div className="absolute top-6 left-4 right-4 z-30 flex justify-between items-center text-white">
-              <Link href={`/profil/${activeGroup.user.username}`} className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 hover:bg-black/70 transition">
+              <Link href={`/profile/${activeGroup.user.username}`} className="flex items-center gap-2.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20 hover:bg-black/70 transition">
                 <div className="w-7 h-7 rounded-full overflow-hidden border border-white/30 bg-slate-800 flex items-center justify-center">
                   {activeGroup.user.avatar_url ? (
                     <img src={activeGroup.user.avatar_url} alt={activeGroup.user.username} className="w-full h-full object-cover" />
@@ -1783,7 +1783,7 @@ export default function HomeFeed() {
                   activeStory.comments.map(sc => (
                     <div key={sc.id} className="flex justify-between items-center text-[11px] bg-slate-950/90 px-3 py-1.5 rounded-xl text-white border border-slate-800">
                       <span className="truncate">
-                        <Link href={`/profil/${sc.user.username}`} className="mr-1.5 text-violet-400 font-bold hover:underline">
+                        <Link href={`/profile/${sc.user.username}`} className="mr-1.5 text-violet-400 font-bold hover:underline">
                           {sc.user.username}:
                         </Link>
                         {sc.text}
@@ -2151,7 +2151,7 @@ export default function HomeFeed() {
 
             <div className="w-full md:w-80 flex flex-col h-full bg-white border-l border-slate-200">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                <Link href={`/profil/${selectedPostForDetail.user.username}`} className="flex items-center gap-2.5 hover:underline">
+                <Link href={`/profile/${selectedPostForDetail.user.username}`} className="flex items-center gap-2.5 hover:underline">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200">
                     {selectedPostForDetail.user.avatar_url ? (
                       <img src={selectedPostForDetail.user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -2167,7 +2167,7 @@ export default function HomeFeed() {
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
                 {selectedPostForDetail.caption && (
                   <p className="text-xs text-slate-800 border-b border-slate-100 pb-3">
-                    <Link href={`/profil/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                    <Link href={`/profile/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
                       {selectedPostForDetail.user.full_name?.trim() && selectedPostForDetail.user.full_name !== 'Uživatel' ? selectedPostForDetail.user.full_name : selectedPostForDetail.user.username}
                     </Link>
                     {selectedPostForDetail.caption}
