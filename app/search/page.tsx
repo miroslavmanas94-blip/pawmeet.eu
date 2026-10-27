@@ -9,6 +9,8 @@ type Profile = {
   username: string
   avatar_url?: string
   bio?: string
+  full_name?: string
+  role?: string
 }
 
 export default function SearchPage() {
@@ -51,13 +53,13 @@ export default function SearchPage() {
   // Filtrování podle jména a vynechání vlastního profilu
   const filteredProfiles = profiles.filter((p) =>
     p.id !== currentUserId &&
-    (p.username || '').toLowerCase().includes(searchQuery.toLowerCase())
+    [p.username, p.full_name, p.bio, p.role].some(value => (value || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))
   )
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-8 pb-24 md:pb-12 text-neutral-900">
+    <div className="mx-auto w-full max-w-5xl px-4 py-7 pb-28 text-[#183d2c] md:px-8 md:py-10">
       {/* Hlavička */}
-      <h1 className="text-2xl font-black mb-6 bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 bg-clip-text text-transparent">
+      <h1 className="text-3xl font-black mb-6 text-[#174b35] tracking-tight md:text-4xl">
         Hledat uživatele
       </h1>
 
@@ -71,7 +73,7 @@ export default function SearchPage() {
           placeholder="Hledat podle jména..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-neutral-200 bg-white text-neutral-900 placeholder-neutral-400 shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm"
+          className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-[#d4e3cf] bg-white/75 text-[#183d2c] placeholder:text-slate-400 shadow-sm outline-none focus:border-[#6d9b72] focus:ring-2 focus:ring-[#6d9b72]/20 transition-all text-sm"
         />
       </div>
 
@@ -89,15 +91,15 @@ export default function SearchPage() {
           <p className="text-sm">Načítám profily...</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {filteredProfiles.map((profile) => (
             <Link
               key={profile.id}
-              href={`/profile/${profile.id}`}
-              className="flex items-center justify-between p-3.5 bg-white hover:bg-neutral-50 rounded-2xl border border-neutral-200/80 shadow-sm hover:border-indigo-300 transition-all cursor-pointer active:scale-[0.99] group"
+              href={`/profil/${profile.username || profile.id}`}
+              className="pawmeet-glass flex items-center justify-between rounded-2xl p-4 transition-all hover:-translate-y-0.5 group"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-12 h-12 rounded-full bg-neutral-100 overflow-hidden border border-neutral-200 flex-shrink-0 flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-[#e4efdf] overflow-hidden border border-[#dce6d8] flex-shrink-0 flex items-center justify-center">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -109,7 +111,7 @@ export default function SearchPage() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-bold text-sm text-neutral-800 group-hover:text-indigo-600 transition-colors truncate">
+                  <h3 className="font-extrabold text-sm text-[#174b35] group-hover:text-[#477353] transition-colors truncate">
                     {profile.username || 'Uživatel bez jména'}
                   </h3>
                   {profile.bio && (
@@ -118,7 +120,7 @@ export default function SearchPage() {
                 </div>
               </div>
 
-              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full group-hover:bg-indigo-100 transition-all flex-shrink-0 ml-2">
+              <span className="text-xs font-bold text-[#24563b] bg-[#e8f0e3] border border-[#d4e3cf] px-3 py-1.5 rounded-full group-hover:bg-[#dcebd7] transition-all flex-shrink-0 ml-2">
                 Zobrazit
               </span>
             </Link>
