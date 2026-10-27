@@ -53,6 +53,32 @@ const GlobeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
 )
 
+const PAWMEET_EMOJIS = [
+  '🐶','🐕','🐩','🦮','🐕‍🦺','🐾','🦴','🦮','🐈','🐈‍⬛','🐱','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷',
+  '🐸','🐵','🐔','🐣','🐤','🦆','🦉','🦅','🦋','🐝','🐞','🪲','🐢','🦎','🐍','🐬','🐳','🦭','🐟','🦈',
+  '🌿','🍀','🌱','🌳','🌻','🌼','🌷','🌹','🌸','💐','☀️','🌤️','🌈','⭐','✨','🌙','🔥','💧','❄️','🍃',
+  '❤️','🧡','💛','💚','💙','💜','🩷','🤍','🖤','🤎','💖','💗','💓','💕','💞','💘','💝','💟','💌','💋',
+  '😀','😃','😄','😁','😆','🥹','😂','🤣','😊','😇','🙂','😉','😍','🥰','😘','😋','😎','🤩','🥳','😌',
+  '😴','🤗','🤭','🤔','🫡','🙃','😶','😮','😲','🥺','😢','😭','😤','😡','🤯','😱','😳','🤪','😜','🤓',
+  '👍','👎','👏','🙌','🤝','🙏','💪','✌️','🤟','🫶','👋','👌','🤌','☝️','👀','💅','🧠','🫂','🎉','🎊',
+  '🏆','🥇','🥈','🥉','🎖️','🎯','⚽','🏀','🏐','🥏','🎾','🏸','🚴','🏃','🧘','🎵','🎶','🎸','🎨','📸',
+  '🏡','🏕️','🌲','🏞️','🚗','🚲','🛴','🧭','🎒','🧢','👕','👟','🧦','🛁','🧼','🪥','🥣','🍎','🍓','🧁'
+]
+const STICKER_ACCENTS = ['✨','💚','🌿','⭐','💫','🫧','🌈','💖','🎀','🐾']
+const STICKER_BACKGROUNDS = [
+  'bg-[#f1f7e9] border-[#d5e6c9]','bg-[#e6f4ed] border-[#c4e4d2]','bg-[#fff2dc] border-[#f3dfb9]',
+  'bg-[#f8e8ef] border-[#edcbdc]','bg-[#e8efff] border-[#cdd9f7]','bg-[#f0e9ff] border-[#dbcef8]',
+  'bg-[#e7f6f7] border-[#c4e7e8]','bg-[#fff0e9] border-[#f3d2c2]','bg-[#f8f1d9] border-[#eadfae]',
+  'bg-[#edf0e9] border-[#d6dfce]'
+]
+const PAWMEET_STICKERS = Array.from({ length: 1000 }, (_, index) => ({
+  id: index,
+  emoji: PAWMEET_EMOJIS[index % PAWMEET_EMOJIS.length],
+  accent: STICKER_ACCENTS[Math.floor(index / PAWMEET_EMOJIS.length) % STICKER_ACCENTS.length],
+  theme: Math.floor(index / PAWMEET_EMOJIS.length) % STICKER_BACKGROUNDS.length,
+  label: ['Radost','Psí parťák','Povzbuzení','Příroda','Oslava','Láska','Trénink','Odpočinek','Dobrá nálada','PawMeet'][Math.floor(index / PAWMEET_EMOJIS.length) % 10]
+}))
+
 export type Profile = {
   id: string
   username?: string
@@ -113,6 +139,9 @@ function ChatContent() {
   const [activeGroup, setActiveGroup] = useState<PublicGroup | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
+  const [pickerMode, setPickerMode] = useState<'emoji' | 'stickers' | null>(null)
+  const [stickerSearch, setStickerSearch] = useState('')
+  const [stickerPage, setStickerPage] = useState(0)
   
   const [onlineUsers, setOnlineUsers] = useState<Map<string, string>>(new Map())
   const [isTyping, setIsTyping] = useState(false)
@@ -874,6 +903,37 @@ function ChatContent() {
               </div>
             )}
 
+            {pickerMode && (
+              <section className="mb-3 rounded-2xl border border-[#d5e4ce] bg-white/90 p-3 shadow-lg backdrop-blur-xl" aria-label={pickerMode === 'emoji' ? 'Výběr emoji' : 'Samolepky'}>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setPickerMode('emoji')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'emoji' ? 'bg-[#286747] text-white' : 'bg-[#edf3e8] text-[#24563b]'}`}>100 emoji</button>
+                    <button type="button" onClick={() => setPickerMode('stickers')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'stickers' ? 'bg-[#286747] text-white' : 'bg-[#edf3e8] text-[#24563b]'}`}>1 000 samolepek</button>
+                  </div>
+                  <button type="button" onClick={() => setPickerMode(null)} aria-label="Zavřít výběr" className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100">✕</button>
+                </div>
+                {pickerMode === 'emoji' ? (
+                  <div className="grid max-h-52 grid-cols-8 gap-1 overflow-y-auto sm:grid-cols-10">
+                    {PAWMEET_EMOJIS.slice(0, 100).map((emoji, index) => <button key={`${emoji}-${index}`} type="button" title={`PawMeet emoji ${index + 1}`} onClick={() => setNewMessage(value => value + emoji)} className="rounded-lg p-1.5 text-2xl transition hover:scale-110 hover:bg-[#edf3e8]">{emoji}</button>)}
+                  </div>
+                ) : (
+                  <>
+                    <input value={stickerSearch} onChange={e => { setStickerSearch(e.target.value); setStickerPage(0) }} placeholder="Hledat samolepku nebo náladu…" className="mb-3 w-full rounded-xl border border-[#d5e4ce] bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                    <div className="grid max-h-56 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-5">
+                      {PAWMEET_STICKERS.filter(sticker => !stickerSearch || sticker.label.toLowerCase().includes(stickerSearch.toLowerCase()) || sticker.emoji.includes(stickerSearch)).slice(stickerPage * 40, stickerPage * 40 + 40).map(sticker => (
+                        <button key={sticker.id} type="button" title={`Samolepka ${sticker.id + 1}: ${sticker.label}`} onClick={() => setNewMessage(value => value + sticker.emoji + sticker.accent)} className={`flex min-h-16 flex-col items-center justify-center rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md ${STICKER_BACKGROUNDS[sticker.theme]}`}>
+                          <span className="text-2xl">{sticker.emoji}{sticker.accent}</span><span className="mt-1 text-[9px] font-semibold text-[#42684a]">{sticker.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                      <span>{Math.min(1000, stickerPage * 40 + 1)}–{Math.min((stickerPage + 1) * 40, PAWMEET_STICKERS.filter(sticker => !stickerSearch || sticker.label.toLowerCase().includes(stickerSearch.toLowerCase()) || sticker.emoji.includes(stickerSearch)).length)} z {PAWMEET_STICKERS.filter(sticker => !stickerSearch || sticker.label.toLowerCase().includes(stickerSearch.toLowerCase()) || sticker.emoji.includes(stickerSearch)).length}</span>
+                      <div className="flex gap-2"><button type="button" disabled={stickerPage === 0} onClick={() => setStickerPage(p => Math.max(0, p - 1))} className="rounded-lg border px-2 py-1 disabled:opacity-40">Předchozí</button><button type="button" disabled={(stickerPage + 1) * 40 >= PAWMEET_STICKERS.filter(sticker => !stickerSearch || sticker.label.toLowerCase().includes(stickerSearch.toLowerCase()) || sticker.emoji.includes(stickerSearch)).length} onClick={() => setStickerPage(p => p + 1)} className="rounded-lg border px-2 py-1 disabled:opacity-40">Další</button></div>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
             {showAttachMenu && (
               <div className="p-2 border-b border-slate-100 bg-white flex gap-2 mb-2">
                 <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">
@@ -893,6 +953,8 @@ function ChatContent() {
                 <PlusIcon />
               </button>
 
+              <button type="button" onClick={() => setPickerMode(mode => mode === 'emoji' ? null : 'emoji')} aria-label="Otevřít emoji" title="100 vlastních emoji" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">☺</button>
+              <button type="button" onClick={() => setPickerMode(mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">✦</button>
               <input
                 type="text"
                 value={newMessage}
