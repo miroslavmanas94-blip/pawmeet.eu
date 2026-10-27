@@ -47,7 +47,7 @@ export default function SettingsPage(){
        else{
          const {error}=await supabase.from('user_locations').update({is_active:Boolean(value)}).eq('user_id',user.id)
          if(error)throw error
-         setNotice(value?'Zobrazování uložené polohy na mapě je zapnuté.':'Tvoje uložená poloha je skrytá.')
+         setNotice(value?'Zobrazení uložené polohy na mapě PawMeet je zapnuté.':'Tvoje uložená poloha se na mapě PawMeet přestane zobrazovat. Databázová pravidla veřejného čtení tím neměním.')
        }
      }catch(error){console.error('Změna viditelnosti polohy selhala:',error);setNotice('Viditelnost polohy se nepodařilo změnit.');value=false}
    }
