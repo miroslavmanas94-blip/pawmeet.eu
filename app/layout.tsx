@@ -2,7 +2,6 @@
 
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/react'
-import Script from 'next/script'
 import { usePathname } from 'next/navigation'
 
 // @ts-ignore: Side-effect CSS import
@@ -23,10 +22,6 @@ export default function RootLayout({
 
   return (
     <html lang="cs" suppressHydrationWarning>
-      <head>
-        {/* Puter.js pro AI bez API klíčů a limitů */}
-        <Script src="https://js.puter.com/v2/" strategy="beforeInteractive" />
-      </head>
       <body className="min-h-screen bg-white text-slate-900 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white m-0 p-0">
         <ThemeProvider
           attribute="class"
