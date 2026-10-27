@@ -26,7 +26,7 @@ const INITIAL_WELCOME: Message = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function PawMeetAIPage() {
+let localTextGenerator: any = null\n\nexport default function PawMeetAIPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [input, setInput] = useState('')
@@ -137,13 +137,19 @@ export default function PawMeetAIPage() {
     setIsGenerating(true)
 
     try {
-      const puter = (window as any).puter
-      if (!puter || !puter.ai) {
-        throw new Error('Puter.js není k dispozici.')
+      // Model is downloaded and executed locally in this browser. Prompts are not sent to an AI API.
+      if (!localTextGenerator) {
+        const transformers = await import('@huggingface/transformers')
+        localTextGenerator = await transformers.pipeline(
+          'text-generation',
+          'onnx-community/Qwen2.5-0.5B-Instruct',
+          { dtype: 'q4' }
+        )
       }
-
-      const response = await puter.ai.chat(promptText)
-      const reply = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response))
+      const localPrompt = `You are PawMeet, a helpful Czech dog-care assistant. Answer in Czech, clearly and safely. For urgent symptoms advise a veterinarian; never diagnose with certainty.\n\nUser: ${promptText}\nAssistant:`
+      const generated = await localTextGenerator(localPrompt, { max_new_tokens: 180, temperature: 0.65, do_sample: true })
+      const raw = generated?.[0]?.generated_text
+      const reply = typeof raw === 'string' ? raw.slice(raw.lastIndexOf('Assistant:') + 'Assistant:'.length).trim() : ''
 
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -163,7 +169,7 @@ export default function PawMeetAIPage() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '⚠️ Omlouvám se, nastala chyba při připojení k Puter AI. Zkus to prosím za chvíli znovu.',
+        content: 'Lokální model se nepodařilo spustit. Zkontroluj připojení kvůli prvnímu stažení modelu a zkus to znovu. Model běží v prohlížeči a první načtení může trvat déle.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => {
