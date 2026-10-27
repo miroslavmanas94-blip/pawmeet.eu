@@ -26,7 +26,9 @@ const INITIAL_WELCOME: Message = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-let localTextGenerator: any = null\n\nexport default function PawMeetAIPage() {
+let localTextGenerator: any = null
+
+export default function PawMeetAIPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
   const [input, setInput] = useState('')
