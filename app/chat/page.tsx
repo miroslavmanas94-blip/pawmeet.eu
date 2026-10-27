@@ -828,6 +828,14 @@ function ChatContent() {
                 >
                   <VideoIcon />
                 </button>
+                <button
+                  onClick={() => { window.location.href = '/calls' }}
+                  title="Skupinový hovor"
+                  aria-label="Spustit skupinový hovor"
+                  className="h-10 rounded-full bg-[#e8f0e3] px-3 text-xs font-semibold text-[#24563b] transition-all hover:bg-[#dbe8d5] active:scale-95"
+                >
+                  Skupina
+                </button>
               </div>
             )}
           </div>
