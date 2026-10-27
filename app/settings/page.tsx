@@ -28,10 +28,11 @@ const options: {key:keyof Preferences;title:string;description:string}[] = [
 ]
 export default function SettingsPage(){
  const [prefs,setPrefs]=useState<Preferences>(defaults)
+ const [loaded,setLoaded]=useState(false)
  const [saved,setSaved]=useState(false)
  const [notice,setNotice]=useState('')
  useEffect(()=>{let cancelled=false;const load=async()=>{try{const stored=localStorage.getItem('pawmeet-preferences-v1');if(stored&&!cancelled)setPrefs(current=>({...current,...JSON.parse(stored)}));const {data:{user}}=await createClient().auth.getUser();const accountPrefs=user?.user_metadata?.pawmeet_preferences;if(accountPrefs&&!cancelled)setPrefs(current=>({...current,...accountPrefs}))}catch{}finally{if(!cancelled)setLoaded(true)}};load();return()=>{cancelled=true}},[])
- useEffect(()=>{document.documentElement.dataset.reduceMotion=prefs.reduceMotion?'true':'false';document.documentElement.lang=prefs.language;try{localStorage.setItem('pawmeet-preferences-v1',JSON.stringify(prefs));setSaved(true)}catch{setSaved(false)}},[prefs])
+ useEffect(()=>{if(!loaded)return;document.documentElement.dataset.reduceMotion=prefs.reduceMotion?'true':'false';document.documentElement.lang=prefs.language;try{localStorage.setItem('pawmeet-preferences-v1',JSON.stringify(prefs))}catch{setSaved(false)}},[prefs,loaded])
  const update=async(key:keyof Preferences,value:any)=>{
    if(key==='pushNotifications' && value && 'Notification' in window && Notification.permission==='default'){
      const permission=await Notification.requestPermission()
