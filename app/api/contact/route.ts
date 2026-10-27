@@ -1,45 +1,41 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json(
-        { error: 'Chybí RESEND_API_KEY v .env.local' },
-        { status: 500 }
-      )
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Kontaktní e-mail momentálně není nakonfigurován.' }, { status: 503 })
     }
 
-    const { email, message } = await request.json()
-
-    if (!email || !message) {
-      return NextResponse.json(
-        { error: 'Vyplňte prosím e-mail i zprávu.' },
-        { status: 400 }
-      )
+    const body = await request.json().catch(() => ({}))
+    const email = typeof body.email === 'string' ? body.email.trim() : ''
+    const message = typeof body.message === 'string' ? body.message.trim() : ''
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !message) {
+      return NextResponse.json({ error: 'Zadej platný e-mail a zprávu.' }, { status: 400 })
+    }
+    if (email.length > 254 || message.length > 5000) {
+      return NextResponse.json({ error: 'Zpráva je příliš dlouhá.' }, { status: 413 })
     }
 
-    const { data, error } = await resend.emails.send({
+    const resend = new Resend(apiKey)
+    const { error } = await resend.emails.send({
       from: 'PawMeet Web <onboarding@resend.dev>',
-      to: ['pawmeet.eu@gmail.com'], // Fyzický příjemce zprávy
-      replyTo: email,               // Stisknutím "Odpovědět" v e-mailu píšete přímo návštěvníkovi
-      subject: `[info@pawmeet.eu] Nová zpráva od ${email}`,
-      text: `Tato zpráva byla odeslána z formuláře na webu (určeno pro info@pawmeet.eu).\n\nOdesílatel: ${email}\n\nZpráva:\n${message}`,
+      to: ['pawmeet.eu@gmail.com'],
+      replyTo: email,
+      subject: '[PawMeet] Nová zpráva z kontaktního formuláře',
+      text: `Odesílatel: ${email}\n\nZpráva:\n${message}`,
     })
-
     if (error) {
-      console.error('Chyba z Resend API:', error)
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error('Resend contact error:', error.message)
+      return NextResponse.json({ error: 'Zprávu se nepodařilo odeslat. Zkus to později.' }, { status: 502 })
     }
-
-    return NextResponse.json({ success: true, data })
-  } catch (err: any) {
-    console.error('Chyba serveru:', err)
-    return NextResponse.json(
-      { error: err.message || 'Chyba při odesílání.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Contact endpoint failed:', error)
+    return NextResponse.json({ error: 'Nastala chyba při odesílání zprávy.' }, { status: 500 })
   }
 }
