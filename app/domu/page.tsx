@@ -1116,7 +1116,28 @@ export default function HomeFeed() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
+    e.target.value = ''
     if (!files.length) return
+
+    const maxFiles = createTab === 'post' ? 10 : 1
+    if (files.length > maxFiles) {
+      showToast(createTab === 'post' ? 'Do jednoho příspěvku můžeš přidat nejvýše 10 souborů.' : 'Příběh a Reel mohou mít vždy jen jeden soubor.')
+      return
+    }
+    if (files.some(file => file.size > 100 * 1024 * 1024)) {
+      showToast('Jeden soubor je větší než 100 MB. Zmenši ho a zkus to znovu.')
+      return
+    }
+    if (createTab === 'reel' && files.some(file => !file.type.startsWith('video/'))) {
+      showToast('Reel musí být video.')
+      return
+    }
+    if (createTab === 'story' && files.some(file => !file.type.startsWith('image/') && !file.type.startsWith('video/'))) {
+      showToast('Příběh musí být obrázek nebo video.')
+      return
+    }
+
+    previewItems.forEach(item => { if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url) })
     setUploadFiles(files)
     setPreviewItems(files.map(f => ({
       url: URL.createObjectURL(f),
@@ -1125,6 +1146,7 @@ export default function HomeFeed() {
   }
 
   const resetCreateModal = () => {
+    previewItems.forEach(item => { if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url) })
     setIsCreateOpen(false)
     setUploadFiles([])
     setPreviewItems([])
@@ -2051,13 +2073,24 @@ export default function HomeFeed() {
 
               {createTab !== 'story' && (
                 <>
-                  <textarea
-                    rows={2}
-                    placeholder="Popis příspěvku..."
-                    value={createCaption}
-                    onChange={(e) => setCreateCaption(e.target.value)}
-                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none resize-none focus:border-violet-500"
-                  />
+                  <div>
+                    <textarea
+                      rows={3}
+                      maxLength={2200}
+                      placeholder={createTab === 'reel' ? 'Popiš svůj Reel, přidej #hashtag…' : 'Co se děje u tebe a tvého parťáka? Přidej #hashtag…'}
+                      value={createCaption}
+                      onChange={(e) => setCreateCaption(e.target.value)}
+                      className="w-full text-xs p-3 bg-[#f6f8ef] border border-[#dce6d8] rounded-xl text-slate-800 outline-none resize-y focus:border-[#6d9b72]"
+                    />
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {['#psi','#vycvik','#agility','#dogpuller','#vylet'].map(tag => (
+                          <button key={tag} type="button" onClick={() => setCreateCaption(value => `${value.trim()}${value.trim() ? ' ' : ''}${tag} `)} className="rounded-full border border-[#d5e4ce] bg-white/80 px-2.5 py-1 text-[10px] font-bold text-[#286747] transition hover:bg-[#e7f1e1]">{tag}</button>
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-medium text-slate-500">{createCaption.length}/2200</span>
+                    </div>
+                  </div>
 
                   <div className="relative">
                     <input
