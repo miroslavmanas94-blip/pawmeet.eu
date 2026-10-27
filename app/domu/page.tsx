@@ -1398,7 +1398,7 @@ export default function HomeFeed() {
                       setCreateTab('story')
                       setIsCreateOpen(true)
                     }}
-                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black shadow-lg border-2 border-white z-20 cursor-pointer"
+                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#286747] to-[#4d8654] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black shadow-lg border-2 border-white z-20 cursor-pointer"
                   >
                     +
                   </button>
@@ -1475,12 +1475,13 @@ export default function HomeFeed() {
                             )}
                           </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-extrabold text-[#174b35] tracking-wide group-hover:underline">{post.user.username}</span>
-                            {post.user.is_verified && <span className="text-violet-600 text-xs">✓</span>}
-                            <span className="rounded-full bg-[#e4efdf] px-2 py-0.5 text-[10px] font-semibold text-[#42684a]">Přidal/a</span><span className="text-slate-500 text-[11px]">· {post.created_at}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm font-extrabold text-[#174b35] tracking-wide group-hover:underline truncate">{post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}</span>
+                            {post.user.is_verified && <span className="text-[#286747] text-xs" aria-label="Ověřený profil">✓</span>}
+                            <span className="text-slate-500 text-[11px] shrink-0">· {post.created_at}</span>
                           </div>
+                          <span className="block text-[11px] font-medium text-[#66816a] truncate">@{post.user.username}</span>
                           {post.location && <span className="text-[11px] font-semibold text-[#4d7c53] block">{post.location}</span>}
                         </div>
                       </Link>
@@ -1641,8 +1642,8 @@ export default function HomeFeed() {
                   <div className="px-4 py-3 space-y-1.5 bg-white">
                     {post.caption && (
                       <p className="text-xs text-slate-800 leading-relaxed">
-                        <Link href={`/profil/${post.user.username}`} className="font-extrabold mr-1.5 text-slate-900 hover:underline">
-                          {post.user.username}
+                        <Link href={`/profil/${post.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                          {post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}
                         </Link>
                         {post.caption}
                       </p>
@@ -1666,7 +1667,7 @@ export default function HomeFeed() {
                       value={commentInput[post.id] || ''}
                       onChange={(e) => setCommentInput(prev => ({ ...prev, [post.id]: e.target.value }))}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post.id) }}
-                      className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 outline-none focus:border-violet-500 transition"
+                      className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 outline-none focus:border-[#6d9b72] transition"
                     />
                     <button
                       onClick={() => handleAddComment(post.id)}
@@ -1894,7 +1895,7 @@ export default function HomeFeed() {
                     type="button"
                     onClick={() => setCreateTab(tab)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition ${
-                      createTab === tab ? 'bg-gradient-to-r from-violet-600 to-rose-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'
+                      createTab === tab ? 'bg-gradient-to-r from-[#286747] to-[#4d8654] text-white shadow-md' : 'text-slate-500 hover:text-[#174b35]'
                     }`}
                   >
                     {tab === 'post' ? 'Příspěvek' : tab === 'story' ? 'Příběh' : 'Reel'}
@@ -1913,7 +1914,7 @@ export default function HomeFeed() {
                 onTouchStart={() => setIsDraggingText(true)}
                 onTouchEnd={() => setIsDraggingText(false)}
                 onTouchMove={handleTouchOrMouseMove}
-                className="relative border-2 border-dashed border-slate-200 hover:border-violet-400 rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition cursor-crosshair"
+                className="relative border-2 border-dashed border-[#dce6d8] hover:border-[#6d9b72] rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition cursor-crosshair"
               >
                 <input
                   type="file"
@@ -2041,7 +2042,7 @@ export default function HomeFeed() {
                         max="48" 
                         value={textSize} 
                         onChange={(e) => setTextSize(Number(e.target.value))}
-                        className="w-full accent-violet-600 cursor-pointer"
+                        className="w-full accent-[#286747] cursor-pointer"
                       />
                     </div>
                   </div>
@@ -2080,7 +2081,7 @@ export default function HomeFeed() {
                               setCreateLocation(loc)
                               setShowLocationSuggestions(false)
                             }}
-                            className="p-2 text-xs text-slate-700 hover:bg-slate-100 hover:text-violet-600 cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-1.5"
+                            className="p-2 text-xs text-slate-700 hover:bg-slate-100 hover:text-[#286747] cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-1.5"
                           >
                             <span>📍</span>
                             <span>{loc}</span>
@@ -2133,8 +2134,8 @@ export default function HomeFeed() {
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
                 {selectedPostForDetail.caption && (
                   <p className="text-xs text-slate-800 border-b border-slate-100 pb-3">
-                    <Link href={`/profil/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-slate-900 hover:underline">
-                      {selectedPostForDetail.user.username}
+                    <Link href={`/profil/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                      {selectedPostForDetail.user.full_name?.trim() && selectedPostForDetail.user.full_name !== 'Uživatel' ? selectedPostForDetail.user.full_name : selectedPostForDetail.user.username}
                     </Link>
                     {selectedPostForDetail.caption}
                   </p>
