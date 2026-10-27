@@ -686,7 +686,7 @@ function ChatContent() {
             </div>
             <button
               onClick={openNewChatModal}
-              className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
+              className="w-10 h-10 rounded-full bg-[#286747] text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
             >
               <PlusIcon />
             </button>
@@ -718,7 +718,7 @@ function ChatContent() {
                       onClick={() => router.push(`/chat?groupId=${group.id}`)}
                       className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
                     >
-                      <div className="w-12 h-12 rounded-full bg-indigo-500 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="w-12 h-12 rounded-full bg-[#e8f0e3]0 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
                         👥
                       </div>
                       <div className="flex-1 min-w-0">
@@ -749,7 +749,7 @@ function ChatContent() {
                         className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
                       >
                         <div className="relative shrink-0">
-                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-indigo-600">
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-[#286747]">
                             {contact.avatar_url ? (
                               <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                             ) : (
@@ -818,7 +818,7 @@ function ChatContent() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => startCall('audio')} 
-                  className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all active:scale-95"
+                  className="w-10 h-10 rounded-full bg-[#e8f0e3] hover:bg-[#dcebd7] text-slate-600 flex items-center justify-center transition-all active:scale-95"
                 >
                   <PhoneIcon />
                 </button>
@@ -840,7 +840,7 @@ function ChatContent() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f2f6ed]/65">
             {messages.map((msg) => {
               const isMine = msg.sender_id === currentUserId
               return (
@@ -850,7 +850,7 @@ function ChatContent() {
                       onContextMenu={(e) => handleContextMenu(e, msg)}
                       className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all select-none ${
                         isMine 
-                          ? 'bg-[#4F46E5] text-white rounded-br-none shadow-sm' 
+                          ? 'bg-gradient-to-br from-[#286747] to-[#174b35] text-white rounded-br-none shadow-sm' 
                           : 'bg-white text-slate-800 rounded-bl-none border border-slate-100 shadow-xs'
                       }`}
                     >
