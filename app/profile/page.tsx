@@ -189,7 +189,7 @@ export default function ProfilePage() {
         const loadedProfile: ProfileData = {
           id: user.id,
           username: profileData?.username || user.user_metadata?.username || user.email?.split('@')[0] || 'uzivatel',
-          full_name: profileData?.full_name || user.user_metadata?.full_name || 'Uživatel',
+          full_name: profileData?.display_name || profileData?.full_name || profileData?.first_name || user.user_metadata?.full_name || user.user_metadata?.name || 'Uživatel',
           avatar_url: resolvedAvatar,
           bio: profileData?.bio || user.user_metadata?.bio || 'Zatím bez popisu',
           website: profileData?.website || '',
@@ -354,6 +354,7 @@ export default function ProfilePage() {
         id: editForm.id,
         username: editForm.username,
         full_name: editForm.full_name,
+        display_name: editForm.full_name,
         bio: editForm.bio,
         website: editForm.website,
         avatar_url: finalAvatarUrl,
@@ -475,7 +476,7 @@ export default function ProfilePage() {
                   <span>PawMeet Premium</span>
                 </Link>
 
-                <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl border border-[#d4e3cf] bg-[#e8f0e3] px-3 py-2 text-xs font-bold text-[#24563b] transition hover:bg-[#dcebd7]" title="Nastavení aplikace">
+                <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl border border-[#d4e3cf] bg-[#e8f0e3] px-3 py-2 text-xs font-bold text-[#24563b] transition hover:bg-[#dcebd7]" aria-label="Otevřít nastavení aplikace">
                   <span aria-hidden="true">⚙</span><span>Nastavení</span>
                 </Link>
               </div>
