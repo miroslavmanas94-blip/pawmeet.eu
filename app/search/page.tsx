@@ -95,7 +95,7 @@ export default function SearchPage() {
           {filteredProfiles.map((profile) => (
             <Link
               key={profile.id}
-              href={`/profil/${profile.username || profile.id}`}
+              href={`/profile/${profile.username || profile.id}`}
               className="pawmeet-glass flex items-center justify-between rounded-2xl p-4 transition-all hover:-translate-y-0.5 group"
             >
               <div className="flex items-center gap-3.5 min-w-0">
