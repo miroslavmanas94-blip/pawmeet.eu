@@ -1284,13 +1284,13 @@ export default function HomeFeed() {
       )}
 
       {/* Horní lišta */}
-      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex justify-between items-center shadow-sm">
+      <header className="sticky top-0 z-40 w-full bg-[#f8faef]/80 backdrop-blur-xl border-b border-[#d7e4d3] px-4 sm:px-8 py-3 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2"></div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => { setCreateTab('post'); setIsCreateOpen(true); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-rose-500 hover:opacity-90 text-white font-black text-xs shadow-md shadow-violet-500/20 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#286747] to-[#4d8654] hover:opacity-90 text-white font-black text-xs shadow-md shadow-emerald-900/20 transition cursor-pointer active:scale-95"
           >
             <span className="text-sm font-black">+</span>
             <span>Vytvořit</span>
@@ -1462,11 +1462,11 @@ export default function HomeFeed() {
               const { backgroundClass, color } = renderTextStyles(currentMedia?.text_color, currentMedia?.text_bg)
 
               return (
-                <article id={`post-${post.id}`} key={post.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden w-full shadow-sm transition hover:shadow-md">
-                  <div className="flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-white">
+                <article id={`post-${post.id}`} key={post.id} className="pawmeet-glass rounded-[1.6rem] overflow-hidden w-full shadow-sm transition hover:shadow-md">
+                  <div className="flex justify-between items-center px-4 py-3 border-b border-[#d7e4d3] bg-[#f6f8ef]/80">
                     <div className="flex items-center gap-3">
                       <Link href={`/profil/${post.user.username}`} className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 rounded-full p-[1.5px] bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-rose-500 shadow-sm shrink-0">
+                        <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#174b35] shadow-sm shrink-0">
                           <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center font-bold text-slate-800">
                             {post.user.avatar_url ? (
                               <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover" />
@@ -1477,11 +1477,11 @@ export default function HomeFeed() {
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black text-slate-900 tracking-wide group-hover:underline">{post.user.username}</span>
+                            <span className="text-sm font-extrabold text-[#174b35] tracking-wide group-hover:underline">{post.user.username}</span>
                             {post.user.is_verified && <span className="text-violet-600 text-xs">✓</span>}
-                            <span className="text-slate-400 text-[11px]">• {post.created_at}</span>
+                            <span className="rounded-full bg-[#e4efdf] px-2 py-0.5 text-[10px] font-semibold text-[#42684a]">Přidal/a</span><span className="text-slate-500 text-[11px]">· {post.created_at}</span>
                           </div>
-                          {post.location && <span className="text-[11px] font-semibold text-rose-500 block">{post.location}</span>}
+                          {post.location && <span className="text-[11px] font-semibold text-[#4d7c53] block">{post.location}</span>}
                         </div>
                       </Link>
                     </div>
