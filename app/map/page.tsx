@@ -39,6 +39,7 @@ export default function PetMapPage() {
   const [usersLocations, setUsersLocations] = useState<UserLocation[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [locationSearch, setLocationSearch] = useState('')
 
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null)
   const [hasFittedBounds, setHasFittedBounds] = useState(false)
@@ -269,7 +270,7 @@ export default function PetMapPage() {
 
       const markerList: any[] = []
 
-      usersLocations.forEach((loc) => {
+      usersLocations.filter((loc) => { const q=locationSearch.trim().toLowerCase(); return !q || [loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(q)) }).forEach((loc) => {
         if (!loc.latitude || !loc.longitude) return
 
         const gender = loc.profiles?.pet_gender || loc.profiles?.dog_gender
@@ -315,7 +316,7 @@ export default function PetMapPage() {
         setHasFittedBounds(true)
       }
     })
-  }, [usersLocations, currentCoords, currentUserId, isLiveTracking, hasMounted, hasFittedBounds])
+  }, [usersLocations, currentCoords, currentUserId, isLiveTracking, hasMounted, hasFittedBounds, locationSearch])
 
   const recenterMap = () => {
     if (currentCoords && mapInstanceRef.current) {
@@ -339,7 +340,7 @@ export default function PetMapPage() {
   const selectedInstagram = selectedUser?.profiles?.instagram
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-slate-100 select-none font-sans">
+    <div className="relative w-full h-screen overflow-hidden bg-[#eef3e7] select-none font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* HORNÍ PANEL */}
@@ -348,7 +349,7 @@ export default function PetMapPage() {
           <button
             onClick={() => setMapMode('map')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'map' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+              mapMode === 'map' ? 'bg-[#286747] text-white shadow-md' : 'text-[#42684a] hover:bg-[#e8f0e3]'
             }`}
           >
             🗺️ Mapa
@@ -384,6 +385,13 @@ export default function PetMapPage() {
           >
             🎯
           </button>
+        </div>
+      </div>
+
+      <div className="absolute left-4 right-4 top-[5.25rem] z-20 max-w-md pointer-events-auto">
+        <div className="rounded-2xl border border-[#d4e3cf] bg-[#fbfcf4]/90 p-2 shadow-xl backdrop-blur-2xl">
+          <label className="flex items-center gap-2 px-2"><span className="text-[#477353]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#174b35] outline-none placeholder:text-slate-400"/></label>
+          {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#dce6d8] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#e8f0e3]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#dcebd7] text-xs font-bold text-[#24563b]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#174b35]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
         </div>
       </div>
 
