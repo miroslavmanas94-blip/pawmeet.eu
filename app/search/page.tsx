@@ -52,7 +52,7 @@ export default function SearchPage() {
           if (term) request = request.or('name.ilike.' + like + ',type.ilike.' + like + ',breed.ilike.' + like + ',nature.ilike.' + like + ',activities.ilike.' + like)
           const { data, error } = await request
           if (error) throw error
-          found = (data || []).map((p: any) => ({ id: p.id, kind: 'dogs', title: p.name || 'Pes bez jména', description: [p.breed, p.size, p.activities].filter(Boolean).join(' · ') || 'Psí profil', href: '/profile' }))
+          found = (data || []).map((p: any) => ({ id: p.id, kind: 'dogs', title: p.name || 'Pes bez jména', description: [p.breed, p.size, p.activities].filter(Boolean).join(' · ') || 'Psí profil', href: '/dogs/' + p.id }))
         } else if (category === 'events') {
           let request = supabase.from('events').select('id, title, description, starts_at, location, event_type, status').limit(100)
           if (term) request = request.or('title.ilike.' + like + ',description.ilike.' + like + ',location.ilike.' + like + ',event_type.ilike.' + like)
