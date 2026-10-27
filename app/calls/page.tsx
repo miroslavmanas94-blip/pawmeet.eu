@@ -2,16 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
 const supabase = createClient()
 type Signal = { from: string; to?: string; kind: 'join'|'offer'|'answer'|'ice'|'leave'; description?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit; name?: string }
 
 export default function CallsPage() {
-  const search = useSearchParams()
   const [userId,setUserId] = useState('')
-  const [room,setRoom] = useState(search.get('room') || '')
+  const [room,setRoom] = useState('')
   const [active,setActive] = useState(false)
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState('')
@@ -25,7 +23,11 @@ export default function CallsPage() {
   const videosRef = useRef<Map<string,HTMLVideoElement>>(new Map())
   const [remoteStreams,setRemoteStreams] = useState<{id:string;stream:MediaStream}[]>([])
 
-  useEffect(()=>{ void supabase.auth.getUser().then(({data})=>setUserId(data.user?.id||'')) },[])
+  useEffect(()=>{
+    void supabase.auth.getUser().then(({data})=>setUserId(data.user?.id||''))
+    const initialRoom = new URLSearchParams(window.location.search).get('room')
+    if (initialRoom) setRoom(initialRoom)
+  },[])
   useEffect(()=>()=>{ void leaveCall() },[])
 
   const send = async (payload:Signal) => {
