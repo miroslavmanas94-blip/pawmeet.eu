@@ -73,10 +73,10 @@ const STICKER_BACKGROUNDS = [
 ]
 const PAWMEET_STICKERS = Array.from({ length: 1000 }, (_, index) => ({
   id: index,
-  emoji: PAWMEET_EMOJIS[index % PAWMEET_EMOJIS.length],
-  accent: STICKER_ACCENTS[Math.floor(index / PAWMEET_EMOJIS.length) % STICKER_ACCENTS.length],
-  theme: Math.floor(index / PAWMEET_EMOJIS.length) % STICKER_BACKGROUNDS.length,
-  label: ['Radost','Psí parťák','Povzbuzení','Příroda','Oslava','Láska','Trénink','Odpočinek','Dobrá nálada','PawMeet'][Math.floor(index / PAWMEET_EMOJIS.length) % 10]
+  emoji: PAWMEET_EMOJIS[index % 100],
+  accent: STICKER_ACCENTS[Math.floor(index / 100) % STICKER_ACCENTS.length],
+  theme: Math.floor(index / 100) % STICKER_BACKGROUNDS.length,
+  label: ['Radost','Psí parťák','Povzbuzení','Příroda','Oslava','Láska','Trénink','Odpočinek','Dobrá nálada','PawMeet'][Math.floor(index / 100) % 10]
 }))
 
 export type Profile = {
