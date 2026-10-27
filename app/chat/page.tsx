@@ -355,6 +355,15 @@ function ChatContent() {
   // REALTIME POSLECH PREZENCE A ZPRÁV
   useEffect(() => {
     if (!currentUserId) return
+    let activityEnabled = true
+    try {
+      const savedPreferences = JSON.parse(localStorage.getItem('pawmeet-preferences-v1') || '{}')
+      activityEnabled = savedPreferences.activityStatus !== false
+    } catch {}
+    if (!activityEnabled) {
+      setOnlineUsers(new Map())
+      return
+    }
     const supabase = createClient()
 
     const presenceChannel = supabase.channel('online-presence', {
