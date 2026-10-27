@@ -485,6 +485,9 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
+                <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl border border-[#d4e3cf] bg-[#e8f0e3] px-3 py-2 text-xs font-bold text-[#24563b] transition hover:bg-[#dcebd7]" title="Nastavení aplikace">
+                  <span aria-hidden="true">⚙</span><span>Nastavení aplikace</span>
+                </Link>
               </div>
             </div>
 
