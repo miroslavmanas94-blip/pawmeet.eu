@@ -39,6 +39,18 @@ export default function SettingsPage(){
      if(permission!=='granted'){setNotice('Prohlížeč nepovolil oznámení. Nastavení můžeš změnit v oprávněních webu.');value=false}
      else setNotice('Oznámení jsou povolena v tomto prohlížeči. Pro doručování i při zavřené aplikaci je ještě potřeba serverová Push konfigurace.')
    }
+   if(key==='mapVisibility'){
+     try{
+       const supabase=createClient()
+       const {data:{user}}=await supabase.auth.getUser()
+       if(!user){setNotice('Pro změnu viditelnosti mapy se nejdřív přihlas.');value=false}
+       else{
+         const {error}=await supabase.from('user_locations').update({is_active:Boolean(value)}).eq('user_id',user.id)
+         if(error)throw error
+         setNotice(value?'Zobrazování uložené polohy na mapě je zapnuté.':'Tvoje uložená poloha je skrytá.')
+       }
+     }catch(error){console.error('Změna viditelnosti polohy selhala:',error);setNotice('Viditelnost polohy se nepodařilo změnit.');value=false}
+   }
    setPrefs(p=>({...p,[key]:value}));setSaved(false)
  }
  const save=async()=>{try{localStorage.setItem('pawmeet-preferences-v1',JSON.stringify(prefs));document.documentElement.dataset.reduceMotion=prefs.reduceMotion?'true':'false';document.documentElement.lang=prefs.language;const supabase=createClient();const {data:{user}}=await supabase.auth.getUser();if(user){const {error}=await supabase.auth.updateUser({data:{pawmeet_preferences:prefs}});if(error)throw error;setNotice('Nastavení bylo uloženo v tomto prohlížeči i u tvého účtu.')}else{setNotice('Nastavení bylo uloženo v tomto prohlížeči. Přihlas se pro uložení k účtu.')}setSaved(true)}catch(error){console.error('Uložení nastavení selhalo:',error);setSaved(false);setNotice('Nastavení se nepodařilo uložit k účtu. Lokální preference zůstaly v tomto prohlížeči.')}}
