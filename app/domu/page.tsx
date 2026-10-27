@@ -538,7 +538,7 @@ export default function HomeFeed() {
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
             .from('profiles')
-            .select('id, username, full_name, avatar_url, is_verified')
+            .select('id, username, first_name, display_name, full_name, avatar_url, is_verified')
             .in('id', userIds)
           profilesData?.forEach(profile => profilesMap.set(profile.id, profile))
         }
@@ -587,13 +587,14 @@ export default function HomeFeed() {
           }
 
           const profileData = profilesMap.get(p.user_id) || {}
-          const rawAuthorName = profileData.username || profileData.full_name || 'Uživatel'
-          const cleanAuthorUsername = rawAuthorName.startsWith('user_') ? (profileData.full_name || 'Uživatel') : rawAuthorName
+          const usable = (value: unknown) => typeof value === 'string' && value.trim() && !value.trim().toLowerCase().startsWith('user_') ? value.trim() : ''
+          const displayName = usable(profileData.display_name) || usable(profileData.full_name) || usable(profileData.first_name) || usable(profileData.username) || 'Pejskař'
+          const handle = usable(profileData.username) || displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '') || p.user_id.slice(0, 8)
 
           const author: Profile = {
             id: p.user_id,
-            username: cleanAuthorUsername,
-            full_name: profileData.full_name || 'Uživatel',
+            username: handle,
+            full_name: displayName,
             avatar_url: profileData.avatar_url || '',
             is_verified: profileData.is_verified || false
           }
