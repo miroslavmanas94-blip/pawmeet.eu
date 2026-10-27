@@ -481,13 +481,14 @@ export default function HomeFeed() {
 
         if (profileErr) console.error('Profile fetch error:', profileErr)
 
-        const rawUsername = userProfile?.username || authUser.user_metadata?.username || userProfile?.full_name || authUser.email?.split('@')[0] || 'Uživatel'
-        const cleanUsername = rawUsername.startsWith('user_') ? 'Uživatel' : rawUsername
+        const realName = [userProfile?.display_name, userProfile?.full_name, userProfile?.first_name, authUser.user_metadata?.full_name, authUser.user_metadata?.name].find((value: unknown) => typeof value === 'string' && value.trim() && !['uživatel', 'pejskař'].includes(value.trim().toLocaleLowerCase('cs-CZ')))
+        const rawUsername = userProfile?.username || authUser.user_metadata?.username || realName || authUser.email?.split('@')[0] || 'Pejskař'
+        const cleanUsername = rawUsername.startsWith('user_') ? (realName || 'Pejskař') : rawUsername
 
         activeUserProfile = {
           id: authUser.id,
           username: cleanUsername,
-          full_name: userProfile?.full_name || authUser.user_metadata?.full_name || 'Uživatel',
+          full_name: realName || cleanUsername,
           avatar_url: userProfile?.avatar_url || authUser.user_metadata?.avatar_url || '',
           is_verified: userProfile?.is_verified ?? false
         }
@@ -554,7 +555,7 @@ export default function HomeFeed() {
         if (commentUserIds.length > 0) {
           const { data: commentProfiles } = await supabase
             .from('profiles')
-            .select('id, username, full_name, avatar_url')
+            .select('id, username, first_name, display_name, full_name, avatar_url')
             .in('id', commentUserIds)
           commentProfiles?.forEach(p => commentProfilesMap.set(p.id, p))
         }
@@ -587,7 +588,12 @@ export default function HomeFeed() {
           }
 
           const profileData = profilesMap.get(p.user_id) || {}
-          const usable = (value: unknown) => typeof value === 'string' && value.trim() && !value.trim().toLowerCase().startsWith('user_') ? value.trim() : ''
+          const usable = (value: unknown) => {
+            if (typeof value !== 'string' || !value.trim()) return ''
+            const clean = value.trim()
+            const normalized = clean.toLocaleLowerCase('cs-CZ')
+            return normalized.startsWith('user_') || ['uživatel', 'pejskař', 'anonym', 'unknown'].includes(normalized) ? '' : clean
+          }
           const displayName = usable(profileData.display_name) || usable(profileData.full_name) || usable(profileData.first_name) || usable(profileData.username) || 'Pejskař'
           const handle = usable(profileData.username) || displayName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '') || p.user_id.slice(0, 8)
 
@@ -649,7 +655,7 @@ export default function HomeFeed() {
         const [storyLikesRes, storyCommentsRes, storyProfilesRes] = await Promise.all([
           supabase.from('story_likes').select('story_id, user_id').in('story_id', storyIds),
           supabase.from('story_comments').select('id, story_id, user_id, text, created_at').in('story_id', storyIds).order('created_at', { ascending: true }),
-          storyUserIds.length > 0 ? supabase.from('profiles').select('id, username, full_name, avatar_url, is_verified').in('id', storyUserIds) : Promise.resolve({ data: [] })
+          storyUserIds.length > 0 ? supabase.from('profiles').select('id, username, first_name, display_name, full_name, avatar_url').in('id', storyUserIds) : Promise.resolve({ data: [] })
         ])
 
         const storyProfilesMap = new Map<string, any>()
@@ -657,7 +663,7 @@ export default function HomeFeed() {
 
         const scUserIds = Array.from(new Set(storyCommentsRes.data?.map(c => c.user_id).filter(Boolean) || []))
         if (scUserIds.length > 0) {
-          const { data: scProfiles } = await supabase.from('profiles').select('id, username, full_name, avatar_url').in('id', scUserIds)
+          const { data: scProfiles } = await supabase.from('profiles').select('id, username, first_name, display_name, full_name, avatar_url').in('id', scUserIds)
           scProfiles?.forEach(p => storyProfilesMap.set(p.id, p))
         }
 
@@ -667,7 +673,7 @@ export default function HomeFeed() {
           const item: StoryComment = {
             id: sc.id,
             user_id: sc.user_id,
-            user: { id: sc.user_id, username: u.username || 'Uživatel', avatar_url: u.avatar_url || '' },
+            user: { id: sc.user_id, username: u.display_name || u.full_name || u.first_name || (u.username && !u.username.startsWith('user_') ? u.username : 'Pejskař'), avatar_url: u.avatar_url || '' },
             text: sc.text,
             created_at: getRelativeTime(sc.created_at)
           }
@@ -681,9 +687,8 @@ export default function HomeFeed() {
         rawStories.forEach((s: any) => {
           const uid = s.user_id || 'unknown'
           let sUser = storyProfilesMap.get(uid) || { username: 'Uživatel', avatar_url: '' }
-          const sCleanUsername = sUser.username && !sUser.username.startsWith('user_')
-            ? sUser.username
-            : (sUser.full_name || 'Uživatel')
+          const sDisplayName = [sUser.display_name, sUser.full_name, sUser.first_name, sUser.username].find((value: unknown) => typeof value === 'string' && value.trim() && !value.trim().startsWith('user_') && !['uživatel', 'pejskař', 'anonym'].includes(value.trim().toLocaleLowerCase('cs-CZ')))
+          const sCleanUsername = sDisplayName || 'Pejskař'
 
           if (!groupedMap.has(uid)) {
             groupedMap.set(uid, {
