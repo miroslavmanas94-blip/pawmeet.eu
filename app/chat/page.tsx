@@ -316,6 +316,12 @@ function ChatContent() {
           .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${activeUserId}),and(sender_id.eq.${activeUserId},receiver_id.eq.${currentUserId})`)
           .order('created_at', { ascending: true })
 
+        const unread = (oldMessages || []).filter((message: Message) => message.receiver_id === currentUserId && !message.read_at).map((message: Message) => message.id)
+        if (unread.length) {
+          const readAt = new Date().toISOString()
+          await supabase.from('messages').update({ read_at: readAt }).in('id', unread)
+          oldMessages?.forEach((message: Message) => { if (unread.includes(message.id)) message.read_at = readAt })
+        }
         setMessages(oldMessages || [])
         setTimeout(scrollToBottom, 50)
       } else if (activeGroupId) {
@@ -975,7 +981,7 @@ function ChatContent() {
                 </div>
                 {pickerMode === 'emoji' ? (
                   <div className="grid max-h-52 grid-cols-8 gap-1 overflow-y-auto sm:grid-cols-10">
-                    {PAWMEET_EMOJIS.slice(0, 100).map((emoji, index) => <button key={`${emoji}-${index}`} type="button" title={`PawMeet emoji ${index + 1}`} onClick={() => setNewMessage(value => value + emoji)} className="rounded-lg p-1.5 text-2xl transition hover:scale-110 hover:bg-[#edf3e8]">{emoji}</button>)}
+                    {PAWMEET_EMOJIS.filter((emoji, index, all) => all.indexOf(emoji) === index).slice(0, 100).map((emoji, index) => <button key={emoji} type="button" title={'PawMeet emoji ' + (index + 1)} onClick={() => setNewMessage(value => value + emoji)} className="rounded-lg p-1.5 text-2xl transition hover:scale-110 hover:bg-[#edf3e8]">{emoji}</button>)}
                   </div>
                 ) : (
                   <>
@@ -1017,6 +1023,7 @@ function ChatContent() {
 
               <button type="button" onClick={() => setPickerMode(mode => mode === 'emoji' ? null : 'emoji')} aria-label="Otevřít emoji" title="100 vlastních emoji" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">☺</button>
               <button type="button" onClick={() => setPickerMode(mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">✦</button>
+              <button type="button" onClick={() => isRecordingVoice ? stopVoiceRecording() : void startVoiceRecording()} aria-label={isRecordingVoice ? 'Ukončit hlasovou zprávu' : 'Nahrát hlasovou zprávu'} title={isRecordingVoice ? 'Ukončit nahrávání' : 'Hlasová zpráva'} className={'h-11 w-10 shrink-0 rounded-xl text-lg transition ' + (isRecordingVoice ? 'animate-pulse bg-rose-100 text-rose-700' : 'bg-[#edf3e8] text-[#24563b] hover:bg-[#dcebd7]')}>{isRecordingVoice ? '■' : '●'}</button>
               <input
                 type="text"
                 value={newMessage}
