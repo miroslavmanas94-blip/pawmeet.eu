@@ -538,7 +538,7 @@ export default function HomeFeed() {
         if (userIds.length > 0) {
           const { data: profilesData } = await supabase
             .from('profiles')
-            .select('id, username, first_name, display_name, full_name, avatar_url, is_verified')
+            .select('id, username, first_name, display_name, full_name, avatar_url')
             .in('id', userIds)
           profilesData?.forEach(profile => profilesMap.set(profile.id, profile))
         }
