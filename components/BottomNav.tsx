@@ -97,6 +97,17 @@ function BottomNavContent() {
         </svg>
       ) 
     },
+    {
+      href: '/calendar',
+      label: 'Akce',
+      activeClass: 'bg-emerald-50 text-emerald-700',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 3v4M8 3v4M3 10h18" />
+        </svg>
+      )
+    },
     { 
       href: '/profile', 
       label: 'Profil', 
