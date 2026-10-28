@@ -8,7 +8,7 @@ import {
   Home, MapPinned, MessageCircle, CalendarDays, Search, UserRound,
   ChevronDown, ChevronRight, GraduationCap, PawPrint, TrendingUp,
   Settings2, Award, Bookmark, CreditCard, ShieldCheck, Sparkles,
-  Bell, PlusSquare, Menu, X, SunMoon, Compass
+  Bell, PlusSquare, Menu, X, SunMoon, Compass, BarChart3, Music2
 } from 'lucide-react'
 
 const primary = [
@@ -34,6 +34,8 @@ const moreLinks = [
   { href: '/ai', label: 'AI poradce', icon: Sparkles },
   { href: '/domu?view=notifications', label: 'Notifikace', icon: Bell },
   { href: '/domu', label: 'Komunita', icon: Compass },
+  { href: '/polls', label: 'Ankety', icon: BarChart3 },
+  { href: '/audio', label: 'Licencovaná hudba', icon: Music2 },
 ]
 
 export default function BottomNav() {
