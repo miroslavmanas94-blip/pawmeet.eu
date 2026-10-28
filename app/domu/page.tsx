@@ -291,6 +291,8 @@ export default function HomeFeed() {
   const [createTab, setCreateTab] = useState<CreateTab>('post')
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
   const [previewItems, setPreviewItems] = useState<{ url: string; type: 'image' | 'video' }[]>([])
+  const [cropAspect, setCropAspect] = useState<'original' | 'square' | 'portrait' | 'landscape'>('original')
+  const [imageRotation, setImageRotation] = useState(0)
   
   const [imageOverlayText, setImageOverlayText] = useState('')
   const [textSize, setTextSize] = useState<number>(24)
@@ -342,6 +344,8 @@ export default function HomeFeed() {
         setCreatePetTag(typeof draft.petTag === 'string' ? draft.petTag : '')
         setImageOverlayText(typeof draft.overlayText === 'string' ? draft.overlayText : '')
         setCreateAltText(typeof draft.altText === 'string' ? draft.altText : '')
+        setCropAspect(draft.cropAspect === 'square' || draft.cropAspect === 'portrait' || draft.cropAspect === 'landscape' ? draft.cropAspect : 'original')
+        setImageRotation(typeof draft.imageRotation === 'number' ? draft.imageRotation : 0)
         setDraftRestored(Boolean(draft.caption || draft.location || draft.petTag || draft.overlayText || draft.altText))
       }
     } catch {
@@ -354,13 +358,13 @@ export default function HomeFeed() {
       const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || createPetTag.trim() || imageOverlayText.trim() || createAltText.trim())
       if (hasDraft) localStorage.setItem('pawmeet-create-draft-v1', JSON.stringify({
         caption: createCaption, location: createLocation, petTag: createPetTag, overlayText: imageOverlayText,
-        altText: createAltText, savedAt: new Date().toISOString()
+        altText: createAltText, cropAspect, imageRotation, savedAt: new Date().toISOString()
       }))
       // Empty editor state does not delete an existing draft; explicit publish/clear actions do.
     } catch {
       // Editor funguje i v prohlížečích, které blokují localStorage.
     }
-  }, [createCaption, createLocation, createPetTag, imageOverlayText, createAltText])
+  }, [createCaption, createLocation, createPetTag, imageOverlayText, createAltText, cropAspect, imageRotation])
 
   const requestCloseCreateModal = () => {
     if (uploadFiles.length > 0 && !window.confirm('Vybraná média nejsou uložena v konceptu. Opravdu chceš editor zavřít?')) return
@@ -1203,6 +1207,8 @@ export default function HomeFeed() {
     setTextColor('#ffffff')
     setTextBg('black')
     setTextPos({ x: 50, y: 50 })
+    setCropAspect('original')
+    setImageRotation(0)
     setCreateCaption('')
     setCreateLocation('')
     setCreatePetTag('')
@@ -1222,6 +1228,39 @@ export default function HomeFeed() {
     setTextPos({ x, y })
   }
 
+  const prepareImageForUpload = async (file: File): Promise<File> => {
+    if (!file.type.startsWith('image/') || (cropAspect === 'original' && imageRotation % 360 === 0)) return file
+    const bitmap = await createImageBitmap(file)
+    const rotation = ((imageRotation % 360) + 360) % 360
+    const rotated = document.createElement('canvas')
+    rotated.width = rotation % 180 === 0 ? bitmap.width : bitmap.height
+    rotated.height = rotation % 180 === 0 ? bitmap.height : bitmap.width
+    const rotatedContext = rotated.getContext('2d')
+    if (!rotatedContext) { bitmap.close(); throw new Error('Pro úpravu obrázku se nepodařilo připravit plátno.') }
+    rotatedContext.translate(rotated.width / 2, rotated.height / 2)
+    rotatedContext.rotate(rotation * Math.PI / 180)
+    rotatedContext.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2)
+    bitmap.close()
+    let cropWidth = rotated.width
+    let cropHeight = rotated.height
+    if (cropAspect !== 'original') {
+      const targetRatio = cropAspect === 'square' ? 1 : cropAspect === 'portrait' ? 4 / 5 : 16 / 9
+      if (rotated.width / rotated.height > targetRatio) cropWidth = rotated.height * targetRatio
+      else cropHeight = rotated.width / targetRatio
+    }
+    const sourceX = (rotated.width - cropWidth) / 2
+    const sourceY = (rotated.height - cropHeight) / 2
+    const output = document.createElement('canvas')
+    output.width = Math.max(1, Math.round(cropWidth))
+    output.height = Math.max(1, Math.round(cropHeight))
+    const outputContext = output.getContext('2d')
+    if (!outputContext) throw new Error('Pro úpravu obrázku se nepodařilo připravit plátno.')
+    outputContext.drawImage(rotated, sourceX, sourceY, cropWidth, cropHeight, 0, 0, output.width, output.height)
+    const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+    const blob = await new Promise<Blob>((resolve, reject) => output.toBlob(value => value ? resolve(value) : reject(new Error('Upravený obrázek se nepodařilo připravit.')), outputType, 0.92))
+    const extension = outputType === 'image/png' ? 'png' : 'jpg'
+    return new File([blob], file.name.replace(/\\.[^.]+$/, '') + '-edited.' + extension, { type: outputType, lastModified: Date.now() })
+  }
   const handlePublishContent = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!previewItems.length) return
@@ -1236,12 +1275,13 @@ export default function HomeFeed() {
       const uploadedMediaUrls: PostMedia[] = []
       
       for (const file of uploadFiles) {
-        const fileExt = file.name.split('.').pop()
+        const uploadFile = await prepareImageForUpload(file)
+        const fileExt = uploadFile.name.split('.').pop()
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
         const bucketName = createTab === 'story' ? 'stories' : 'posts'
 
-        const { error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, file, {
-          contentType: file.type,
+        const { error: uploadError } = await supabase.storage.from(bucketName).upload(fileName, uploadFile, {
+          contentType: uploadFile.type,
           upsert: true
         })
         
@@ -1254,7 +1294,7 @@ export default function HomeFeed() {
         
         uploadedMediaUrls.push({ 
           url: data.publicUrl, 
-          type: file.type.startsWith('video') ? 'video' : 'image',
+          type: uploadFile.type.startsWith('video') ? 'video' : 'image',
           overlay_text: imageOverlayText || undefined,
           text_x: textPos.x,
           text_y: textPos.y,
@@ -2006,7 +2046,7 @@ export default function HomeFeed() {
                 {previewItems.length > 0 ? (
                   <div className="relative w-full h-56 bg-slate-900 flex items-center justify-center overflow-hidden">
                     {previewItems[0].type === 'video' ? (
-                      <video src={previewItems[0].url} autoPlay loop muted className="w-full h-full object-contain pointer-events-none" />
+                      <video src={previewItems[0].url} autoPlay loop muted className="w-full h-full pointer-events-none" style={{ objectFit: cropAspect === 'original' ? 'contain' : 'cover', transform: 'rotate(' + imageRotation + 'deg)' }} />
                     ) : (
                       <img src={previewItems[0].url} alt={createAltText || "Náhled média; alternativní popis není vyplněn"} className="w-full h-full object-contain pointer-events-none" />
                     )}
@@ -2041,11 +2081,26 @@ export default function HomeFeed() {
                   </div>
                 ) : (
                   <div className="p-6 text-center text-slate-400 flex flex-col items-center pointer-events-none">
-                    <span className="text-3xl mb-2">✨</span>
+                    <span className="mb-2 text-sm font-semibold tracking-wide">PawMeet</span>
                     <span className="text-xs font-extrabold text-white">Klikněte nebo přetáhněte fotku/video</span>
                   </div>
                 )}
               </div>
+
+              {previewItems.some(item => item.type === 'image') && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--pm-line)] bg-[var(--pm-card)] p-3">
+                  <span className="mr-1 text-xs font-semibold text-[var(--pm-muted)]">Ořez</span>
+                  {([['original', 'Původní'], ['square', '1 : 1'], ['portrait', '4 : 5'], ['landscape', '16 : 9']] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => setCropAspect(value)} aria-pressed={cropAspect === value}
+                      className={'rounded-lg border px-2.5 py-1.5 text-xs font-medium ' + (cropAspect === value ? 'border-[var(--pm-green)] bg-[var(--pm-active)] text-[var(--pm-forest)]' : 'border-[var(--pm-line)] text-[var(--pm-muted)]')}>
+                      {label}
+                    </button>
+                  ))}
+                  <span className="ml-auto text-xs text-[var(--pm-muted)]">Otočení</span>
+                  <button type="button" aria-label="Otočit doleva" onClick={() => setImageRotation(v => (v + 270) % 360)} className="rounded-lg border border-[var(--pm-line)] px-2.5 py-1.5 text-sm" title="Otočit doleva">↶</button>
+                  <button type="button" aria-label="Otočit doprava" onClick={() => setImageRotation(v => (v + 90) % 360)} className="rounded-lg border border-[var(--pm-line)] px-2.5 py-1.5 text-sm" title="Otočit doprava">↷</button>
+                </div>
+              )}
 
               <div className="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                 <div>
