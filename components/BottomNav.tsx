@@ -36,6 +36,7 @@ const moreLinks = [
   { href: '/domu', label: 'Komunita', icon: Compass },
   { href: '/polls', label: 'Ankety', icon: BarChart3 },
   { href: '/audio', label: 'Licencovaná hudba', icon: Music2 },
+  { href: '/academy', label: 'Kurzy a testy', icon: GraduationCap },
 ]
 
 export default function BottomNav() {
