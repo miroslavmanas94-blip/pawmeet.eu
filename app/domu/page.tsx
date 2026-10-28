@@ -302,6 +302,7 @@ export default function HomeFeed() {
 
   const [createCaption, setCreateCaption] = useState('')
   const [createLocation, setCreateLocation] = useState('')
+  const [createPetTag, setCreatePetTag] = useState('')
   const [createAltText, setCreateAltText] = useState('')
   const [draftRestored, setDraftRestored] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
@@ -337,6 +338,7 @@ export default function HomeFeed() {
         const draft = JSON.parse(rawDraft)
         setCreateCaption(typeof draft.caption === 'string' ? draft.caption : '')
         setCreateLocation(typeof draft.location === 'string' ? draft.location : '')
+        setCreatePetTag(typeof draft.petTag === 'string' ? draft.petTag : '')
         setImageOverlayText(typeof draft.overlayText === 'string' ? draft.overlayText : '')
         setCreateAltText(typeof draft.altText === 'string' ? draft.altText : '')
         setDraftRestored(Boolean(draft.caption || draft.location || draft.overlayText || draft.altText))
@@ -348,16 +350,16 @@ export default function HomeFeed() {
 
   useEffect(() => {
     try {
-      const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || imageOverlayText.trim() || createAltText.trim())
+      const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || createPetTag.trim() || imageOverlayText.trim() || createAltText.trim())
       if (hasDraft) localStorage.setItem('pawmeet-create-draft-v1', JSON.stringify({
-        caption: createCaption, location: createLocation, overlayText: imageOverlayText,
+        caption: createCaption, location: createLocation, petTag: createPetTag, overlayText: imageOverlayText,
         altText: createAltText, savedAt: new Date().toISOString()
       }))
       // Empty editor state does not delete an existing draft; explicit publish/clear actions do.
     } catch {
       // Editor funguje i v prohlížečích, které blokují localStorage.
     }
-  }, [createCaption, createLocation, imageOverlayText, createAltText])
+  }, [createCaption, createLocation, createPetTag, imageOverlayText, createAltText])
 
   const requestCloseCreateModal = () => {
     if (uploadFiles.length > 0 && !window.confirm('Vybraná média nejsou uložena v konceptu. Opravdu chceš editor zavřít?')) return
@@ -1202,6 +1204,7 @@ export default function HomeFeed() {
     setTextPos({ x: 50, y: 50 })
     setCreateCaption('')
     setCreateLocation('')
+    setCreatePetTag('')
     setCreateAltText('')
     setDraftRestored(false)
     setShowLocationSuggestions(false)
@@ -1275,7 +1278,8 @@ export default function HomeFeed() {
           text_size: textSize,
           text_color: textColor,
           text_bg: textBg,
-          alt_text: createAltText.trim() || null
+          alt_text: createAltText.trim() || null,
+          pet_tag: createPetTag.trim() || null
         })
         
         if (storyErr) throw storyErr
@@ -1287,6 +1291,7 @@ export default function HomeFeed() {
           media_type: createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
           caption: createCaption || null,
           location: createLocation || null,
+          pet_tag: createPetTag.trim() || null,
           post_type: createTab === 'reel' ? 'reel' : 'post',
           alt_text: createAltText.trim() || null
         })
@@ -2128,8 +2133,14 @@ export default function HomeFeed() {
                   placeholder="Popiš fotografii pro čtečky obrazovky…" className="w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-500">Text, lokalita a alternativní popis se průběžně ukládají jako koncept v tomto prohlížeči.</span>
-                  {draftRestored && <button type="button" onClick={() => { setCreateCaption(''); setCreateLocation(''); setImageOverlayText(''); setCreateAltText(''); setDraftRestored(false); try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {} }} className="text-[10px] font-bold text-[#286747] underline">Smazat koncept</button>}
+                  {draftRestored && <button type="button" onClick={() => { setCreateCaption(''); setCreateLocation(''); setCreatePetTag(''); setImageOverlayText(''); setCreateAltText(''); setDraftRestored(false); try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {} }} className="text-[10px] font-bold text-[#286747] underline">Smazat koncept</button>}
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#dce6d8] bg-white/80 p-3">
+                <label className="mb-1 block text-[11px] font-bold text-[#286747]" htmlFor="creator-pet-tag">Označit psa</label>
+                <input id="creator-pet-tag" value={createPetTag} onChange={(e) => setCreatePetTag(e.target.value)} maxLength={100}
+                  placeholder="Jméno psa nebo označení profilu…" className="w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
               </div>
 
               {createTab !== 'story' && (
