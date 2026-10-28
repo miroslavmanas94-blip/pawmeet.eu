@@ -62,7 +62,8 @@ create policy pawmeet_posts_update_own on public.posts for update to authenticat
 
 drop policy if exists "Allow public read access" on public.comments;
 create policy pawmeet_comments_read_public on public.comments for select to anon, authenticated using (true);
-create policy if not exists pawmeet_comments_insert_own on public.comments for insert to authenticated
+drop policy if exists pawmeet_comments_insert_own on public.comments;
+create policy pawmeet_comments_insert_own on public.comments for insert to authenticated
 with check (user_id = auth.uid() and user_id is not null);
 
 create table if not exists public.polls (
