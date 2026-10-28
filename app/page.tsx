@@ -20,7 +20,7 @@ interface Review {
   created_at: string
 }
 
-export function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
+function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
   return (
     <img 
       src="/logo.png" 
