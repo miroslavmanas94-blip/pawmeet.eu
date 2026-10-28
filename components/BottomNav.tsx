@@ -77,7 +77,7 @@ export default function BottomNav() {
 
   return (
     <>
-      <aside className="pm-sidebar fixed inset-y-0 left-0 z-[100] hidden w-[264px] flex-col border-r border-[var(--pm-line)] p-4 lg:flex">
+      <aside className="pm-sidebar relative z-[100] hidden w-[264px] shrink-0 self-start flex-col border-r border-[var(--pm-line)] p-4 lg:flex">
         <Link href="/domu" className="mb-7 flex items-center gap-3 px-2 pt-2">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--pm-active)] text-[var(--pm-forest)]"><PawPrint size={22}/></span>
           <span><strong className="block text-xl font-black tracking-tight text-[var(--pm-forest)]">PawMeet</strong><span className="text-[11px] text-[var(--pm-muted)]">Spojuje pejskaře</span></span>
