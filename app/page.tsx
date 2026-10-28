@@ -169,7 +169,7 @@ export default function LandingPage() {
   }> = {
     stories: {
       icon: '📸',
-      title: t?.stories || 'Stories & Fotky',
+      title: t?.tabs?.stories?.title || 'Stories & Fotky',
       badge: 'Sociální feed',
       desc: 'Sdílejte radostné momenty ze života vašich mazlíčků, objevujte příběhy ze sousedství a sbírejte paculky od komunity.',
       mockupHeader: 'Přidáno před 15 minutami • Praha 4',
@@ -196,7 +196,7 @@ export default function LandingPage() {
     },
     map: {
       icon: '🗺️',
-      title: t?.map || 'Živá mapa',
+      title: t?.tabs?.map?.title || 'Živá mapa',
       badge: 'GPS Lokátor',
       desc: 'Sledujte na živé mapě bezpečné výběhy, psí parky a přátele, kteří jsou zrovna venku na venčení.',
       mockupHeader: 'Aktivní venčitelé ve vašem okolí',
@@ -221,7 +221,7 @@ export default function LandingPage() {
     },
     chat: {
       icon: '💬',
-      title: t?.chat || 'Smečka & Chat',
+      title: t?.tabs?.chat?.title || 'Smečka & Chat',
       badge: 'Skupiny',
       desc: 'Domlouvejte si společné srazy, zakládejte lokální smečky a komunikujte bezpečně s ostatními páníčky.',
       mockupHeader: 'Skupina: Vršovičtí hafané 🐾',
@@ -241,7 +241,7 @@ export default function LandingPage() {
     },
     ai: {
       icon: '🤖',
-      title: t?.ai || 'AI Poradce',
+      title: t?.tabs?.ai?.title || 'AI Poradce',
       badge: 'Veterinární AI',
       desc: 'Okamžité odpovědi 24/7 na otázky k výživě, výchově, zdraví i chování vašich mazlíčků.',
       mockupHeader: 'PawAI • Asistent výživy a zdraví',
