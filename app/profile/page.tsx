@@ -212,6 +212,13 @@ export default function ProfilePage() {
   }, [])
 
   // Načtení seznamu sledujících a sledovaných
+  useEffect(() => {
+    const section = new URLSearchParams(window.location.search).get('section')
+    if (section === 'saved') setActiveTab('saved')
+    else if (section === 'tagged') setActiveTab('tagged')
+    else if (section === 'posts') setActiveTab('posts')
+  }, [])
+
   const fetchFollowData = async (userId: string) => {
     if (!userId) return
     setLoadingFollows(true)
