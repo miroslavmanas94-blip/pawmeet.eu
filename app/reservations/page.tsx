@@ -51,6 +51,7 @@ export default function ReservationsPage(){
  },[])
 
  useEffect(()=>{void load()},[load])
+ useEffect(()=>{const params=new URLSearchParams(window.location.search);if(params.get('payment')==='success')setNotice('Platba byla odeslána. Stav rezervace se změní po ověření potvrzení od Stripe.');else if(params.get('payment')==='canceled')setNotice('Platba byla zrušena. Rezervace zůstává rozpracovaná a můžeš se k platbě vrátit později.')},[])
 
  const startCheckout=async(reservationId:string)=>{
   setSaving(true);setNotice('')
