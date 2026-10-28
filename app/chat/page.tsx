@@ -1023,8 +1023,7 @@ function ChatContent() {
               </button>
 
               <button type="button" onClick={() => setPickerMode(mode => mode === 'emoji' ? null : 'emoji')} aria-label="Otevřít emoji" title="100 vlastních emoji" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">☺</button>
-              <button type="button" onClick={() => setPickerMode(mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">✦</button>
-              <button type="button" onClick={() => isRecordingVoice ? stopVoiceRecording() : void startVoiceRecording()} aria-label={isRecordingVoice ? 'Ukončit hlasovou zprávu' : 'Nahrát hlasovou zprávu'} title={isRecordingVoice ? 'Ukončit nahrávání' : 'Hlasová zpráva'} className={'h-11 w-10 shrink-0 rounded-xl text-lg transition ' + (isRecordingVoice ? 'animate-pulse bg-rose-100 text-rose-700' : 'bg-[#edf3e8] text-[#24563b] hover:bg-[#dcebd7]')}>{isRecordingVoice ? '■' : '●'}</button>
+              <button type="button" onClick={() => setPickerMode(mode => mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">✦</button>
               <button type="button" onClick={() => isRecordingVoice ? stopVoiceRecording() : void startVoiceRecording()} aria-label={isRecordingVoice ? 'Ukončit hlasovou zprávu' : 'Nahrát hlasovou zprávu'} title={isRecordingVoice ? 'Ukončit nahrávání' : 'Hlasová zpráva'} className={'h-11 w-10 shrink-0 rounded-xl text-lg transition ' + (isRecordingVoice ? 'animate-pulse bg-rose-100 text-rose-700' : 'bg-[#edf3e8] text-[#24563b] hover:bg-[#dcebd7]')}>{isRecordingVoice ? '■' : '●'}</button>
               <input
                 type="text"
