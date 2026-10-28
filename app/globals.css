@@ -163,10 +163,10 @@ body {
   min-height: 100vh;
 }
 main, header, nav, aside, section, article { scroll-margin-top: 4rem; }
-.bg-white, .bg-white\\/95, .bg-white\\/90, .bg-white\\/80, .bg-white\\/75, .bg-white\\/70, .bg-white\\/60,
+.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-white\/75, .bg-white\/70, .bg-white\/60,
 .bg-slate-50, .bg-neutral-50 { background-color: var(--pm-card) !important; }
 .bg-slate-100, .bg-neutral-100 { background-color: var(--pm-page) !important; }
-.border-slate-100, .border-slate-200, .border-neutral-200, .border-slate-200\\/80 { border-color: var(--pm-line) !important; }
+.border-slate-100, .border-slate-200, .border-neutral-200, .border-slate-200\/80 { border-color: var(--pm-line) !important; }
 .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
   box-shadow: var(--pm-shadow) !important;
 }
