@@ -2200,7 +2200,7 @@ export default function HomeFeed() {
 
       {/* Detail Příspěvku Modal */}
       {selectedPostForDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isUploading) requestCloseCreateModal() }}>
           <div className="bg-white rounded-3xl w-full max-w-3xl h-full max-h-[80vh] flex flex-col md:flex-row overflow-hidden border border-slate-200 shadow-2xl">
             <div className="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden min-h-[250px]">
               {selectedPostForDetail.media[0]?.type === 'video' ? (
