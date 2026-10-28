@@ -122,3 +122,25 @@ begin
       check (license_url ~ '^https://' and track_url ~ '^https://' and (preview_url is null or preview_url ~ '^https://'));
   end if;
 end $$;
+
+revoke insert, update, delete on public.polls, public.poll_options from authenticated;
+grant select on public.polls, public.poll_options to authenticated;
+create or replace function public.create_poll(question_text text, option_labels text[], close_time timestamptz default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare created_poll_id uuid; option_label text; option_position smallint := 0;
+begin
+  if auth.uid() is null then raise exception 'Authentication required.'; end if;
+  if question_text is null or length(trim(question_text)) < 1 or length(trim(question_text)) > 300 then raise exception 'Question must contain 1 to 300 characters.'; end if;
+  if option_labels is null or array_length(option_labels, 1) is null or array_length(option_labels, 1) < 2 or array_length(option_labels, 1) > 6 then raise exception 'A poll must have 2 to 6 options.'; end if;
+  if close_time is not null and close_time <= now() then raise exception 'Close time must be in the future.'; end if;
+  if exists (select 1 from unnest(option_labels) x where x is null or length(trim(x)) < 1 or length(trim(x)) > 160) then raise exception 'Each option must contain 1 to 160 characters.'; end if;
+  insert into public.polls (creator_id, question, closes_at) values (auth.uid(), trim(question_text), close_time) returning id into created_poll_id;
+  foreach option_label in array option_labels loop
+    option_position := option_position + 1;
+    insert into public.poll_options (poll_id, label, position) values (created_poll_id, trim(option_label), option_position);
+  end loop;
+  return created_poll_id;
+end;
+$$;
+revoke all on function public.create_poll(text, text[], timestamptz) from public, anon;
+grant execute on function public.create_poll(text, text[], timestamptz) to authenticated;
