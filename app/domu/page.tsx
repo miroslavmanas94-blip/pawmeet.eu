@@ -2104,7 +2104,7 @@ export default function HomeFeed() {
 
               <div className="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">✍️ Text do obsahu:</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Text přes média:</label>
                   <input
                     type="text"
                     placeholder="Napište text (lze přetahovat v náhledu)..."
@@ -2117,7 +2117,7 @@ export default function HomeFeed() {
                 {imageOverlayText.trim() && (
                   <div className="space-y-2.5 pt-1 border-t border-slate-200/60">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">🎨 Barva textu:</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Barva textu:</label>
                       <div className="flex items-center gap-2">
                         {COLOR_PRESETS.map(c => (
                           <button
@@ -2139,7 +2139,7 @@ export default function HomeFeed() {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 mb-1">🖼️ Pozadí pod textem:</label>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Pozadí textu:</label>
                       <div className="flex gap-1.5">
                         <button
                           type="button"
