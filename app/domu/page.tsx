@@ -1337,8 +1337,14 @@ export default function HomeFeed() {
       }
 
       if (createTab === 'story') {
+        let storyAudience: 'public' | 'followers' | 'private' = 'public'
+        try {
+          const preferences = JSON.parse(localStorage.getItem('pawmeet-preferences-v1') || '{}')
+          if (preferences.storyAudience === 'followers' || preferences.storyAudience === 'private') storyAudience = preferences.storyAudience
+        } catch {}
         const { error: storyErr } = await supabase.from('stories').insert({
           user_id: currentUser.id,
+          audience: storyAudience,
           media_url: uploadedMediaUrls[0].url,
           media_type: uploadedMediaUrls[0].type,
           overlay_text: imageOverlayText || null,
