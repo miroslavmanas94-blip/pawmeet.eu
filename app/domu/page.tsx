@@ -342,7 +342,7 @@ export default function HomeFeed() {
         setCreatePetTag(typeof draft.petTag === 'string' ? draft.petTag : '')
         setImageOverlayText(typeof draft.overlayText === 'string' ? draft.overlayText : '')
         setCreateAltText(typeof draft.altText === 'string' ? draft.altText : '')
-        setDraftRestored(Boolean(draft.caption || draft.location || draft.overlayText || draft.altText))
+        setDraftRestored(Boolean(draft.caption || draft.location || draft.petTag || draft.overlayText || draft.altText))
       }
     } catch {
       // Neplatný lokální koncept neovlivní ostatní data aplikace.
@@ -1354,7 +1354,7 @@ export default function HomeFeed() {
   const activeStory = activeGroup ? activeGroup.stories[activeStoryItemIndex] : null
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 text-slate-800 font-sans antialiased flex flex-col selection:bg-violet-600 selection:text-white">
+    <div className="min-h-screen w-full bg-[var(--pm-page)] text-[var(--pm-forest)] font-sans antialiased flex flex-col">
       
       {toastMessage && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full text-xs font-extrabold shadow-2xl border border-slate-700 animate-bounce">
@@ -1363,7 +1363,7 @@ export default function HomeFeed() {
       )}
 
       {/* Horní lišta */}
-      <header className="sticky top-0 z-40 w-full bg-[#f8faef]/80 backdrop-blur-xl border-b border-[#d7e4d3] px-4 sm:px-8 py-3 flex justify-between items-center shadow-sm">
+      <header className="sticky top-0 z-40 w-full bg-[var(--pm-card)] border-b border-[var(--pm-line)] px-4 sm:px-8 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2"></div>
 
         <div className="flex items-center gap-3">
