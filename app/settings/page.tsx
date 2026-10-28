@@ -45,9 +45,14 @@ export default function SettingsPage(){
        const {data:{user}}=await supabase.auth.getUser()
        if(!user){setNotice('Pro změnu viditelnosti mapy se nejdřív přihlas.');value=false}
        else{
-         const {error}=await supabase.from('user_locations').update({is_active:Boolean(value)}).eq('user_id',user.id)
+         const {data:updatedLocations,error}=await supabase.from('user_locations').update({is_active:Boolean(value)}).eq('user_id',user.id).select('user_id')
          if(error)throw error
-         setNotice(value?'Zobrazení uložené polohy na mapě PawMeet je zapnuté.':'Tvoje uložená poloha se na mapě PawMeet přestane zobrazovat. Databázová pravidla veřejného čtení tím neměním.')
+         if(value && (!updatedLocations || updatedLocations.length===0)){
+           setNotice('Nejdřív na stránce Mapa sdílej polohu. Samotné zapnutí tohoto přepínače polohu nevytvoří.')
+           value=false
+         }else{
+           setNotice(value?'Zobrazení uložené polohy na mapě PawMeet je zapnuté.':'Tvoje uložená poloha se na mapě PawMeet přestane zobrazovat. Databázová pravidla veřejného čtení tím neměním.')
+         }
        }
      }catch(error){console.error('Změna viditelnosti polohy selhala:',error);setNotice('Viditelnost polohy se nepodařilo změnit.');value=false}
    }
