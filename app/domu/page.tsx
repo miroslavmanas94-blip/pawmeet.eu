@@ -306,6 +306,8 @@ export default function HomeFeed() {
   const [createLocation, setCreateLocation] = useState('')
   const [createPetTag, setCreatePetTag] = useState('')
   const [createAltText, setCreateAltText] = useState('')
+  const [scheduleAt, setScheduleAt] = useState('')
+  const [createAudience, setCreateAudience] = useState<'public' | 'followers' | 'private'>('public')
   const [draftRestored, setDraftRestored] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -344,6 +346,8 @@ export default function HomeFeed() {
         setCreatePetTag(typeof draft.petTag === 'string' ? draft.petTag : '')
         setImageOverlayText(typeof draft.overlayText === 'string' ? draft.overlayText : '')
         setCreateAltText(typeof draft.altText === 'string' ? draft.altText : '')
+        setScheduleAt(typeof draft.scheduleAt === 'string' ? draft.scheduleAt : '')
+        setCreateAudience(draft.audience === 'followers' || draft.audience === 'private' ? draft.audience : 'public')
         setCropAspect(draft.cropAspect === 'square' || draft.cropAspect === 'portrait' || draft.cropAspect === 'landscape' ? draft.cropAspect : 'original')
         setImageRotation(typeof draft.imageRotation === 'number' ? draft.imageRotation : 0)
         setDraftRestored(Boolean(draft.caption || draft.location || draft.petTag || draft.overlayText || draft.altText))
@@ -573,6 +577,7 @@ export default function HomeFeed() {
       const { data: rawPosts, error: postsError } = await supabase
         .from('posts')
         .select('*')
+        .eq('status', 'published')
         .order('created_at', { ascending: false })
 
       if (postsError) console.error('CHYBA PŘI NAČÍTÁNÍ POSTS:', postsError.message)
@@ -1226,6 +1231,8 @@ export default function HomeFeed() {
     setCreateLocation('')
     setCreatePetTag('')
     setCreateAltText('')
+    setScheduleAt('')
+    setCreateAudience('public')
     setDraftRestored(false)
     setShowLocationSuggestions(false)
   }
@@ -1321,6 +1328,14 @@ export default function HomeFeed() {
         throw new Error('Nepodařilo se nahrát žádný soubor')
       }
 
+      const scheduledDate = scheduleAt ? new Date(scheduleAt) : null
+      if (scheduledDate && (!Number.isFinite(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now())) {
+        throw new Error('Čas publikování musí být v budoucnosti.')
+      }
+      if (createTab === 'story' && scheduledDate) {
+        throw new Error('Plánování příběhů zatím není podporováno. Zvol příspěvek nebo Reel.')
+      }
+
       if (createTab === 'story') {
         const { error: storyErr } = await supabase.from('stories').insert({
           user_id: currentUser.id,
@@ -1347,11 +1362,14 @@ export default function HomeFeed() {
           location: createLocation || null,
           pet_tag: createPetTag.trim() || null,
           post_type: createTab === 'reel' ? 'reel' : 'post',
-          alt_text: createAltText.trim() || null
+          alt_text: createAltText.trim() || null,
+          status: scheduledDate ? 'scheduled' : 'published',
+          scheduled_at: scheduledDate ? scheduledDate.toISOString() : null,
+          audience: createAudience
         })
         
         if (postErr) throw postErr
-        showToast(createTab === 'reel' ? 'Reel publikován!' : 'Příspěvek publikován!')
+        showToast(scheduledDate ? 'Publikování bylo naplánováno.' : createTab === 'reel' ? 'Reel publikován!' : 'Příspěvek publikován!')
       }
 
       try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {}
@@ -2214,6 +2232,18 @@ export default function HomeFeed() {
 
               {createTab !== 'story' && (
                 <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-[11px] font-semibold text-slate-600">Viditelnost
+                      <select value={createAudience} onChange={(e) => setCreateAudience(e.target.value as 'public' | 'followers' | 'private')} className="mt-1 w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]">
+                        <option value="public">Veřejné</option>
+                        <option value="followers">Pouze sledující</option>
+                        <option value="private">Soukromé</option>
+                      </select>
+                    </label>
+                    <label className="text-[11px] font-semibold text-slate-600">Naplánovat publikování
+                      <input type="datetime-local" value={scheduleAt} min={new Date(Date.now() + 60000).toISOString().slice(0,16)} onChange={(e) => setScheduleAt(e.target.value)} className="mt-1 w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                    </label>
+                  </div>
                   <div>
                     <textarea
                       rows={3}
@@ -2270,7 +2300,7 @@ export default function HomeFeed() {
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={requestCloseCreateModal} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
                 <button type="submit" disabled={isUploading || previewItems.length === 0} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
-                  {isUploading ? 'Publikuji...' : 'Publikovat'}
+                  {isUploading ? 'Ukládám...' : scheduleAt && createTab !== 'story' ? 'Naplánovat' : 'Publikovat'}
                 </button>
               </div>
             </form>
