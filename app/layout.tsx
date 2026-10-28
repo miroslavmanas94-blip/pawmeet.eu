@@ -18,7 +18,7 @@ export default function RootLayout({
   const pathname = usePathname()
   
   // Přidali jsme '/ai', aby layout nezkresloval odsazení pro AI stránku, která si plnou šířku a odsazení řídí sama
-  const isFullScreenPage = pathname === '/' || pathname === '/ai'
+  const isFullScreenPage = ['/', '/login', '/register', '/obnova-hesla', '/reset-password', '/forgot-password', '/update-password', '/ai'].includes(pathname)
 
   return (
     <html lang="cs" suppressHydrationWarning>
