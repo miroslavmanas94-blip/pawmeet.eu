@@ -303,6 +303,8 @@ export default function HomeFeed() {
 
   const [createCaption, setCreateCaption] = useState('')
   const [createLocation, setCreateLocation] = useState('')
+  const [createAltText, setCreateAltText] = useState('')
+  const [draftRestored, setDraftRestored] = useState(false)
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
 
@@ -330,7 +332,47 @@ export default function HomeFeed() {
 
   useEffect(() => {
     setIsMounted(true)
+    try {
+      const rawDraft = localStorage.getItem('pawmeet-create-draft-v1')
+      if (rawDraft) {
+        const draft = JSON.parse(rawDraft)
+        setCreateCaption(typeof draft.caption === 'string' ? draft.caption : '')
+        setCreateLocation(typeof draft.location === 'string' ? draft.location : '')
+        setImageOverlayText(typeof draft.overlayText === 'string' ? draft.overlayText : '')
+        setCreateAltText(typeof draft.altText === 'string' ? draft.altText : '')
+        setDraftRestored(Boolean(draft.caption || draft.location || draft.overlayText || draft.altText))
+      }
+    } catch {
+      // Neplatný lokální koncept neovlivní ostatní data aplikace.
+    }
   }, [])
+
+  useEffect(() => {
+    try {
+      const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || imageOverlayText.trim() || createAltText.trim())
+      if (hasDraft) localStorage.setItem('pawmeet-create-draft-v1', JSON.stringify({
+        caption: createCaption, location: createLocation, overlayText: imageOverlayText,
+        altText: createAltText, savedAt: new Date().toISOString()
+      }))
+      else localStorage.removeItem('pawmeet-create-draft-v1')
+    } catch {
+      // Editor funguje i v prohlížečích, které blokují localStorage.
+    }
+  }, [createCaption, createLocation, imageOverlayText, createAltText])
+
+  const requestCloseCreateModal = () => {
+    if (uploadFiles.length > 0 && !window.confirm('Vybraná média nejsou uložena v konceptu. Opravdu chceš editor zavřít?')) return
+    resetCreateModal()
+  }
+
+  useEffect(() => {
+    if (!isCreateOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isUploading) requestCloseCreateModal()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isCreateOpen, isUploading, uploadFiles.length])
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
@@ -1161,6 +1203,8 @@ export default function HomeFeed() {
     setTextPos({ x: 50, y: 50 })
     setCreateCaption('')
     setCreateLocation('')
+    setCreateAltText('')
+    setDraftRestored(false)
     setShowLocationSuggestions(false)
   }
 
@@ -1857,12 +1901,12 @@ export default function HomeFeed() {
             </div>
 
           </div>
-        </div>
+        </section>
       )}
 
       {/* Modal pro Nahlášení */}
       {reportItem && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isUploading) requestCloseCreateModal() }}>
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <span className="font-extrabold text-xs text-slate-900">
@@ -1912,7 +1956,7 @@ export default function HomeFeed() {
       {/* Vytvoření příspěvku Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
-          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[92vh]">
+          <section role="dialog" aria-modal="true" aria-label="Tvorba příspěvku, příběhu nebo Reelu" className="bg-white rounded-3xl w-full max-w-lg overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[92vh]">
             <div className="flex border-b border-slate-100 p-2.5 bg-slate-50 justify-between items-center shrink-0">
               <div className="flex gap-1.5">
                 {(['post', 'story', 'reel'] as CreateTab[]).map(tab => (
@@ -1928,7 +1972,7 @@ export default function HomeFeed() {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={resetCreateModal} className="text-slate-400 font-bold text-xs p-1">✕</button>
+              <button type="button" onClick={requestCloseCreateModal} aria-label="Zavřít editor" className="rounded-xl p-2 text-slate-500 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#286747]">✕</button>
             </div>
 
             <form onSubmit={handlePublishContent} className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -1955,7 +1999,7 @@ export default function HomeFeed() {
                     {previewItems[0].type === 'video' ? (
                       <video src={previewItems[0].url} autoPlay loop muted className="w-full h-full object-contain pointer-events-none" />
                     ) : (
-                      <img src={previewItems[0].url} alt="" className="w-full h-full object-contain pointer-events-none" />
+                      <img src={previewItems[0].url} alt={createAltText || "Náhled média; alternativní popis není vyplněn"} className="w-full h-full object-contain pointer-events-none" />
                     )}
 
                     {imageOverlayText.trim() && (
@@ -2073,6 +2117,16 @@ export default function HomeFeed() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-[#dce6d8] bg-white/80 p-3">
+                <label className="mb-1 block text-[11px] font-bold text-[#286747]" htmlFor="creator-alt-text">Alternativní popis média</label>
+                <input id="creator-alt-text" value={createAltText} onChange={(e) => setCreateAltText(e.target.value)} maxLength={300}
+                  placeholder="Popiš fotografii pro čtečky obrazovky…" className="w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] text-slate-500">Text, lokalita a alternativní popis se průběžně ukládají jako koncept v tomto prohlížeči.</span>
+                  {draftRestored && <button type="button" onClick={() => { setCreateCaption(''); setCreateLocation(''); setImageOverlayText(''); setCreateAltText(''); setDraftRestored(false); try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {} }} className="text-[10px] font-bold text-[#286747] underline">Smazat koncept</button>}
+                </div>
               </div>
 
               {createTab !== 'story' && (
