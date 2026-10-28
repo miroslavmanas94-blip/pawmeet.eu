@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -25,6 +26,12 @@ export async function POST(request: Request) {
   const age = typeof input.age === 'string' ? input.age.trim().slice(0, 80) : ''
   if (!goal && !prompt) return NextResponse.json({ error: 'Doplň dotaz nebo tréninkový cíl.' }, { status: 400 })
 
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Pro používání serverové AI se nejdřív přihlas.' }, { status: 401 })
+  }
+
   // Keep provider credentials server-side. The endpoint is provider-agnostic:
   // configure AI_API_KEY, AI_BASE_URL and AI_MODEL in the deployment environment.
   const apiKey = process.env.AI_API_KEY
@@ -35,6 +42,27 @@ export async function POST(request: Request) {
       configured: false,
       message: 'Generativní AI zatím není připojena. Níže může aplikace nabídnout bezpečný základní plán; pro skutečné AI odpovědi nastav na serveru AI_API_KEY, AI_BASE_URL a AI_MODEL.'
     }, { status: 503 })
+  }
+
+  // Apply a small daily per-account cap before calling a potentially metered provider.
+  const usageDate = new Date().toISOString().slice(0, 10)
+  const { data: usage, error: usageError } = await supabase
+    .from('ai_usage')
+    .select('id, message_count')
+    .eq('user_id', user.id)
+    .eq('usage_date', usageDate)
+    .maybeSingle()
+  if (usageError) {
+    return NextResponse.json({ error: 'Nepodařilo se ověřit denní limit AI.' }, { status: 503 })
+  }
+  if ((usage?.message_count ?? 0) >= 20) {
+    return NextResponse.json({ error: 'Dnešní limit 20 serverových AI odpovědí je vyčerpán. Zkus to zítra nebo použij lokální model.' }, { status: 429 })
+  }
+  const { error: usageWriteError } = usage
+    ? await supabase.from('ai_usage').update({ message_count: usage.message_count + 1 }).eq('id', usage.id).eq('user_id', user.id)
+    : await supabase.from('ai_usage').insert({ user_id: user.id, usage_date: usageDate, message_count: 1 })
+  if (usageWriteError) {
+    return NextResponse.json({ error: 'Nepodařilo se uložit využití AI.' }, { status: 503 })
   }
 
   try {
