@@ -134,6 +134,7 @@ begin
   if option_labels is null or array_length(option_labels, 1) is null or array_length(option_labels, 1) < 2 or array_length(option_labels, 1) > 6 then raise exception 'A poll must have 2 to 6 options.'; end if;
   if close_time is not null and close_time <= now() then raise exception 'Close time must be in the future.'; end if;
   if exists (select 1 from unnest(option_labels) x where x is null or length(trim(x)) < 1 or length(trim(x)) > 160) then raise exception 'Each option must contain 1 to 160 characters.'; end if;
+  if (select count(distinct lower(trim(x))) from unnest(option_labels) x) <> array_length(option_labels,1) then raise exception 'Poll options must be unique.'; end if;
   insert into public.polls (creator_id, question, closes_at) values (auth.uid(), trim(question_text), close_time) returning id into created_poll_id;
   foreach option_label in array option_labels loop
     option_position := option_position + 1;
@@ -144,3 +145,16 @@ end;
 $$;
 revoke all on function public.create_poll(text, text[], timestamptz) from public, anon;
 grant execute on function public.create_poll(text, text[], timestamptz) to authenticated;
+
+-- Lock down trigger-only privileged functions from direct API execution.
+alter function public.handle_new_follow_notification() set search_path = public;
+alter function public.handle_new_like_notification() set search_path = public;
+alter function public.handle_new_comment_notification() set search_path = public;
+revoke all on function public.handle_new_follow_notification() from public, anon, authenticated;
+revoke all on function public.handle_new_like_notification() from public, anon, authenticated;
+revoke all on function public.handle_new_comment_notification() from public, anon, authenticated;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+revoke all on function public.notify_event_owner_on_join() from public, anon, authenticated;
+revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+revoke all on function public.guard_pawmeet_reservation_update() from public, anon, authenticated;
+drop function if exists public.publish_due_scheduled_posts();
