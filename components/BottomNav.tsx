@@ -108,6 +108,16 @@ function BottomNavContent() {
         </svg>
       )
     },
+    {
+      href: '/training',
+      label: 'Trénink',
+      activeClass: 'bg-[#eaf2e6] text-[#245b40]',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-6-6h12M4 4h16v16H4z" />
+        </svg>
+      )
+    },
     { 
       href: '/profile', 
       label: 'Profil', 
@@ -133,7 +143,7 @@ function BottomNavContent() {
       <div className="flex flex-col gap-6 w-full overflow-hidden">
         <div className="hidden md:flex items-center px-3 pt-2">
           <Link href="/domu">
-            <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-[#173d2d] via-[#2d6a45] to-[#71945f] bg-clip-text text-transparent">
               PawMeet
             </h1>
           </Link>
