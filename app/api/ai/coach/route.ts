@@ -6,6 +6,7 @@ type CoachRequest = {
   dogName?: string
   age?: string
   goal?: string
+  prompt?: string
   context?: string
 }
 
@@ -18,10 +19,11 @@ export async function POST(request: Request) {
   }
 
   const goal = typeof input.goal === 'string' ? input.goal.trim().slice(0, 240) : ''
+  const prompt = typeof input.prompt === 'string' ? input.prompt.trim().slice(0, 1600) : ''
   const context = typeof input.context === 'string' ? input.context.trim().slice(0, 1600) : ''
   const dogName = typeof input.dogName === 'string' ? input.dogName.trim().slice(0, 80) : 'tvůj pes'
   const age = typeof input.age === 'string' ? input.age.trim().slice(0, 80) : ''
-  if (!goal) return NextResponse.json({ error: 'Doplň tréninkový cíl.' }, { status: 400 })
+  if (!goal && !prompt) return NextResponse.json({ error: 'Doplň dotaz nebo tréninkový cíl.' }, { status: 400 })
 
   // Keep provider credentials server-side. The endpoint is provider-agnostic:
   // configure AI_API_KEY, AI_BASE_URL and AI_MODEL in the deployment environment.
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
           },
           {
             role: 'user',
-            content: `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
+            content: prompt ? `Dotaz uživatele: ${prompt}. Odpověz přímo na dotaz, česky a přiměřeně stručně. Pokud se týká tréninku, nabídni konkrétní bezpečné kroky.` : `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
           }
         ]
       }),
