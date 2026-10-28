@@ -139,7 +139,30 @@ export default function PawMeetAIPage() {
     setIsGenerating(true)
 
     try {
-      // Model is downloaded and executed locally in this browser. Prompts are not sent to an AI API.
+      // Prefer a configured server-side provider. Credentials stay on the server;
+      // if none is configured, continue with the existing in-browser model.
+      try {
+        const remoteResponse = await fetch('/api/ai/coach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptText }),
+        })
+        const remoteData = await remoteResponse.json()
+        if (remoteResponse.ok && typeof remoteData?.answer === 'string' && remoteData.answer.trim()) {
+          const assistantMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: remoteData.answer.trim(),
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+          setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
+          return
+        }
+      } catch {
+        // Offline or provider not configured: use the local browser model below.
+      }
+
+      // Model is downloaded and executed locally in this browser when server AI is unavailable.
       if (!localTextGenerator) {
         const transformers = await import('@huggingface/transformers')
         localTextGenerator = await transformers.pipeline(
