@@ -1904,7 +1904,7 @@ export default function HomeFeed() {
             </div>
 
           </div>
-        </section>
+        </div>
       )}
 
       {/* Modal pro Nahlášení */}
