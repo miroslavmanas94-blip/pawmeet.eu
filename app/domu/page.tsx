@@ -1275,7 +1275,8 @@ export default function HomeFeed() {
           text_y: textPos.y,
           text_size: textSize,
           text_color: textColor,
-          text_bg: textBg
+          text_bg: textBg,
+          alt_text: createAltText.trim() || null
         })
         
         if (storyErr) throw storyErr
@@ -1955,7 +1956,7 @@ export default function HomeFeed() {
 
       {/* Vytvoření příspěvku Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isUploading) requestCloseCreateModal() }}>
           <section role="dialog" aria-modal="true" aria-label="Tvorba příspěvku, příběhu nebo Reelu" className="bg-white rounded-3xl w-full max-w-lg overflow-hidden border border-slate-200 shadow-2xl flex flex-col max-h-[92vh]">
             <div className="flex border-b border-slate-100 p-2.5 bg-slate-50 justify-between items-center shrink-0">
               <div className="flex gap-1.5">
