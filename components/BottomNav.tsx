@@ -20,20 +20,20 @@ const primary = [
 ]
 const profileLinks = [
   { href: '/training', label: 'Trénink', icon: GraduationCap },
-  { href: '/profile', label: 'Moji psi a profil', icon: PawPrint },
-  { href: '/profile?section=progress', label: 'Pokrok', icon: TrendingUp },
+  { href: '/profile/dogs', label: 'Moji psi', icon: PawPrint },
+  { href: '/training', label: 'Pokrok', icon: TrendingUp },
   { href: '/settings', label: 'Nastavení', icon: Settings2 },
-  { href: '/profile?section=certificates', label: 'Certifikáty', icon: Award },
-  { href: '/calendar?view=reservations', label: 'Rezervace', icon: CalendarDays },
+  { href: '/training', label: 'Certifikáty', icon: Award },
+  { href: '/calendar', label: 'Rezervace', icon: CalendarDays },
   { href: '/profile?section=posts', label: 'Moje příspěvky', icon: PlusSquare },
   { href: '/profile?section=saved', label: 'Uložené příspěvky', icon: Bookmark },
-  { href: '/profile?section=subscription', label: 'Předplatné', icon: CreditCard },
+  { href: '/premium', label: 'Předplatné', icon: CreditCard },
   { href: '/settings?section=privacy', label: 'Soukromí', icon: ShieldCheck },
 ]
 const moreLinks = [
   { href: '/ai', label: 'AI poradce', icon: Sparkles },
-  { href: '/notifications', label: 'Notifikace', icon: Bell },
-  { href: '/search?type=community', label: 'Komunita', icon: Compass },
+  { href: '/domu', label: 'Notifikace', icon: Bell },
+  { href: '/domu', label: 'Komunita', icon: Compass },
 ]
 
 export default function BottomNav() {
@@ -54,7 +54,7 @@ export default function BottomNav() {
   if (hiddenRoutes.some((route) => route === '/' ? pathname === '/' : pathname?.startsWith(route))) return null
   if (!user) return null
 
-  const isActive = (href: string) => pathname === href || (href !== '/domu' && href !== '/profile' && pathname?.startsWith(href))
+  const isActive = (href: string) => { const path = href.split('?')[0]; return pathname === path || (path !== '/domu' && path !== '/profile' && pathname?.startsWith(path)) }
   const itemClass = (active: boolean) =>
     'group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-colors ' +
     (active
