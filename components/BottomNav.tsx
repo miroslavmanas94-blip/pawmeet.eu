@@ -37,6 +37,7 @@ const moreLinks = [
   { href: '/polls', label: 'Ankety', icon: BarChart3 },
   { href: '/audio', label: 'Licencovaná hudba', icon: Music2 },
   { href: '/academy', label: 'Kurzy a testy', icon: GraduationCap },
+  { href: '/trainer/offers', label: 'Nabídky lekcí', icon: CalendarDays },
 ]
 
 export default function BottomNav() {
