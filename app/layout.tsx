@@ -22,7 +22,7 @@ export default function RootLayout({
 
   return (
     <html lang="cs" suppressHydrationWarning>
-      <body className="min-h-screen bg-white text-slate-900 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white m-0 p-0">
+      <body className="min-h-screen bg-white text-slate-900 relative transition-colors duration-200 antialiased selection:bg-purple-500 selection:text-white m-0 p-0 lg:flex">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -31,8 +31,8 @@ export default function RootLayout({
         >
           <BottomNav />
           <main 
-            className={`min-h-screen w-full transition-all duration-300 ${
-              isFullScreenPage ? '' : 'lg:pl-[264px] pt-[58px] pb-24 lg:pt-0 lg:pb-0'
+            className={`min-h-screen min-w-0 w-full flex-1 transition-all duration-300 ${
+              isFullScreenPage ? '' : 'pt-[58px] pb-24 lg:pt-0 lg:pb-0'
             }`}
           >
             {children}
