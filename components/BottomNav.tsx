@@ -32,7 +32,7 @@ const profileLinks = [
 ]
 const moreLinks = [
   { href: '/ai', label: 'AI poradce', icon: Sparkles },
-  { href: '/domu', label: 'Notifikace', icon: Bell },
+  { href: '/domu?view=notifications', label: 'Notifikace', icon: Bell },
   { href: '/domu', label: 'Komunita', icon: Compass },
 ]
 
