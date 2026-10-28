@@ -1,183 +1,127 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import {
+  Home, MapPinned, MessageCircle, CalendarDays, Search, UserRound,
+  ChevronDown, ChevronRight, GraduationCap, PawPrint, TrendingUp,
+  Settings2, Award, Bookmark, CreditCard, ShieldCheck, Sparkles,
+  Bell, PlusSquare, Menu, X, SunMoon, Compass
+} from 'lucide-react'
 
-// Vnitřní komponenta, která bezpečně používá useSearchParams
-function BottomNavContent() {
+const primary = [
+  { href: '/domu', label: 'Domů', icon: Home },
+  { href: '/map', label: 'Mapa', icon: MapPinned },
+  { href: '/chat', label: 'Zprávy', icon: MessageCircle },
+  { href: '/calendar', label: 'Akce', icon: CalendarDays },
+  { href: '/search', label: 'Hledat', icon: Search },
+]
+const profileLinks = [
+  { href: '/training', label: 'Trénink', icon: GraduationCap },
+  { href: '/profile', label: 'Moji psi a profil', icon: PawPrint },
+  { href: '/profile?section=progress', label: 'Pokrok', icon: TrendingUp },
+  { href: '/settings', label: 'Nastavení', icon: Settings2 },
+  { href: '/profile?section=certificates', label: 'Certifikáty', icon: Award },
+  { href: '/calendar?view=reservations', label: 'Rezervace', icon: CalendarDays },
+  { href: '/profile?section=posts', label: 'Moje příspěvky', icon: PlusSquare },
+  { href: '/profile?section=saved', label: 'Uložené příspěvky', icon: Bookmark },
+  { href: '/profile?section=subscription', label: 'Předplatné', icon: CreditCard },
+  { href: '/settings?section=privacy', label: 'Soukromí', icon: ShieldCheck },
+]
+const moreLinks = [
+  { href: '/ai', label: 'AI poradce', icon: Sparkles },
+  { href: '/notifications', label: 'Notifikace', icon: Bell },
+  { href: '/search?type=community', label: 'Komunita', icon: Compass },
+]
+
+export default function BottomNav() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const activeUserId = searchParams.get('userId')
-
   const [user, setUser] = useState<any>(null)
-  const supabase = createClient()
+  const [profileOpen, setProfileOpen] = useState(true)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user)
-    })
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setUser(data.user))
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null))
+    return () => data.subscription.unsubscribe()
+  }, [])
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-    })
+  const hiddenRoutes = ['/', '/login', '/register', '/obnova-hesla', '/reset-password', '/forgot-password', '/update-password']
+  if (hiddenRoutes.some((route) => route === '/' ? pathname === '/' : pathname?.startsWith(route))) return null
+  if (!user) return null
 
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [supabase])
+  const isActive = (href: string) => pathname === href || (href !== '/domu' && href !== '/profile' && pathname?.startsWith(href))
+  const itemClass = (active: boolean) =>
+    'group flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-semibold transition-colors ' +
+    (active
+      ? 'bg-[var(--pm-active)] text-[var(--pm-forest)] shadow-sm'
+      : 'text-[var(--pm-muted)] hover:bg-[var(--pm-hover)] hover:text-[var(--pm-forest)]')
 
-  const hiddenRoutes = [
-    '/',
-    '/login',
-    '/register',
-    '/obnova-hesla',
-    '/reset-password',
-    '/forgot-password',
-    '/update-password'
-  ]
-
-  const isHidden = hiddenRoutes.some((route) => 
-    route === '/' ? pathname === '/' : pathname?.startsWith(route)
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
+    <>
+      {primary.map((item) => {
+        const Icon = item.icon
+        const active = isActive(item.href)
+        return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} aria-current={active ? 'page' : undefined}
+          className={mobile ? 'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold' + (active ? ' text-[var(--pm-forest)]' : ' text-[var(--pm-muted)]') : itemClass(active)}>
+          <Icon size={mobile ? 21 : 19} strokeWidth={1.8} />
+          <span>{item.label}</span>
+        </Link>
+      })}
+    </>
   )
 
-  if (isHidden || activeUserId) {
-    return null
-  }
-
-  const allNavItems = [
-    { 
-      href: '/domu', 
-      label: 'Domů', 
-      activeClass: 'bg-blue-50 text-blue-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      ) 
-    },
-    { 
-      href: '/search', 
-      label: 'Hledat', 
-      activeClass: 'bg-amber-50 text-amber-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      ) 
-    },
-    { 
-      href: '/map', 
-      label: 'Mapa', 
-      activeClass: 'bg-emerald-50 text-emerald-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-        </svg>
-      ) 
-    },
-    { 
-      href: '/ai', 
-      label: 'AI', 
-      activeClass: 'bg-purple-50 text-purple-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-        </svg>
-      ) 
-    },
-    { 
-      href: '/chat', 
-      label: 'Chat', 
-      activeClass: 'bg-sky-50 text-sky-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      ) 
-    },
-    {
-      href: '/calendar',
-      label: 'Akce',
-      activeClass: 'bg-emerald-50 text-emerald-700',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 3v4M8 3v4M3 10h18" />
-        </svg>
-      )
-    },
-    {
-      href: '/training',
-      label: 'Trénink',
-      activeClass: 'bg-[#eaf2e6] text-[#245b40]',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-6-6h12M4 4h16v16H4z" />
-        </svg>
-      )
-    },
-    { 
-      href: '/profile', 
-      label: 'Profil', 
-      activeClass: 'bg-rose-50 text-rose-600',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ) 
-    },
-  ]
-
-  const navItems = user 
-    ? allNavItems 
-    : allNavItems.filter((item) => item.href === '/domu')
-
   return (
-    <nav
-      className="fixed left-0 z-[100] bg-white/95 backdrop-blur-xl border-neutral-200 shadow-sm select-none overflow-hidden
-        bottom-0 w-full border-t py-2 px-2 flex flex-row items-center justify-around h-auto
-        md:top-0 md:bottom-0 md:h-screen md:w-[240px] xl:md:w-[260px] md:flex-col md:justify-start md:border-r md:border-t-0 md:p-4"
-    >
-      <div className="flex flex-col gap-6 w-full overflow-hidden">
-        <div className="hidden md:flex items-center px-3 pt-2">
-          <Link href="/domu">
-            <h1 className="text-2xl font-black tracking-wider bg-gradient-to-r from-[#173d2d] via-[#2d6a45] to-[#71945f] bg-clip-text text-transparent">
-              PawMeet
-            </h1>
-          </Link>
+    <>
+      <aside className="pm-sidebar fixed inset-y-0 left-0 z-[100] hidden w-[264px] flex-col border-r border-[var(--pm-line)] p-4 lg:flex">
+        <Link href="/domu" className="mb-7 flex items-center gap-3 px-2 pt-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--pm-active)] text-[var(--pm-forest)]"><PawPrint size={22}/></span>
+          <span><strong className="block text-xl font-black tracking-tight text-[var(--pm-forest)]">PawMeet</strong><span className="text-[11px] text-[var(--pm-muted)]">Spojuje pejskaře</span></span>
+        </Link>
+        <nav aria-label="Hlavní navigace" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+          <p className="mb-1 px-3 pt-1 text-[10px] font-bold uppercase tracking-[.18em] text-[var(--pm-muted)]">Hlavní nabídka</p>
+          <NavLinks />
+          <button type="button" onClick={() => setProfileOpen(v => !v)} aria-expanded={profileOpen}
+            className="mt-5 flex items-center justify-between rounded-2xl px-3.5 py-3 text-left text-xs font-bold uppercase tracking-[.14em] text-[var(--pm-muted)] hover:bg-[var(--pm-hover)]">
+            <span className="flex items-center gap-2"><UserRound size={16}/> Můj profil</span>
+            {profileOpen ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
+          </button>
+          {profileOpen && <div className="flex flex-col gap-1 pl-1">
+            {profileLinks.map(item => { const Icon = item.icon; const active = isActive(item.href); return <Link key={item.label} href={item.href} className={itemClass(active)}><Icon size={18} strokeWidth={1.8}/><span>{item.label}</span></Link> })}
+          </div>}
+          <button type="button" onClick={() => setMoreOpen(v => !v)} aria-expanded={moreOpen}
+            className="mt-4 flex items-center justify-between rounded-2xl px-3.5 py-3 text-left text-xs font-bold uppercase tracking-[.14em] text-[var(--pm-muted)] hover:bg-[var(--pm-hover)]">
+            <span className="flex items-center gap-2"><Compass size={16}/> Další funkce</span>
+            {moreOpen ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
+          </button>
+          {moreOpen && moreLinks.map(item => { const Icon = item.icon; return <Link key={item.href} href={item.href} className={itemClass(isActive(item.href))}><Icon size={18}/><span>{item.label}</span></Link> })}
+        </nav>
+        <div className="mt-3 rounded-2xl border border-[var(--pm-line)] bg-[var(--pm-glass)] p-3 text-xs leading-5 text-[var(--pm-muted)]">
+          <div className="mb-1 flex items-center gap-2 font-bold text-[var(--pm-forest)]"><SunMoon size={15}/> Tvoje PawMeet</div>
+          Vše pro společný život se psem na jednom místě.
         </div>
+      </aside>
 
-        <div className="flex flex-row md:flex-col justify-around md:justify-start gap-1 md:gap-1.5 w-full">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col md:flex-row items-center gap-1 md:gap-3.5 px-2.5 md:px-3.5 py-1.5 md:py-3 rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? `${item.activeClass} font-semibold shadow-sm`
-                    : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-800'
-                }`}
-              >
-                {item.icon}
-                <span className="text-[10px] md:text-sm tracking-wide">{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
+      <div className="fixed left-0 right-0 top-0 z-[100] flex items-center justify-between border-b border-[var(--pm-line)] bg-[var(--pm-glass)] px-4 py-3 backdrop-blur-2xl lg:hidden">
+        <Link href="/domu" className="flex items-center gap-2 font-black text-[var(--pm-forest)]"><PawPrint size={22}/> PawMeet</Link>
+        <button type="button" aria-label={mobileOpen ? 'Zavřít nabídku' : 'Otevřít nabídku'} onClick={() => setMobileOpen(v => !v)} className="rounded-xl p-2 text-[var(--pm-forest)] hover:bg-[var(--pm-hover)]">
+          {mobileOpen ? <X size={22}/> : <Menu size={22}/>}
+        </button>
       </div>
-    </nav>
-  )
-}
-
-// Hlavní export s ošetřením v Suspense
-export default function BottomNav() {
-  return (
-    <Suspense fallback={null}>
-      <BottomNavContent />
-    </Suspense>
+      {mobileOpen && <div className="fixed inset-x-0 top-[57px] z-[99] max-h-[calc(100dvh-120px)] overflow-y-auto border-b border-[var(--pm-line)] bg-[var(--pm-glass)] p-4 shadow-xl backdrop-blur-2xl lg:hidden">
+        <nav aria-label="Mobilní nabídka" className="grid grid-cols-2 gap-2">
+          {primary.map(item => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={itemClass(isActive(item.href))}><Icon size={18}/>{item.label}</Link> })}
+          {profileLinks.map(item => { const Icon = item.icon; return <Link key={item.label} href={item.href} onClick={() => setMobileOpen(false)} className={itemClass(isActive(item.href))}><Icon size={18}/>{item.label}</Link> })}
+          {moreLinks.map(item => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={itemClass(isActive(item.href))}><Icon size={18}/>{item.label}</Link> })}
+        </nav>
+      </div>}
+      <nav aria-label="Spodní mobilní navigace" className="pm-mobile-bottom fixed inset-x-0 bottom-0 z-[100] flex items-stretch justify-around border-t border-[var(--pm-line)] px-1 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-2xl lg:hidden">
+        <NavLinks mobile />
+      </nav>
+    </>
   )
 }
