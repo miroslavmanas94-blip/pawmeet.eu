@@ -50,7 +50,7 @@ export default function BottomNav() {
     return () => data.subscription.unsubscribe()
   }, [])
 
-  const hiddenRoutes = ['/', '/login', '/register', '/obnova-hesla', '/reset-password', '/forgot-password', '/update-password']
+  const hiddenRoutes = ['/', '/login', '/register', '/obnova-hesla', '/reset-password', '/forgot-password', '/update-password', '/ai']
   if (hiddenRoutes.some((route) => route === '/' ? pathname === '/' : pathname?.startsWith(route))) return null
   if (!user) return null
 
