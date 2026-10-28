@@ -39,7 +39,7 @@ export default function ReservationsPage(){
    const safeOffers=(offerRows||[]) as Offer[]
    setOffers(safeOffers)
    setReservations((reservationRows||[]) as Reservation[])
-   if(!offerId&&safeOffers[0])setOfferId(safeOffers[0].id)
+   setOfferId(current=>current||safeOffers[0]?.id||'')
    const ids=Array.from(new Set([...safeOffers.map(o=>o.trainer_id),...(reservationRows||[]).map((r:Reservation)=>r.trainer_id)]))
    if(ids.length){
     const {data:profiles}=await supabase.from('profiles').select('id,username,display_name,full_name').in('id',ids)
@@ -48,7 +48,7 @@ export default function ReservationsPage(){
    }
   }catch(error){console.error('Načtení rezervací selhalo:',error);setNotice('Rezervace se nepodařilo načíst. Zkus stránku obnovit.')}
   finally{setLoading(false)}
- },[offerId])
+ },[])
 
  useEffect(()=>{void load()},[load])
 
