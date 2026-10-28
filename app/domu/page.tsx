@@ -350,7 +350,7 @@ export default function HomeFeed() {
         setCreateAudience(draft.audience === 'followers' || draft.audience === 'private' ? draft.audience : 'public')
         setCropAspect(draft.cropAspect === 'square' || draft.cropAspect === 'portrait' || draft.cropAspect === 'landscape' ? draft.cropAspect : 'original')
         setImageRotation(typeof draft.imageRotation === 'number' ? draft.imageRotation : 0)
-        setDraftRestored(Boolean(draft.caption || draft.location || draft.petTag || draft.overlayText || draft.altText))
+        setDraftRestored(Boolean(draft.caption || draft.location || draft.petTag || draft.overlayText || draft.altText || draft.scheduleAt || draft.audience !== 'public'))
       }
     } catch {
       // Neplatný lokální koncept neovlivní ostatní data aplikace.
@@ -359,16 +359,16 @@ export default function HomeFeed() {
 
   useEffect(() => {
     try {
-      const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || createPetTag.trim() || imageOverlayText.trim() || createAltText.trim())
+      const hasDraft = Boolean(createCaption.trim() || createLocation.trim() || createPetTag.trim() || imageOverlayText.trim() || createAltText.trim() || scheduleAt || createAudience !== 'public')
       if (hasDraft) localStorage.setItem('pawmeet-create-draft-v1', JSON.stringify({
         caption: createCaption, location: createLocation, petTag: createPetTag, overlayText: imageOverlayText,
-        altText: createAltText, cropAspect, imageRotation, savedAt: new Date().toISOString()
+        altText: createAltText, scheduleAt, audience: createAudience, cropAspect, imageRotation, savedAt: new Date().toISOString()
       }))
       // Empty editor state does not delete an existing draft; explicit publish/clear actions do.
     } catch {
       // Editor funguje i v prohlížečích, které blokují localStorage.
     }
-  }, [createCaption, createLocation, createPetTag, imageOverlayText, createAltText, cropAspect, imageRotation])
+  }, [createCaption, createLocation, createPetTag, imageOverlayText, createAltText, scheduleAt, createAudience, cropAspect, imageRotation])
 
   const requestCloseCreateModal = () => {
     if (uploadFiles.length > 0 && !window.confirm('Vybraná média nejsou uložena v konceptu. Opravdu chceš editor zavřít?')) return
