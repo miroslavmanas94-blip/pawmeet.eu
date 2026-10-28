@@ -1,6 +1,5 @@
 'use client'
 
-import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/react'
 import { usePathname } from 'next/navigation'
 
