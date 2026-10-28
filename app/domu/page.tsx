@@ -332,6 +332,7 @@ export default function HomeFeed() {
 
   useEffect(() => {
     setIsMounted(true)
+    if (new URLSearchParams(window.location.search).get('view') === 'notifications') setIsNotificationsOpen(true)
     try {
       const rawDraft = localStorage.getItem('pawmeet-create-draft-v1')
       if (rawDraft) {
