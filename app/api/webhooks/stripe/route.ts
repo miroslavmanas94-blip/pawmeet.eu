@@ -19,9 +19,9 @@ export async function POST(req: Request) {
   const signature = req.headers.get('stripe-signature')
   if (!signature) return NextResponse.json({ error: 'Missing Stripe signature.' }, { status: 400 })
 
+  const stripe = new Stripe(secretKey)
   let event: Stripe.Event
   try {
-    const stripe = new Stripe(secretKey)
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (error) {
     console.error('Stripe webhook signature verification failed.')
@@ -39,6 +39,41 @@ export async function POST(req: Request) {
     }
   }
 
+  const settleLessonPayment = async (session: Stripe.Checkout.Session) => {
+    const reservationId = session.metadata?.reservationId
+    const userId = session.metadata?.userId
+    if (session.mode !== 'payment' || session.metadata?.kind !== 'lesson_reservation' || session.payment_status !== 'paid' || !reservationId || !userId) return
+    const { data: reservation, error: reservationError } = await supabaseAdmin.from('reservations')
+      .select('id,student_id,status,price_minor,currency,payment_reference')
+      .eq('id', reservationId).maybeSingle()
+    if (reservationError) throw reservationError
+    const amountMatches = !!reservation && reservation.student_id === userId
+      && Number(reservation.price_minor) === Number(session.amount_total)
+      && String(reservation.currency).toLowerCase() === String(session.currency).toLowerCase()
+    if (!amountMatches || (reservation!.status !== 'payment_pending' && !(reservation!.status === 'paid' && reservation!.payment_reference === session.id))) {
+      if (session.payment_intent) {
+        try {
+          await stripe.refunds.create({ payment_intent: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id, metadata: { reason: 'reservation_validation_failed', reservationId } })
+        } catch (refundError) {
+          console.error('Automatic refund for invalid lesson payment failed:', refundError)
+          throw refundError
+        }
+      }
+      if (reservation && reservation.student_id === userId && reservation.status !== 'paid') {
+        const { error } = await supabaseAdmin.from('reservations').update({ status: 'refunded', payment_reference: session.id }).eq('id', reservation.id)
+        if (error) throw error
+      }
+      return
+    }
+    if (reservation.status === 'paid' && reservation.payment_reference === session.id) return
+    const { error } = await supabaseAdmin.from('reservations').update({
+      status: 'paid',
+      payment_reference: session.id,
+      checkout_expires_at: null,
+    }).eq('id', reservation.id).eq('status', 'payment_pending')
+    if (error) throw error
+  }
+
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
@@ -51,7 +86,11 @@ export async function POST(req: Request) {
           stripe_customer_id: typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null,
           stripe_subscription_id: typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
         })
+      } else if (session.mode === 'payment' && session.metadata?.kind === 'lesson_reservation') {
+        await settleLessonPayment(session)
       }
+    } else if (event.type === 'checkout.session.async_payment_succeeded') {
+      await settleLessonPayment(event.data.object as Stripe.Checkout.Session)
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription
       const active = event.type !== 'customer.subscription.deleted' && (subscription.status === 'active' || subscription.status === 'trialing')
