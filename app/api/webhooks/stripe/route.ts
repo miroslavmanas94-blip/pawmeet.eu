@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         premium_status: event.type === 'customer.subscription.deleted' ? 'canceled' : subscription.status,
         stripe_customer_id: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
         stripe_subscription_id: subscription.id,
-        premium_current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+        premium_current_period_end: subscription.items.data[0]?.current_period_end ? new Date(subscription.items.data[0].current_period_end * 1000).toISOString() : null,
       }
       if (userId) await updateProfile(userId, values)
       else {
