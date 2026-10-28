@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 
 type Trainer = { id: string; username: string | null; display_name: string | null; full_name: string | null; avatar_url: string | null; bio: string | null }
-type Reservation = { id: string; trainer_id: string; title: string; description: string | null; starts_at: string; ends_at: string | null; price_minor: number; currency: string; status: string; created_at: string }
+type Reservation = { id: string; student_id: string; trainer_id: string; title: string; description: string | null; starts_at: string; ends_at: string | null; price_minor: number; currency: string; status: string; created_at: string }
 
 const supabase = createClient()
 const money = (minor: number, currency: string) => new Intl.NumberFormat('cs-CZ', { style: 'currency', currency }).format(minor / 100)
@@ -34,7 +34,7 @@ export default function ReservationsPage() {
       if (!user) { setNotice('Pro rezervaci lekce se nejdřív přihlas.'); return }
       setUserId(user.id)
       const [{ data: trainerRows, error: trainerError }, { data: reservationRows, error: reservationError }] = await Promise.all([
-        supabase.from('profiles').select('id,username,display_name,full_name,avatar_url,bio').in('role', ['trainer', 'trenér', 'trainer_verified']).order('display_name'),
+        supabase.from('profiles').select('id,username,display_name,full_name,avatar_url,bio').in('role', ['trainer', 'Trainer', 'trenér', 'Trenér', 'trainer_verified']).order('display_name'),
         supabase.from('reservations').select('*').or(`student_id.eq.${user.id},trainer_id.eq.${user.id}`).order('starts_at', { ascending: false }).limit(100)
       ])
       if (trainerError) throw trainerError
