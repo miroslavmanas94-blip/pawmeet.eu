@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import BottomNav from '@/components/BottomNav'
 
 type CreateTab = 'post' | 'story' | 'reel'
 type TextBgType = 'transparent' | 'black' | 'white'
@@ -2195,7 +2194,7 @@ export default function HomeFeed() {
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
       )}
 
@@ -2358,7 +2357,6 @@ export default function HomeFeed() {
         </div>
       )}
 
-      <BottomNav />
     </div>
   )
 }
