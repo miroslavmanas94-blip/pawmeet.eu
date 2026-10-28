@@ -1166,6 +1166,15 @@ export default function HomeFeed() {
     </div>
   )
 
+  const changeCreateTab = (tab: CreateTab) => {
+    if (tab === createTab || isUploading) return
+    if (uploadFiles.length > 0 && !window.confirm('Změna typu obsahu odebere právě vybraná média. Text konceptu zůstane zachován. Pokračovat?')) return
+    previewItems.forEach(item => { if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url) })
+    setUploadFiles([])
+    setPreviewItems([])
+    setCreateTab(tab)
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     e.target.value = ''
@@ -1178,6 +1187,10 @@ export default function HomeFeed() {
     }
     if (files.some(file => file.size > 100 * 1024 * 1024)) {
       showToast('Jeden soubor je větší než 100 MB. Zmenši ho a zkus to znovu.')
+      return
+    }
+    if (files.some(file => !file.type.startsWith('image/') && !file.type.startsWith('video/'))) {
+      showToast('Vyber pouze obrázek nebo video.')
       return
     }
     if (createTab === 'reel' && files.some(file => !file.type.startsWith('video/'))) {
@@ -2012,7 +2025,7 @@ export default function HomeFeed() {
                   <button
                     key={tab}
                     type="button"
-                    onClick={() => setCreateTab(tab)}
+                    onClick={() => changeCreateTab(tab)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition ${
                       createTab === tab ? 'bg-gradient-to-r from-[#286747] to-[#4d8654] text-white shadow-md' : 'text-slate-500 hover:text-[#174b35]'
                     }`}
