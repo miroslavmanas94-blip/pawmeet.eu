@@ -353,7 +353,7 @@ export default function HomeFeed() {
         caption: createCaption, location: createLocation, overlayText: imageOverlayText,
         altText: createAltText, savedAt: new Date().toISOString()
       }))
-      else localStorage.removeItem('pawmeet-create-draft-v1')
+      // Empty editor state does not delete an existing draft; explicit publish/clear actions do.
     } catch {
       // Editor funguje i v prohlížečích, které blokují localStorage.
     }
@@ -2188,7 +2188,7 @@ export default function HomeFeed() {
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button type="button" onClick={resetCreateModal} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
+                <button type="button" onClick={requestCloseCreateModal} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
                 <button type="submit" disabled={isUploading || previewItems.length === 0} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
                   {isUploading ? 'Publikuji...' : 'Publikovat'}
                 </button>
