@@ -1287,13 +1287,16 @@ export default function HomeFeed() {
           media_url: JSON.stringify(uploadedMediaUrls),
           media_type: createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
           caption: createCaption || null,
-          location: createLocation || null
+          location: createLocation || null,
+          post_type: createTab === 'reel' ? 'reel' : 'post',
+          alt_text: createAltText.trim() || null
         })
         
         if (postErr) throw postErr
         showToast(createTab === 'reel' ? 'Reel publikován!' : 'Příspěvek publikován!')
       }
 
+      try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {}
       resetCreateModal()
       await fetchFeedData()
     } catch (err: unknown) {
