@@ -262,8 +262,8 @@ export default function LandingPage() {
   }
 
   const faqs = [
-    { q: t?.faqQ1 || 'Je aplikace PawMeet zdarma?', a: t?.faqA1 || 'Ano! Základní verze aplikace PawMeet je zcela zdarma včetně přístupu k mapě, komunitě a základnímu AI poradci.' },
-    { q: t?.faqQ2 || 'Je PawMeet vhodný i pro kočky?', a: t?.faqA2 || 'Určitě! Aplikace je navržena pro všechny majitele domácích mazlíčků – psy, kočky i další členy rodiny.' },
+    { q: t?.faqs?.[0]?.q || 'Je aplikace PawMeet zdarma?', a: t?.faqs?.[0]?.a || 'Ano! Základní verze aplikace PawMeet je zcela zdarma včetně přístupu k mapě, komunitě a základnímu AI poradci.' },
+    { q: t?.faqs?.[1]?.q || 'Je PawMeet vhodný i pro kočky?', a: t?.faqs?.[1]?.a || 'Určitě! Aplikace je navržena pro všechny majitele domácích mazlíčků – psy, kočky i další členy rodiny.' },
     { q: 'Jak je zajištěno soukromí mé polohy?', a: 'Vaše přesná poloha není nikdy veřejně sdílena bez vašeho souhlasu. Na mapě se zobrazuje pouze přibližná zóna pro vaši bezpečnou navigaci.' }
   ]
 
