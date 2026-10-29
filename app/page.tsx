@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { translations, languages } from '@/utils/translations'
+import { Camera, MapPinned, MessageCircle, Sparkles, PawPrint, CheckCircle2, Lightbulb, ShieldCheck, FileText, LockKeyhole, Mail } from 'lucide-react'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -160,7 +161,7 @@ export default function LandingPage() {
   const currentLangObj = languages.find(l => l.code === lang) || languages[0]
 
   const tabData: Record<TabType, {
-    icon: string;
+    icon: React.ReactNode;
     title: string;
     badge: string;
     desc: string;
@@ -168,7 +169,7 @@ export default function LandingPage() {
     mockupContent: React.ReactNode;
   }> = {
     stories: {
-      icon: '📸',
+      icon: <Camera size={18} strokeWidth={1.8} />,
       title: t?.tabs?.stories?.title || 'Stories & Fotky',
       badge: 'Sociální feed',
       desc: 'Sdílejte radostné momenty ze života vašich mazlíčků, objevujte příběhy ze sousedství a sbírejte paculky od komunity.',
@@ -177,7 +178,7 @@ export default function LandingPage() {
         <div className="space-y-3.5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#174b35] p-0.5 shadow-md">
-              <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-sm font-bold">🐶</div>
+              <div className="w-full h-full bg-[#edf4e9] text-[#286747] rounded-full flex items-center justify-center"><PawPrint size={18}/></div>
             </div>
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">Buddy & Max</p>
@@ -185,7 +186,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="h-40 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-lime-500/10 border border-[#b9d2b0]/70 flex items-center justify-center text-[#286747] text-xs font-bold shadow-inner">
-            🏞️ Procházka v parku Stromovka
+            Ilustrační ukázka psí procházky
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
             <span className="text-[#286747] font-semibold">Reakce komunity</span>
@@ -195,7 +196,7 @@ export default function LandingPage() {
       )
     },
     map: {
-      icon: '🗺️',
+      icon: <MapPinned size={18} strokeWidth={1.8} />,
       title: t?.tabs?.map?.title || 'Živá mapa',
       badge: 'GPS Lokátor',
       desc: 'Sledujte na živé mapě bezpečné výběhy, psí parky a přátele, kteří jsou zrovna venku na venčení.',
@@ -218,18 +219,18 @@ export default function LandingPage() {
       )
     },
     chat: {
-      icon: '💬',
+      icon: <MessageCircle size={18} strokeWidth={1.8} />,
       title: t?.tabs?.chat?.title || 'Smečka & Chat',
       badge: 'Skupiny',
       desc: 'Domlouvejte si společné srazy, zakládejte lokální smečky a komunikujte bezpečně s ostatními páníčky.',
-      mockupHeader: 'Skupina: Vršovičtí hafané 🐾',
+      mockupHeader: 'Ukázková komunitní konverzace',
       mockupContent: (
         <div className="space-y-3">
           <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/90 text-xs text-slate-800 dark:text-slate-200 max-w-[85%] font-medium shadow-sm">
-            Ahoj všichni! Jde dneska někdo kolem 17:00 venčit na Havlíčkovy sady? 🦮
+            Ahoj všichni! Jde dnes někdo venčit do Havlíčkových sadů?
           </div>
           <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#286747] to-[#174b35] text-white text-xs max-w-[85%] ml-auto font-medium shadow-lg shadow-emerald-900/15">
-            My s Lunou vyrážíme! Potkáme se u altánku 👋
+            My vyrážíme. Potkáme se u altánku.
           </div>
           <div className="text-[11px] text-center text-slate-400 font-semibold pt-1">
             2 uživatelé píší zprávu...
@@ -238,7 +239,7 @@ export default function LandingPage() {
       )
     },
     ai: {
-      icon: '🤖',
+      icon: <Sparkles size={18} strokeWidth={1.8} />,
       title: t?.tabs?.ai?.title || 'AI Poradce',
       badge: 'Veterinární AI',
       desc: 'Okamžité odpovědi 24/7 na otázky k výživě, výchově, zdraví i chování vašich mazlíčků.',
@@ -250,7 +251,7 @@ export default function LandingPage() {
           </div>
           <div className="p-3.5 rounded-xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
             <p className="font-bold text-[#286747] flex items-center gap-1.5">
-              <span>🐾</span> AI Odpověď:
+              <PawPrint size={16}/> AI odpověď:
             </p>
             <p className="text-slate-600 dark:text-slate-300">Pro 15kg dospělého psa se doporučuje cca 200–250g kvalitních krmiv denně rozdělených do 2 porcí...</p>
           </div>
@@ -462,7 +463,7 @@ export default function LandingPage() {
                   onClick={() => setModalContent('reviews')}
                   className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer"
                 >
-                  💬 Zobrazit recenze ({totalRatingCount})
+                  <MessageCircle size={15}/> Zobrazit recenze ({totalRatingCount})
                 </button>
               </div>
             </div>
@@ -541,7 +542,7 @@ export default function LandingPage() {
             ) : (
               <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-center sm:text-left text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <span className="text-3xl">🎉</span>
+                  <CheckCircle2 size={28}/>
                   <div>
                     <p className="text-base font-extrabold">Děkujeme za vaše hodnocení ({rating.toFixed(1)} ★)!</p>
                     <p className="text-xs font-normal opacity-90 mt-0.5">Vaše hodnocení bylo úspěšně uloženo.</p>
@@ -562,17 +563,17 @@ export default function LandingPage() {
         <section className="w-full max-w-4xl text-left space-y-8 pt-12 border-t border-slate-200/80 dark:border-slate-800">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">💡 {t?.aboutTitle || 'O projektu'}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><Lightbulb size={17}/> {t?.aboutTitle || 'O projektu'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.aboutText || 'PawMeet je komunita vytvořená pro majitele mazlíčků, kteří chtějí snadno nacházet nové přátele, bezpečné výběhy a radostné zážitky.'}</p>
             </div>
 
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🛡️ {t?.safetyTitle || 'Bezpečnost'}</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><ShieldCheck size={17}/> {t?.safetyTitle || 'Bezpečnost'}</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.safetyText || 'Vaše soukromí je naší prioritou. Přesná poloha se nikdy nezobrazuje a vy sami rozhodujete, s kým se propojíte.'}</p>
             </div>
 
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">📜 Podmínky použití</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><FileText size={17}/> Podmínky použití</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 Pravidla komunity, práva a povinnosti uživatelů platformy PawMeet.
               </p>
@@ -585,7 +586,7 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">🔒 Ochrana soukromí</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><LockKeyhole size={17}/> Ochrana soukromí</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                 Pravidla zpracování osobních údajů, GPS dat a ochrana podle GDPR.
               </p>
@@ -659,9 +660,9 @@ export default function LandingPage() {
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
               <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                {modalContent === 'terms' && '📜 Podmínky použití platformy PawMeet'}
-                {modalContent === 'privacy' && '🔒 Zásady ochrany osobních údajů'}
-                {modalContent === 'reviews' && `💬 Uživatelské recenze (${totalRatingCount})`}
+                {modalContent === 'terms' && 'Podmínky použití platformy PawMeet'}
+                {modalContent === 'privacy' && 'Zásady ochrany osobních údajů'}
+                {modalContent === 'reviews' && `Uživatelské recenze (${totalRatingCount})`}
                 {modalContent === 'contact' && '✉️ Napište nám (info@pawmeet.eu)'}
               </h3>
               <button
@@ -753,7 +754,7 @@ export default function LandingPage() {
                     </form>
                   ) : (
                     <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3">
-                      <span className="text-4xl block">📬</span>
+                      <Mail size={32} className="mx-auto"/>
                       <h4 className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">Zpráva byla úspěšně odeslána!</h4>
                       <p className="text-xs text-slate-600 dark:text-slate-300">
                         Děkujeme za váš kontakt. Budeme vás kontaktovat na e-mailu <span className="font-bold">{contactEmail}</span> co nejdříve.
