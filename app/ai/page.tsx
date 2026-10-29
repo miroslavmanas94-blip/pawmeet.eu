@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
-import BottomNav from '@/components/BottomNav'
 import { Sparkles, MessageCircle, PawPrint, Trash2, Send, Menu, X } from 'lucide-react'
 
 interface Message {
@@ -392,7 +391,6 @@ export default function PawMeetAIPage() {
         </div>
       </footer>
 
-      <BottomNav />
     </div>
   )
 }
