@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const { data: profile } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
-  if (profile?.role !== 'admin') {
+  if (!['admin', 'administrator', 'administrátor'].includes(String(profile?.role || '').toLowerCase())) {
     return NextResponse.json({ error: 'Schvalovat komunity může pouze administrátor.' }, { status: 403 })
   }
 
