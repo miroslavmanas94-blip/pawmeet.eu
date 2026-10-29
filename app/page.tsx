@@ -84,9 +84,9 @@ export default function LandingPage() {
   }
 
   const totalRatingCount = reviewsList.length
-  const averageRating = totalRatingCount > 0 
+  const averageRating = totalRatingCount > 0
     ? (reviewsList.reduce((acc, curr) => acc + curr.rating, 0) / totalRatingCount).toFixed(1)
-    : '5.0'
+    : '—'
 
   const selectLanguage = (code: typeof languages[number]['code']) => {
     setLang(code)
@@ -188,8 +188,8 @@ export default function LandingPage() {
             🏞️ Procházka v parku Stromovka
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
-            <span className="flex items-center gap-1.5 text-[#286747] font-bold">❤️ 142 paculek</span>
-            <span>💬 18 komentářů</span>
+            <span className="text-[#286747] font-semibold">Reakce komunity</span>
+            <span>Komentáře a diskuse</span>
           </div>
         </div>
       )
@@ -205,16 +205,14 @@ export default function LandingPage() {
           <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 relative overflow-hidden flex items-center justify-center shadow-inner">
             <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:14px_14px] opacity-30" />
             <div className="relative z-10 flex flex-col items-center gap-2">
-              <span className="px-4 py-2 rounded-full bg-[#286747] text-white text-xs font-extrabold shadow-lg shadow-emerald-900/15 animate-bounce">
-                📍 3 psí kamarádi v dosahu 500m
+              <span className="px-4 py-2 rounded-full bg-white border border-[#dbe5d7] text-[#286747] text-xs font-semibold">
+                Ukázka mapy pejskařů
               </span>
             </div>
           </div>
           <div className="flex items-center justify-between p-3 rounded-xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 text-xs font-semibold">
             <span className="text-slate-700 dark:text-slate-300">Park Riegrovy sady</span>
-            <span className="text-emerald-500 font-extrabold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> Rušno (8 psů)
-            </span>
+            <span className="text-emerald-700 font-semibold">Informace o místě</span>
           </div>
         </div>
       )
@@ -333,60 +331,55 @@ export default function LandingPage() {
       </header>
 
       {/* HERO SECTION */}
-      <main className="relative w-full max-w-5xl mx-auto px-6 pt-16 sm:pt-24 pb-20 flex flex-col items-center text-center">
+      <main className="pm-landing-hero relative w-full max-w-6xl mx-auto px-5 sm:px-8 pt-12 sm:pt-20 pb-16 flex flex-col items-center text-center">
         
         <div className="relative mb-8 group cursor-pointer">
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-600 to-lime-500 blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
+          <div className="absolute inset-0 rounded-3xl bg-[#8fb58a] blur-3xl opacity-20 group-hover:opacity-30 transition-opacity" />
           <PawLogo className="relative w-28 h-28 sm:w-36 sm:h-36 shadow-2xl" />
         </div>
 
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#dcebd7]/70 border border-[#b9d2b0]/70 text-[#286747] dark:text-emerald-300 text-xs font-extrabold mb-8 backdrop-blur-md">
-          <span>✨</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#edf4e9] border border-[#d4e3ce] text-[#286747] text-xs font-semibold mb-7">
+          <span className="h-2 w-2 rounded-full bg-[#43845a]" aria-hidden="true" />
           <span>{t?.badgeDog || 'Komunita pro vašeho psa & kočku'}</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-[1.15] max-w-4xl mb-6">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.045em] leading-[1.06] max-w-4xl mb-6 text-[var(--pm-forest)]">
           {t?.welcome || 'Vítejte v'}{' '}
-          <span className="bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 dark:from-emerald-400 dark:via-green-300 dark:to-lime-400 bg-clip-text text-transparent">
-            PawMeet
-          </span>
+          <span className="text-[#286747]">PawMeet</span>
         </h1>
 
         <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-10 font-medium">
           {t?.subtitle || 'Místo, kde se setkávají milovníci zvířat, sdílí své příběhy, plánují venčení a využívají chytré nástroje pro péči o mazlíčky.'}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mb-8">
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-lg mb-7">
           <Link 
             href="/register" 
-            className="flex-1 bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:opacity-95 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-emerald-500/25 transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-center text-sm sm:text-base"
+            className="flex-1 bg-[#286747] hover:bg-[#1e5037] text-white font-semibold py-4 px-7 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 text-center text-sm sm:text-base"
           >
-            <span>🚀</span>
             <span>{t?.join || 'Připojit se zdarma'}</span>
           </Link>
 
           <Link 
             href="/login" 
-            className="flex-1 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-bold py-4 px-8 rounded-2xl shadow-sm transition-all text-center flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="flex-1 bg-white hover:bg-[#f3f7f0] border border-[#dbe5d7] text-[#183f2c] font-semibold py-4 px-7 rounded-xl transition-colors text-center flex items-center justify-center gap-2 text-sm sm:text-base"
           >
-            <span>🔐</span>
             <span>{t?.hasAccount || 'Již mám účet'}</span>
           </Link>
         </div>
 
         <Link 
-          href="/domu" 
-          className="text-xs sm:text-sm font-bold text-[#286747] hover:underline flex items-center gap-2 py-2.5 px-6 rounded-xl hover:bg-[#dcebd7]/70 transition-colors mb-20 border border-transparent hover:border-[#b9d2b0]/70"
+          href="#features" 
+          className="text-sm font-medium text-[#286747] hover:text-[#183f2c] flex items-center gap-2 py-3 px-5 rounded-xl hover:bg-[#edf4e9] transition-colors mb-16 border border-transparent"
         >
-          <span>🧭</span>
-          <span>{t?.browse || 'Procházet aplikaci bez přihlášení'}</span>
+          <span>{t?.browse || 'Prohlédnout funkce PawMeet'}</span>
         </Link>
 
         {/* INTERACTIVE MODULE TABS */}
-        <section className="w-full max-w-4xl mb-24">
+        <section id="features" className="w-full max-w-5xl mb-20 scroll-mt-8">
           <div className="text-center mb-10">
             <h2 className="text-2xl sm:text-4xl font-black mb-3">Vše pro vašeho parťáka na jednom místě</h2>
-            <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Přepínejte mezi moduly a prohlédněte si funkčnost aplikace.</p>
+            <p className="text-sm text-slate-600">Prohlédněte si přehled hlavních oblastí platformy. Ukázky jsou ilustrativní, ne živá uživatelská data.</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 backdrop-blur-xl mb-8 shadow-md">
@@ -410,7 +403,7 @@ export default function LandingPage() {
             })}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white border border-[#e2e8df] rounded-2xl p-5 sm:p-8 shadow-sm">
             <div className="md:col-span-6 space-y-5">
               <span className="inline-block px-3.5 py-1 rounded-full bg-[#dcebd7]/70 text-[#286747] dark:text-emerald-300 text-xs font-extrabold border border-[#b9d2b0]/70">
                 {tabData[activeTab].badge}
@@ -431,7 +424,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="md:col-span-6 rounded-2xl bg-[#f5f5e9]/80 border border-slate-200 dark:border-slate-800 p-5 shadow-inner">
+            <div className="md:col-span-6 rounded-xl bg-[#f7f9f5] border border-[#e2e8df] p-5">
               <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400">
                 <span>{tabData[activeTab].mockupHeader}</span>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
