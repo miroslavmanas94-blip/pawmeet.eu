@@ -27,6 +27,7 @@ export default function CommunitiesPage() {
   const [name, setName] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [inviteUsernames, setInviteUsernames] = useState<Record<string, string>>({})
   const [filter, setFilter] = useState<'all' | 'joined' | 'mine'>('all')
 
   const load = useCallback(async () => {
@@ -122,6 +123,37 @@ export default function CommunitiesPage() {
     await load()
   }
 
+  const inviteToPrivateGroup = async (group: CommunityGroup) => {
+    const username = (inviteUsernames[group.id] || '').trim().replace(/^@/, '')
+    if (!userId || group.created_by !== userId || !group.is_private || !username || saving) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .ilike('username', username)
+      .maybeSingle()
+    if (profileError || !profile?.id) {
+      setError('Účet se nepodařilo najít podle uživatelského jména.')
+      setSaving(false)
+      return
+    }
+    const { error: inviteError } = await supabase.from('group_members').insert({
+      group_id: group.id,
+      user_id: profile.id,
+      role: 'member',
+    })
+    if (inviteError) {
+      setError('Člena se nepodařilo přidat. Možná už do této komunity patří.')
+    } else {
+      setNotice(`Uživatel @${profile.username || username} byl přidán do soukromé komunity.`)
+      setInviteUsernames(current => ({ ...current, [group.id]: '' }))
+    }
+    setSaving(false)
+    await load()
+  }
+
   const leaveGroup = async (group: CommunityGroup) => {
     if (!userId || saving || group.created_by === userId) return
     setSaving(true)
@@ -196,6 +228,10 @@ export default function CommunitiesPage() {
                   {owner ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#286747]"><ShieldCheck size={15}/> Zakladatel</span> : joined ? <span className="text-xs font-semibold text-[#286747]">Jsi členem</span> : privateGroup ? <span className="text-xs text-[var(--pm-muted)]">Pouze pro členy</span> : <span className="text-xs text-[var(--pm-muted)]">Otevřená skupina</span>}
                   {owner ? <span className="text-xs text-[var(--pm-muted)]">Spravuješ</span> : joined ? <button type="button" disabled={saving} onClick={() => void leaveGroup(group)} className="min-h-10 rounded-lg border border-[var(--pm-line)] px-3 py-2 text-xs font-semibold hover:bg-[#f7f9f5] disabled:opacity-50">Opustit</button> : !privateGroup && <button type="button" disabled={saving} onClick={() => void joinGroup(group)} className="min-h-10 rounded-lg bg-[#286747] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Připojit se</button>}
                 </div>
+                {owner && privateGroup && <form onSubmit={event => { event.preventDefault(); void inviteToPrivateGroup(group) }} className="mt-4 flex gap-2 border-t border-[var(--pm-line)] pt-4">
+                  <input aria-label="Uživatelské jméno člena" value={inviteUsernames[group.id] || ''} onChange={event => setInviteUsernames(current => ({ ...current, [group.id]: event.target.value }))} placeholder="@uzivatelskejmeno" className="min-w-0 flex-1 rounded-lg border border-[var(--pm-line)] px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#8fb58a]"/>
+                  <button type="submit" disabled={saving || !(inviteUsernames[group.id] || '').trim()} className="rounded-lg bg-[#286747] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Přidat člena</button>
+                </form>}
               </article>
             })}
           </div>
