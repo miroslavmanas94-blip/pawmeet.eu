@@ -483,7 +483,7 @@ export default function ProfilePage() {
                   <span>PawMeet Premium</span>
                 </Link>
 
-                <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl border border-[#d4e3cf] bg-[#e8f0e3] px-3 py-2 text-xs font-bold text-[#24563b] transition hover:bg-[#dcebd7]" aria-label="Otevřít nastavení aplikace">
+                <Link href="/settings" className="inline-flex items-center gap-2 rounded-xl border border-[#D8DDFE] bg-[#EEF0FF] px-3 py-2 text-xs font-bold text-[#5B5BF7] transition hover:bg-[#dcebd7]" aria-label="Otevřít nastavení aplikace">
                   <span aria-hidden="true">⚙</span><span>Nastavení</span>
                 </Link>
               </div>
