@@ -23,17 +23,67 @@ function LoginForm() {
     setError(null)
 
     const supabase = createClient()
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
       password,
     })
 
+    let authenticatedUser = loginData.user
     if (loginError) {
-      setError(loginError.message)
-      setLoading(false)
-    } else {
+      // Older PawMeet accounts used email aliases internally. Keep those accounts usable
+      // while all new registrations use the real e-mail address.
+      try {
+        const legacyResponse = await fetch('/api/auth/legacy-signin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        })
+        const legacyData = await legacyResponse.json().catch(() => ({}))
+        if (legacyResponse.ok && legacyData.access_token && legacyData.refresh_token) {
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: legacyData.access_token,
+            refresh_token: legacyData.refresh_token,
+          })
+          if (sessionError) {
+            setError('Přihlášení se nepodařilo dokončit. Zkus to prosím znovu.')
+            setLoading(false)
+            return
+          }
+          authenticatedUser = sessionData.user
+        } else {
+          setError(legacyResponse.status === 429 || legacyResponse.status === 503
+            ? (legacyData.error || loginError.message)
+            : 'E-mail nebo heslo nejsou správné.')
+          setLoading(false)
+          return
+        }
+      } catch {
+        setError(loginError.message)
+        setLoading(false)
+        return
+      }
+    }
+
+    if (authenticatedUser) {
+      const pendingPet = authenticatedUser.user_metadata?.pending_pet_profile
+      if (pendingPet && typeof pendingPet === 'object') {
+        try {
+          const { data: existingPets } = await supabase.from('pets').select('id').eq('user_id', authenticatedUser.id).limit(1)
+          if (!existingPets?.length) {
+            const { error: petError } = await supabase.from('pets').insert({ ...pendingPet, user_id: authenticatedUser.id })
+            if (!petError) await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
+          } else {
+            await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
+          }
+        } catch {
+          // Keep the pending metadata so the next successful sign-in can retry safely.
+        }
+      }
       router.push(redirectTo)
       router.refresh()
+    } else {
+      setError('Přihlášení se nepodařilo dokončit. Zkus to prosím znovu.')
+      setLoading(false)
     }
   }
 
