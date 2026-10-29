@@ -437,7 +437,7 @@ export default function LandingPage() {
             <div className="md:col-span-6 rounded-xl bg-[#f7f9f5] border border-[#e2e8df] p-5">
               <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400">
                 <span>{tabData[activeTab].mockupHeader}</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#5B5BF7] animate-pulse" />
               </div>
               {tabData[activeTab].mockupContent}
             </div>
@@ -549,7 +549,7 @@ export default function LandingPage() {
                 </div>
               </form>
             ) : (
-              <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-center sm:text-left text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="p-6 rounded-2xl bg-[#5B5BF7]/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-center sm:text-left text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <CheckCircle2 size={28}/>
                   <div>
@@ -650,7 +650,7 @@ export default function LandingPage() {
               onClick={openContactModal} 
               className="hover:underline font-bold text-[#5B5BF7] flex items-center gap-1 cursor-pointer"
             >
-              ✉️ Kontakt
+              Kontakt
             </button>
           </div>
         </div>
@@ -672,7 +672,7 @@ export default function LandingPage() {
                 {modalContent === 'terms' && 'Podmínky použití platformy PawMeet'}
                 {modalContent === 'privacy' && 'Zásady ochrany osobních údajů'}
                 {modalContent === 'reviews' && `Uživatelské recenze (${totalRatingCount})`}
-                {modalContent === 'contact' && '✉️ Napište nám (info@pawmeet.eu)'}
+                {modalContent === 'contact' && 'Napište nám (pawmeet.eu@gmail.com)'}
               </h3>
               <button
                 onClick={() => setModalContent(null)}
@@ -713,12 +713,12 @@ export default function LandingPage() {
                   {!contactSubmitted ? (
                     <form onSubmit={handleContactSubmit} className="space-y-4">
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-[#5B5BF7]">info@pawmeet.eu</span>.
+                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-[#5B5BF7]">pawmeet.eu@gmail.com</span>.
                       </p>
 
                       {contactError && (
                         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold">
-                          ⚠️ Odeslání zprávy selhalo. Zkontrolujte prosím připojení nebo to zkuste znovu.
+                          Odeslání zprávy selhalo. Zkontrolujte prosím připojení nebo to zkuste znovu.
                         </div>
                       )}
 
@@ -762,7 +762,7 @@ export default function LandingPage() {
                       </button>
                     </form>
                   ) : (
-                    <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3">
+                    <div className="p-6 rounded-2xl bg-[#5B5BF7]/10 border border-emerald-500/20 text-center space-y-3">
                       <Mail size={32} className="mx-auto"/>
                       <h4 className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">Zpráva byla úspěšně odeslána!</h4>
                       <p className="text-xs text-slate-600 dark:text-slate-300">
