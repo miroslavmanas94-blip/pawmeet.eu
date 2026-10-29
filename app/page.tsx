@@ -26,7 +26,7 @@ function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
     <img 
       src="/logo.png" 
       alt="PawMeet Logo" 
-      className={`rounded-2xl shadow-xl shadow-emerald-500/10 object-cover shrink-0 border border-[#b9d2b0]/70 ${className}`}
+      className={`rounded-2xl shadow-xl shadow-emerald-500/10 object-cover shrink-0 border border-[#C7C9FF]/70 ${className}`}
     />
   )
 }
@@ -177,19 +177,19 @@ export default function LandingPage() {
       mockupContent: (
         <div className="space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#174b35] p-0.5 shadow-md">
-              <div className="w-full h-full bg-[#edf4e9] text-[#286747] rounded-full flex items-center justify-center"><PawPrint size={18}/></div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#0F172A] p-0.5 shadow-md">
+              <div className="w-full h-full bg-[#EEF0FF] text-[#5B5BF7] rounded-full flex items-center justify-center"><PawPrint size={18}/></div>
             </div>
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">Buddy & Max</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Zlatý retrívr • 2 roky</p>
             </div>
           </div>
-          <div className="h-40 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-lime-500/10 border border-[#b9d2b0]/70 flex items-center justify-center text-[#286747] text-xs font-bold shadow-inner">
+          <div className="h-40 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-lime-500/10 border border-[#C7C9FF]/70 flex items-center justify-center text-[#5B5BF7] text-xs font-bold shadow-inner">
             Ilustrační ukázka psí procházky
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
-            <span className="text-[#286747] font-semibold">Reakce komunity</span>
+            <span className="text-[#5B5BF7] font-semibold">Reakce komunity</span>
             <span>Komentáře a diskuse</span>
           </div>
         </div>
@@ -206,12 +206,12 @@ export default function LandingPage() {
           <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 relative overflow-hidden flex items-center justify-center shadow-inner">
             <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:14px_14px] opacity-30" />
             <div className="relative z-10 flex flex-col items-center gap-2">
-              <span className="px-4 py-2 rounded-full bg-white border border-[#dbe5d7] text-[#286747] text-xs font-semibold">
+              <span className="px-4 py-2 rounded-full bg-white border border-[#D8DDFE] text-[#5B5BF7] text-xs font-semibold">
                 Ukázka mapy pejskařů
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 text-xs font-semibold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 text-xs font-semibold">
             <span className="text-slate-700 dark:text-slate-300">Park Riegrovy sady</span>
             <span className="text-emerald-700 font-semibold">Informace o místě</span>
           </div>
@@ -229,7 +229,7 @@ export default function LandingPage() {
           <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/90 text-xs text-slate-800 dark:text-slate-200 max-w-[85%] font-medium shadow-sm">
             Ahoj všichni! Jde dnes někdo venčit do Havlíčkových sadů?
           </div>
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#286747] to-[#174b35] text-white text-xs max-w-[85%] ml-auto font-medium shadow-lg shadow-emerald-900/15">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white text-xs max-w-[85%] ml-auto font-medium shadow-lg shadow-emerald-900/15">
             My vyrážíme. Potkáme se u altánku.
           </div>
           <div className="text-[11px] text-center text-slate-400 font-semibold pt-1">
@@ -249,8 +249,8 @@ export default function LandingPage() {
           <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
             ❓ Kolik granulí by měl denně dostat 15kg pes?
           </div>
-          <div className="p-3.5 rounded-xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
-            <p className="font-bold text-[#286747] flex items-center gap-1.5">
+          <div className="p-3.5 rounded-xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
+            <p className="font-bold text-[#5B5BF7] flex items-center gap-1.5">
               <PawPrint size={16}/> AI odpověď:
             </p>
             <p className="text-slate-600 dark:text-slate-300">Pro 15kg dospělého psa se doporučuje cca 200–250g kvalitních krmiv denně rozdělených do 2 porcí...</p>
@@ -267,7 +267,7 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="relative min-h-screen w-full overflow-y-auto bg-[#f5f5e9] text-[#183d2c] font-sans transition-colors duration-300 selection:bg-[#b9d7ad] selection:text-[#174b35] flex flex-col items-center">
+    <div className="relative min-h-screen w-full overflow-y-auto bg-[#f5f5e9] text-[#0F172A] font-sans transition-colors duration-300 selection:bg-[#b9d7ad] selection:text-[#0F172A] flex flex-col items-center">
       
       {/* Background Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-[#8fb985]/35 via-[#b4cfa7]/30 to-[#e2e9cf]/30 blur-[140px] pointer-events-none rounded-full" />
@@ -279,7 +279,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center w-full">
           <Link href="/" className="flex items-center gap-3 group">
             <PawLogo className="w-10 h-10 transition-transform group-hover:scale-105" />
-            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-[#286747] via-[#43845a] to-[#9abf88] dark:from-emerald-400 dark:via-green-300 dark:to-lime-400 bg-clip-text text-transparent">
+            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-[#5B5BF7] via-[#43845a] to-[#9abf88] dark:from-emerald-400 dark:via-green-300 dark:to-lime-400 bg-clip-text text-transparent">
               PawMeet
             </span>
           </Link>
@@ -303,7 +303,7 @@ export default function LandingPage() {
                       key={item.code}
                       onClick={() => selectLanguage(item.code)}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-left transition-colors ${
-                        lang === item.code ? 'bg-[#dcebd7]/70 text-[#286747] font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        lang === item.code ? 'bg-[#dcebd7]/70 text-[#5B5BF7] font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                       }`}
                     >
                       <span className="text-base">{item.flag}</span>
@@ -323,7 +323,7 @@ export default function LandingPage() {
 
             <Link 
               href="/register" 
-              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#286747] to-[#174b35] hover:from-emerald-500 hover:to-green-500 text-xs sm:text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] items-center gap-2"
+              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-xs sm:text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] items-center gap-2"
             >
               <span>{t?.join || 'Registrace'}</span>
             </Link>
@@ -339,14 +339,14 @@ export default function LandingPage() {
           <PawLogo className="relative w-28 h-28 sm:w-36 sm:h-36 shadow-2xl" />
         </div>
 
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#edf4e9] border border-[#d4e3ce] text-[#286747] text-xs font-semibold mb-7">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EEF0FF] border border-[#D8DDFE] text-[#5B5BF7] text-xs font-semibold mb-7">
           <span className="h-2 w-2 rounded-full bg-[#43845a]" aria-hidden="true" />
           <span>{t?.badgeDog || 'Komunita pro vašeho psa & kočku'}</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.045em] leading-[1.06] max-w-4xl mb-6 text-[var(--pm-forest)]">
           {t?.welcome || 'Vítejte v'}{' '}
-          <span className="text-[#286747]">PawMeet</span>
+          <span className="text-[#5B5BF7]">PawMeet</span>
         </h1>
 
         <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-10 font-medium">
@@ -356,14 +356,14 @@ export default function LandingPage() {
         <div className="flex flex-col sm:flex-row gap-3 w-full max-w-lg mb-7">
           <Link 
             href="/register" 
-            className="flex-1 bg-[#286747] hover:bg-[#1e5037] text-white font-semibold py-4 px-7 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 text-center text-sm sm:text-base"
+            className="flex-1 bg-[#5B5BF7] hover:bg-[#4F46E5] text-white font-semibold py-4 px-7 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 text-center text-sm sm:text-base"
           >
             <span>{t?.join || 'Připojit se zdarma'}</span>
           </Link>
 
           <Link 
             href="/login" 
-            className="flex-1 bg-white hover:bg-[#f3f7f0] border border-[#dbe5d7] text-[#183f2c] font-semibold py-4 px-7 rounded-xl transition-colors text-center flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="flex-1 bg-white hover:bg-[#f3f7f0] border border-[#D8DDFE] text-[#183f2c] font-semibold py-4 px-7 rounded-xl transition-colors text-center flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <span>{t?.hasAccount || 'Již mám účet'}</span>
           </Link>
@@ -371,7 +371,7 @@ export default function LandingPage() {
 
         <Link 
           href="#features" 
-          className="text-sm font-medium text-[#286747] hover:text-[#183f2c] flex items-center gap-2 py-3 px-5 rounded-xl hover:bg-[#edf4e9] transition-colors mb-16 border border-transparent"
+          className="text-sm font-medium text-[#5B5BF7] hover:text-[#183f2c] flex items-center gap-2 py-3 px-5 rounded-xl hover:bg-[#EEF0FF] transition-colors mb-16 border border-transparent"
         >
           <span>{t?.browse || 'Prohlédnout funkce PawMeet'}</span>
         </Link>
@@ -393,7 +393,7 @@ export default function LandingPage() {
                   onClick={() => setActiveTab(key)}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                     isActive 
-                      ? 'bg-gradient-to-r from-[#286747] to-[#174b35] text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' 
+                      ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' 
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
                   }`}
                 >
@@ -406,7 +406,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white border border-[#e2e8df] rounded-2xl p-5 sm:p-8 shadow-sm">
             <div className="md:col-span-6 space-y-5">
-              <span className="inline-block px-3.5 py-1 rounded-full bg-[#dcebd7]/70 text-[#286747] dark:text-emerald-300 text-xs font-extrabold border border-[#b9d2b0]/70">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-[#dcebd7]/70 text-[#5B5BF7] dark:text-emerald-300 text-xs font-extrabold border border-[#C7C9FF]/70">
                 {tabData[activeTab].badge}
               </span>
               <h3 className="text-2xl sm:text-3xl font-black flex items-center gap-2.5">
@@ -418,7 +418,7 @@ export default function LandingPage() {
               </p>
               <Link 
                 href="/register" 
-                className="inline-flex items-center gap-2 text-xs font-bold text-[#286747] hover:underline pt-2"
+                className="inline-flex items-center gap-2 text-xs font-bold text-[#5B5BF7] hover:underline pt-2"
               >
                 <span>Vyzkoušet tuto funkci</span>
                 <span>→</span>
@@ -449,8 +449,8 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 shadow-sm">
-                  <span className="text-2xl font-black text-[#286747]">{averageRating}</span>
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 shadow-sm">
+                  <span className="text-2xl font-black text-[#5B5BF7]">{averageRating}</span>
                   <div className="text-left">
                     <div className="text-amber-500 text-xs font-semibold">{totalRatingCount > 0 ? `★ ${averageRating} / 5.0` : "Zatím bez hodnocení"}</div>
                     <div className="text-[11px] text-slate-500 font-bold" suppressHydrationWarning>
@@ -531,7 +531,7 @@ export default function LandingPage() {
                     disabled={rating === 0}
                     className={`px-6 py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
                       rating > 0 
-                        ? 'bg-gradient-to-r from-[#286747] to-[#174b35] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.02]' 
+                        ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.02]' 
                         : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                     }`}
                   >
@@ -579,7 +579,7 @@ export default function LandingPage() {
               </p>
               <button 
                 onClick={() => setModalContent('terms')}
-                className="text-xs font-bold text-[#286747] hover:underline pt-1 inline-block cursor-pointer"
+                className="text-xs font-bold text-[#5B5BF7] hover:underline pt-1 inline-block cursor-pointer"
               >
                 Zobrazit podmínky →
               </button>
@@ -592,7 +592,7 @@ export default function LandingPage() {
               </p>
               <button 
                 onClick={() => setModalContent('privacy')}
-                className="text-xs font-bold text-[#286747] hover:underline pt-1 inline-block cursor-pointer"
+                className="text-xs font-bold text-[#5B5BF7] hover:underline pt-1 inline-block cursor-pointer"
               >
                 Zásady soukromí →
               </button>
@@ -614,7 +614,7 @@ export default function LandingPage() {
                   className="w-full p-6 text-left font-bold text-sm sm:text-base flex justify-between items-center gap-4 text-slate-900 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors"
                 >
                   <span>{faq.q}</span>
-                  <span className={`transition-transform duration-200 text-[#286747] font-extrabold ${openFaq === index ? 'rotate-180' : ''}`}>
+                  <span className={`transition-transform duration-200 text-[#5B5BF7] font-extrabold ${openFaq === index ? 'rotate-180' : ''}`}>
                     ▼
                   </span>
                 </button>
@@ -639,7 +639,7 @@ export default function LandingPage() {
             <button onClick={() => setModalContent('privacy')} className="hover:underline cursor-pointer">Soukromí</button>
             <button 
               onClick={openContactModal} 
-              className="hover:underline font-bold text-[#286747] flex items-center gap-1 cursor-pointer"
+              className="hover:underline font-bold text-[#5B5BF7] flex items-center gap-1 cursor-pointer"
             >
               ✉️ Kontakt
             </button>
@@ -704,7 +704,7 @@ export default function LandingPage() {
                   {!contactSubmitted ? (
                     <form onSubmit={handleContactSubmit} className="space-y-4">
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-[#286747]">info@pawmeet.eu</span>.
+                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-[#5B5BF7]">info@pawmeet.eu</span>.
                       </p>
 
                       {contactError && (
@@ -745,7 +745,7 @@ export default function LandingPage() {
                         disabled={contactLoading || !contactEmail.trim() || !contactMessage.trim()}
                         className={`w-full py-3.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
                           contactEmail.trim() && contactMessage.trim() && !contactLoading
-                            ? 'bg-gradient-to-r from-[#286747] to-[#174b35] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.01]'
+                            ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.01]'
                             : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                         }`}
                       >
@@ -814,7 +814,7 @@ export default function LandingPage() {
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/50">
               <button
                 onClick={() => setModalContent(null)}
-                className="px-5 py-2 rounded-xl bg-[#286747] hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[#5B5BF7] hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
               >
                 Zavřít
               </button>
