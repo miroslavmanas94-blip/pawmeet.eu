@@ -171,35 +171,23 @@ export default function PawMeetAIPage() {
         remoteNotice = 'Serverovou AI se nepodařilo kontaktovat.'
       }
 
-      // Free local inference: the model runs in the visitor's browser.
-      setStatusMessage('Načítám místní AI model. První spuštění může chvíli trvat…')
-      if (!localTextGenerator) {
-        const transformers = await import('@huggingface/transformers')
-        localTextGenerator = await transformers.pipeline(
-          'text-generation',
-          'onnx-community/Qwen2.5-0.5B-Instruct',
-          { dtype: 'q4' }
-        )
+      // No provider is configured. Do not attempt to download a large browser model
+      // that commonly fails on mobile/network restrictions; respond honestly in a basic mode.
+      const lowerPrompt = promptText.toLocaleLowerCase('cs')
+      let offlineReply = 'Teď běžím v základním režimu bez připojeného generativního AI modelu, takže nechci předstírat, že tuto odpověď vytvořila AI. Můžu ti pomoct připravit otázku nebo bezpečný postup. Pro skutečně generované odpovědi musí být připojen poskytovatel AI na serveru.'
+      if (/výcvik|trénink|přivol|štěká|tahá|kouše|socializ|odměn|poslušn/.test(lowerPrompt)) {
+        offlineReply = 'Základní bezpečný postup: vyber jeden malý a konkrétní cíl, cvič v klidném prostředí 3–5 minut, odměňuj chování, které chceš vidět častěji, a skonči dřív, než je pes unavený nebo ve stresu. Zvyšuj obtížnost postupně. Vyhni se trestům a nátlaku.\n\nPoznámka: Jde o obecné doporučení v základním režimu, nikoli o odpověď generovanou AI. Pokud mi popíšeš situaci a věk psa, můžu ti pomoct dotaz lépe strukturovat.'
+      } else if (/zdrav|bolest|zvrac|průjem|nejí|kulh|veterin/.test(lowerPrompt)) {
+        offlineReply = 'U zdravotních potíží nemohu stanovit diagnózu. Pokud má pes potíže s dýcháním, kolabuje, má silné bolesti, opakovaně zvrací nebo mohl pozřít jed, kontaktuj ihned veterináře. U ostatních nových nebo přetrvávajících příznaků se poraď s veterinářem.\n\nPoznámka: Generativní AI teď není připojena; jde o obecnou bezpečnostní informaci.'
       }
-      setStatusMessage('Připravuji odpověď…')
-      const localPrompt = `Jsi PawMeet AI, univerzální asistent a specialista na psy. Odpovídej česky, přirozeně, užitečně a bezpečně. U psů podporuj pozitivní trénink bez trestů a zastrašování. Nedávej jisté veterinární diagnózy; u naléhavých příznaků doporuč veterináře.\n\nPředchozí konverzace:\n${historyContext || 'Žádná'}\n\nUživatel: ${promptText}\nPawMeet AI:`
-      const generated = await localTextGenerator(localPrompt, { max_new_tokens: 220, temperature: 0.65, do_sample: true })
-      const raw = generated?.[0]?.generated_text
-      const reply = typeof raw === 'string' ? raw.slice(raw.lastIndexOf('PawMeet AI:') + 'PawMeet AI:'.length).trim() : ''
-
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: reply || 'Omlouvám se, místní model vrátil prázdnou odpověď. Zkus dotaz formulovat jinak.',
+        content: (remoteNotice ? remoteNotice + '\\n\\n' : '') + offlineReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
-
-      setSessions(prev => prev.map(s => {
-        if (s.id === activeSession.id) {
-          return { ...s, messages: [...s.messages, assistantMsg] }
-        }
-        return s
-      }))
+      setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
+      return
     } catch (err: any) {
       console.error(err)
       const reason = err instanceof Error ? err.message.slice(0, 180) : 'neznámá chyba'
