@@ -196,7 +196,7 @@ export default function RegisterPage() {
           {/* SEKCE: ÚČET */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
-              🔐 Přihlašovací údaje
+              Přihlašovací údaje
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
