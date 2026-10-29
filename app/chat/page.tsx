@@ -713,10 +713,10 @@ function ChatContent() {
       .insert({
         name: groupName.trim(),
         description: groupDescription.trim() || null,
-        group_type: 'chat',
-        approval_status: 'approved',
-        is_private: true,
-        is_public: false,
+        group_type: groupType === 'private' ? 'chat' : 'community',
+        approval_status: groupType === 'private' ? 'approved' : 'pending',
+        is_private: groupType === 'private',
+        is_public: groupType === 'public',
         created_by: currentUserId
       })
       .select()
@@ -739,7 +739,12 @@ function ChatContent() {
     setGroupName('')
     setGroupDescription('')
     setSelectedGroupMembers([])
-    router.push(`/chat?groupId=${newGroup.id}`)
+    if (groupType === 'public') {
+      alert('Veřejná skupina byla odeslána ke schválení. Po schválení ji najdeš v komunitách.')
+      router.push('/communities')
+    } else {
+      router.push(`/chat?groupId=${newGroup.id}`)
+    }
   }
 
   const filteredContacts = contacts.filter((c) => {
