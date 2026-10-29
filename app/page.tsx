@@ -1,839 +1,112 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
-import { translations, languages } from '@/utils/translations'
-import { Camera, MapPinned, MessageCircle, Sparkles, PawPrint, CheckCircle2, Lightbulb, ShieldCheck, FileText, LockKeyhole, Mail } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowRight, MapPin, Users, MessageCircle, CalendarDays, BookOpen, ShieldCheck, PawPrint, Menu, X, Heart, Compass } from 'lucide-react'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-type TabType = 'stories' | 'map' | 'chat' | 'ai'
-type ModalType = 'terms' | 'privacy' | 'reviews' | 'contact' | null
-
-interface Review {
-  id: number
-  author: string
-  rating: number
-  text: string
-  created_at: string
-}
-
-function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
-  return (
-    <img 
-      src="/logo.png" 
-      alt="PawMeet Logo" 
-      className={`rounded-2xl shadow-xl shadow-[#5B5BF7]/10 object-cover shrink-0 border border-[#C7C9FF]/70 ${className}`}
-    />
-  )
-}
+const features = [
+  { icon: MapPin, title: 'Místa pro společné procházky', text: 'Objevujte okolí, zajímavá místa a tipy od dalších pejskařů.', href: '/map' },
+  { icon: Users, title: 'Pejskaři ve vašem okolí', text: 'Poznávejte lidi, kteří mají rádi psy stejně jako vy.', href: '/community' },
+  { icon: MessageCircle, title: 'Domluva bez zmatků', text: 'Mějte prostor pro zprávy a plánování společných setkání.', href: '/messages' },
+  { icon: CalendarDays, title: 'Akce a společné venčení', text: 'Najděte událost nebo dejte ostatním vědět, že vyrážíte ven.', href: '/calendar' },
+  { icon: BookOpen, title: 'Rady pro každodenní život', text: 'Čtěte články a praktické informace o péči a soužití se psem.', href: '/articles' },
+  { icon: ShieldCheck, title: 'Soukromí pod kontrolou', text: 'Rozhodujte sami, co o sobě sdílíte. Poloha se nesdílí automaticky.', href: '/privacy' },
+]
 
 export default function LandingPage() {
-  const [lang, setLang] = useState<typeof languages[number]['code']>('cs')
-  const [isLangOpen, setIsLangOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>('stories')
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [modalContent, setModalContent] = useState<ModalType>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const [mounted, setMounted] = useState(false)
-  const [rating, setRating] = useState<number>(4.5)
-  const [reviewText, setReviewText] = useState<string>('')
-  const [submitted, setSubmitted] = useState<boolean>(false)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [reviewsList, setReviewsList] = useState<Review[]>([])
-
-  // Kontaktní formulář
-  const [contactEmail, setContactEmail] = useState('')
-  const [contactMessage, setContactMessage] = useState('')
-  const [contactSubmitted, setContactSubmitted] = useState(false)
-  const [contactLoading, setContactLoading] = useState(false)
-  const [contactError, setContactError] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    fetchReviews()
-
-    const savedLang = localStorage.getItem('lang') as typeof languages[number]['code']
-    if (savedLang && languages.some(l => l.code === savedLang)) {
-      setLang(savedLang)
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsLangOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const fetchReviews = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (!error && data) {
-      setReviewsList(data)
-    }
-    setLoading(false)
-  }
-
-  const totalRatingCount = reviewsList.length
-  const averageRating = totalRatingCount > 0
-    ? (reviewsList.reduce((acc, curr) => acc + curr.rating, 0) / totalRatingCount).toFixed(1)
-    : '—'
-
-  const selectLanguage = (code: typeof languages[number]['code']) => {
-    setLang(code)
-    localStorage.setItem('lang', code)
-    setIsLangOpen(false)
-  }
-
-  const handleRatingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (rating === 0) return
-
-    const newReview = {
-      author: 'Uživatel',
-      rating: rating,
-      text: reviewText.trim() || 'Bez textového komentáře.'
-    }
-
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert([newReview])
-      .select()
-
-    if (!error && data) {
-      setReviewsList([data[0], ...reviewsList])
-      setSubmitted(true)
-    }
-  }
-
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!contactEmail.trim() || !contactMessage.trim()) return
-
-    setContactLoading(true)
-    setContactError(false)
-
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: contactEmail.trim(),
-          message: contactMessage.trim(),
-        }),
-      })
-
-      if (res.ok) {
-        setContactSubmitted(true)
-      } else {
-        setContactError(true)
-      }
-    } catch (err) {
-      setContactError(true)
-    } finally {
-      setContactLoading(false)
-    }
-  }
-
-  const resetContactForm = () => {
-    setContactEmail('')
-    setContactMessage('')
-    setContactSubmitted(false)
-    setContactError(false)
-  }
-
-  const openContactModal = () => {
-    resetContactForm()
-    setModalContent('contact')
-  }
-
-  const t = translations[lang] || translations['cs']
-  const currentLangObj = languages.find(l => l.code === lang) || languages[0]
-
-  const tabData: Record<TabType, {
-    icon: React.ReactNode;
-    title: string;
-    badge: string;
-    desc: string;
-    mockupHeader: string;
-    mockupContent: React.ReactNode;
-  }> = {
-    stories: {
-      icon: <Camera size={18} strokeWidth={1.8} />,
-      title: t?.tabs?.stories?.title || 'Stories & Fotky',
-      badge: 'Sociální feed',
-      desc: 'Sdílejte radostné momenty ze života vašich mazlíčků, objevujte příběhy ze sousedství a sbírejte paculky od komunity.',
-      mockupHeader: 'Přidáno před 15 minutami • Praha 4',
-      mockupContent: (
-        <div className="space-y-3.5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#5B5BF7] via-[#9333EA] to-[#0F172A] p-0.5 shadow-md">
-              <div className="w-full h-full bg-[#EEF0FF] text-[#5B5BF7] rounded-full flex items-center justify-center"><PawPrint size={18}/></div>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">Buddy & Max</p>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Zlatý retrívr • 2 roky</p>
-            </div>
-          </div>
-          <div className="h-40 rounded-2xl bg-gradient-to-br from-[#5B5BF7]/10 via-[#9333EA]/10 to-[#EEF0FF]/10 border border-[#C7C9FF]/70 flex items-center justify-center text-[#5B5BF7] text-xs font-bold shadow-inner">
-            Ilustrační ukázka psí procházky
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
-            <span className="text-[#5B5BF7] font-semibold">Reakce komunity</span>
-            <span>Komentáře a diskuse</span>
-          </div>
-        </div>
-      )
-    },
-    map: {
-      icon: <MapPinned size={18} strokeWidth={1.8} />,
-      title: t?.tabs?.map?.title || 'Živá mapa',
-      badge: 'GPS Lokátor',
-      desc: 'Sledujte na živé mapě bezpečné výběhy, psí parky a přátele, kteří jsou zrovna venku na venčení.',
-      mockupHeader: 'Aktivní venčitelé ve vašem okolí',
-      mockupContent: (
-        <div className="space-y-3.5">
-          <div className="h-40 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 relative overflow-hidden flex items-center justify-center shadow-inner">
-            <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:14px_14px] opacity-30" />
-            <div className="relative z-10 flex flex-col items-center gap-2">
-              <span className="px-4 py-2 rounded-full bg-white border border-[#D8DDFE] text-[#5B5BF7] text-xs font-semibold">
-                Ukázka mapy pejskařů
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 text-xs font-semibold">
-            <span className="text-slate-700 dark:text-slate-300">Park Riegrovy sady</span>
-            <span className="text-emerald-700 font-semibold">Informace o místě</span>
-          </div>
-        </div>
-      )
-    },
-    chat: {
-      icon: <MessageCircle size={18} strokeWidth={1.8} />,
-      title: t?.tabs?.chat?.title || 'Smečka & Chat',
-      badge: 'Skupiny',
-      desc: 'Domlouvejte si společné srazy, zakládejte lokální smečky a komunikujte bezpečně s ostatními páníčky.',
-      mockupHeader: 'Ukázková komunitní konverzace',
-      mockupContent: (
-        <div className="space-y-3">
-          <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/90 text-xs text-slate-800 dark:text-slate-200 max-w-[85%] font-medium shadow-sm">
-            Ahoj všichni! Jde dnes někdo venčit do Havlíčkových sadů?
-          </div>
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white text-xs max-w-[85%] ml-auto font-medium shadow-lg shadow-emerald-900/15">
-            My vyrážíme. Potkáme se u altánku.
-          </div>
-          <div className="text-[11px] text-center text-slate-400 font-semibold pt-1">
-            2 uživatelé píší zprávu...
-          </div>
-        </div>
-      )
-    },
-    ai: {
-      icon: <Sparkles size={18} strokeWidth={1.8} />,
-      title: t?.tabs?.ai?.title || 'AI Poradce',
-      badge: 'Veterinární AI',
-      desc: 'Okamžité odpovědi 24/7 na otázky k výživě, výchově, zdraví i chování vašich mazlíčků.',
-      mockupHeader: 'PawAI • Asistent výživy a zdraví',
-      mockupContent: (
-        <div className="space-y-3">
-          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
-            ❓ Kolik granulí by měl denně dostat 15kg pes?
-          </div>
-          <div className="p-3.5 rounded-xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
-            <p className="font-bold text-[#5B5BF7] flex items-center gap-1.5">
-              <PawPrint size={16}/> AI odpověď:
-            </p>
-            <p className="text-slate-600 dark:text-slate-300">Pro 15kg dospělého psa se doporučuje cca 200–250g kvalitních krmiv denně rozdělených do 2 porcí...</p>
-          </div>
-        </div>
-      )
-    }
-  }
-
-  const faqs = [
-    { q: t?.faqs?.[0]?.q || 'Je aplikace PawMeet zdarma?', a: t?.faqs?.[0]?.a || 'Ano! Základní verze aplikace PawMeet je zcela zdarma včetně přístupu k mapě, komunitě a základnímu AI poradci.' },
-    { q: t?.faqs?.[1]?.q || 'Je PawMeet vhodný i pro kočky?', a: t?.faqs?.[1]?.a || 'Určitě! Aplikace je navržena pro všechny majitele domácích mazlíčků – psy, kočky i další členy rodiny.' },
-    { q: 'Jak je zajištěno soukromí mé polohy?', a: 'Vaše přesná poloha není nikdy veřejně sdílena bez vašeho souhlasu. Na mapě se zobrazuje pouze přibližná zóna pro vaši bezpečnou navigaci.' }
-  ]
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <div className="relative min-h-screen w-full overflow-y-auto bg-[var(--pm-page)] text-[#0F172A] font-sans transition-colors duration-300 selection:bg-[#D8DDFE] selection:text-[#0F172A] flex flex-col items-center">
-      
-      {/* Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-[#5B5BF7]/20 via-[#9333EA]/15 to-[#EEF0FF]/20 blur-[140px] pointer-events-none rounded-full" />
-      <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#EEF0FF]/70 blur-[150px] pointer-events-none rounded-full" />
-      <div className="absolute top-[75%] left-[-10%] w-[500px] h-[500px] bg-[#EEF0FF]/70 blur-[150px] pointer-events-none rounded-full" />
-
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-white/70 dark:bg-slate-950/75 border-b border-slate-200/60 dark:border-slate-800/80 transition-all">
-        <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center w-full">
-          <Link href="/" className="flex items-center gap-3 group">
-            <PawLogo className="w-10 h-10 transition-transform group-hover:scale-105" />
-            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-[#5B5BF7] via-[#9333EA] to-[#0F172A] dark:from-[#A5B4FC] dark:via-[#C4B5FD] dark:to-[#F8FAFC] bg-clip-text text-transparent">
-              PawMeet
-            </span>
+    <main className="pm-page">
+      <header className="pm-header">
+        <div className="pm-container pm-header-inner">
+          <Link href="/" className="pm-brand" aria-label="PawMeet – domů">
+            <span className="pm-logo"><PawPrint size={25} strokeWidth={2.2} /></span>
+            <span>PawMeet<span className="pm-brand-dot">.</span></span>
           </Link>
-
-          <nav aria-label="Veřejné stránky" className="hidden xl:flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <Link href="/academy" className="hover:text-[var(--pm-accent)]">Akademie</Link>
-            <Link href="/calendar" className="hover:text-[var(--pm-accent)]">Akce</Link>
-            <Link href="/breeds" className="hover:text-[var(--pm-accent)]">Plemena</Link>
-            <Link href="/articles" className="hover:text-[var(--pm-accent)]">Poradna</Link>
-            <Link href="/about" className="hover:text-[var(--pm-accent)]">O nás</Link>
-            <Link href="/contact" className="hover:text-[var(--pm-accent)]">Kontakt</Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            {/* Language Selector */}
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                onClick={() => setIsLangOpen(!isLangOpen)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-all border border-slate-200/80 dark:border-slate-800 shadow-sm backdrop-blur-md"
-              >
-                
-                <span className="uppercase tracking-wider">{currentLangObj.code}</span>
-                <span className={`text-[9px] transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`}>▼</span>
-              </button>
-
-              {isLangOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden py-2 z-50 backdrop-blur-xl">
-                  {languages.map((item) => (
-                    <button
-                      key={item.code}
-                      onClick={() => selectLanguage(item.code)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-left transition-colors ${
-                        lang === item.code ? 'bg-[#EEF0FF]/70 text-[#5B5BF7] font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                      }`}
-                    >
-                      
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+          <button className="pm-menu-toggle" type="button" aria-label={menuOpen ? 'Zavřít nabídku' : 'Otevřít nabídku'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+          <nav className={`pm-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Hlavní navigace">
+            <Link href="/map" onClick={() => setMenuOpen(false)}>Mapa</Link>
+            <Link href="/calendar" onClick={() => setMenuOpen(false)}>Akce</Link>
+            <Link href="/articles" onClick={() => setMenuOpen(false)}>Poradna</Link>
+            <Link href="/about" onClick={() => setMenuOpen(false)}>O PawMeet</Link>
+            <div className="pm-nav-actions">
+              <Link href="/login" className="pm-login" onClick={() => setMenuOpen(false)}>Přihlásit se</Link>
+              <Link href="/register" className="pm-button pm-button-small" onClick={() => setMenuOpen(false)}>Vytvořit účet <ArrowRight size={16} /></Link>
             </div>
-
-            <Link 
-              href="/login" 
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all font-bold text-xs sm:text-sm shadow-sm backdrop-blur-md"
-            >
-              {t?.login || 'Přihlásit se'}
-            </Link>
-
-            <Link 
-              href="/register" 
-              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#5B5BF7]/25 transition-all hover:scale-[1.02] items-center gap-2"
-            >
-              <span>{t?.join || 'Registrace'}</span>
-            </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <main className="pm-landing-hero relative w-full max-w-6xl mx-auto px-5 sm:px-8 pt-12 sm:pt-20 pb-16 flex flex-col items-center text-center">
-        
-        <div className="relative mb-8 group cursor-pointer">
-          <div className="absolute inset-0 rounded-3xl bg-[#5B5BF7] blur-3xl opacity-20 group-hover:opacity-30 transition-opacity" />
-          <PawLogo className="relative w-28 h-28 sm:w-36 sm:h-36 shadow-2xl" />
-        </div>
-
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EEF0FF] border border-[#D8DDFE] text-[#5B5BF7] text-xs font-semibold mb-7">
-          <span className="h-2 w-2 rounded-full bg-[#9333EA]" aria-hidden="true" />
-          <span>{t?.badgeDog || 'Komunita pro vašeho psa & kočku'}</span>
-        </div>
-
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.045em] leading-[1.06] max-w-4xl mb-6 text-[var(--pm-forest)]">
-          {t?.welcome || 'Vítejte v'}{' '}
-          <span className="text-[#5B5BF7]">PawMeet</span>
-        </h1>
-
-        <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed mb-10 font-medium">
-          {t?.subtitle || 'Místo, kde se setkávají milovníci zvířat, sdílí své příběhy, plánují venčení a využívají chytré nástroje pro péči o mazlíčky.'}
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-lg mb-7">
-          <Link 
-            href="/register" 
-            className="flex-1 bg-[#5B5BF7] hover:bg-[#4F46E5] text-white font-semibold py-4 px-7 rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 text-center text-sm sm:text-base"
-          >
-            <span>{t?.join || 'Připojit se zdarma'}</span>
-          </Link>
-
-          <Link 
-            href="/login" 
-            className="flex-1 bg-white hover:bg-[#f3f7f0] border border-[#D8DDFE] text-[#183f2c] font-semibold py-4 px-7 rounded-xl transition-colors text-center flex items-center justify-center gap-2 text-sm sm:text-base"
-          >
-            <span>{t?.hasAccount || 'Již mám účet'}</span>
-          </Link>
-        </div>
-
-        <Link 
-          href="#features" 
-          className="text-sm font-medium text-[#5B5BF7] hover:text-[#183f2c] flex items-center gap-2 py-3 px-5 rounded-xl hover:bg-[#EEF0FF] transition-colors mb-16 border border-transparent"
-        >
-          <span>{t?.browse || 'Prohlédnout funkce PawMeet'}</span>
-        </Link>
-
-        {/* INTERACTIVE MODULE TABS */}
-        <section id="features" className="w-full max-w-5xl mb-20 scroll-mt-8">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-4xl font-black mb-3">Vše pro vašeho parťáka na jednom místě</h2>
-            <p className="text-sm text-slate-600">Prohlédněte si přehled hlavních oblastí platformy. Ukázky jsou ilustrativní, ne živá uživatelská data.</p>
+      <section className="pm-hero">
+        <div className="pm-container pm-hero-grid">
+          <div className="pm-hero-copy">
+            <div className="pm-eyebrow"><span className="pm-eyebrow-dot" /> Místo pro českou pejskařskou komunitu</div>
+            <h1>Každá procházka může být <span>začátkem přátelství.</span></h1>
+            <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá objevovat místa na venčení a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
+            <div className="pm-hero-actions">
+              <Link href="/register" className="pm-button">Přidat se k PawMeet <ArrowRight size={18} /></Link>
+              <Link href="/map" className="pm-button pm-button-outline"><Compass size={18} /> Prozkoumat možnosti</Link>
+            </div>
+            <div className="pm-trust-line"><ShieldCheck size={17} /> Vaše soukromí. Vaše pravidla. Vaše tempo.</div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 backdrop-blur-xl mb-8 shadow-md">
-            {(Object.keys(tabData) as TabType[]).map((key) => {
-              const tab = tabData[key]
-              const isActive = activeTab === key
-              return (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                    isActive 
-                      ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white shadow-lg shadow-[#5B5BF7]/25 scale-[1.02]' 
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span>{tab.title}</span>
-                </button>
-              )
-            })}
+          <div className="pm-hero-art" aria-label="Ilustrace procházky se psem">
+            <div className="pm-art-sun" />
+            <div className="pm-art-path" />
+            <div className="pm-art-hill pm-art-hill-back" />
+            <div className="pm-art-hill pm-art-hill-front" />
+            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><MapPin size={18} /></span><span><strong>Nová místa</strong><small>Blíž k přírodě</small></span></div>
+            <div className="pm-dog-illustration"><PawPrint size={76} strokeWidth={1.35} /></div>
+            <div className="pm-art-card pm-art-card-bottom"><span className="pm-avatar-stack"><i>A</i><i>M</i><i>K</i></span><span><strong>Procházky ve dvou i ve smečce</strong><small>Začněte jednoduše</small></span></div>
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white border border-[#e2e8df] rounded-2xl p-5 sm:p-8 shadow-sm">
-            <div className="md:col-span-6 space-y-5">
-              <span className="inline-block px-3.5 py-1 rounded-full bg-[#EEF0FF]/70 text-[#5B5BF7] dark:text-emerald-300 text-xs font-extrabold border border-[#C7C9FF]/70">
-                {tabData[activeTab].badge}
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-black flex items-center gap-2.5">
-                <span>{tabData[activeTab].icon}</span>
-                <span>{tabData[activeTab].title}</span>
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed font-medium">
-                {tabData[activeTab].desc}
-              </p>
-              <Link 
-                href="/register" 
-                className="inline-flex items-center gap-2 text-xs font-bold text-[#5B5BF7] hover:underline pt-2"
-              >
-                <span>Vyzkoušet tuto funkci</span>
-                <span>→</span>
+      <section className="pm-intro pm-section">
+        <div className="pm-container pm-intro-inner">
+          <div><p className="pm-kicker">MÉNĚ HLEDÁNÍ. VÍC SPOLEČNÝCH CHVIL.</p><h2>Pejskařský život je lepší, když na něj nejste sami.</h2></div>
+          <p className="pm-intro-text">Někdy hledáte nový park. Jindy parťáka na procházku, inspiraci nebo akci v okolí. PawMeet chce mít tyhle možnosti přehledně na jednom místě — bez složitého ovládání.</p>
+        </div>
+      </section>
+
+      <section className="pm-section pm-features-section" id="moznosti">
+        <div className="pm-container">
+          <div className="pm-section-heading"><p className="pm-kicker">CO NA PAWMEET NAJDETE</p><h2>Vše důležité přehledně.</h2><p>Jednoduché prostředí, srozumitelné informace a funkce, které dávají smysl.</p></div>
+          <div className="pm-feature-grid">
+            {features.map(({ icon: Icon, title, text, href }) => (
+              <Link href={href} className="pm-feature-card" key={title}>
+                <span className="pm-feature-icon"><Icon size={22} strokeWidth={1.8} /></span>
+                <h3>{title}</h3><p>{text}</p><span className="pm-feature-link">Zjistit více <ArrowRight size={15} /></span>
               </Link>
-            </div>
-
-            <div className="md:col-span-6 rounded-xl bg-[#f7f9f5] border border-[#e2e8df] p-5">
-              <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-400">
-                <span>{tabData[activeTab].mockupHeader}</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-[#5B5BF7] animate-pulse" />
-              </div>
-              {tabData[activeTab].mockupContent}
-            </div>
-          </div>
-        </section>
-
-        {/* REVIEWS & RATING SECTION */}
-        <section className="w-full max-w-4xl mb-20">
-          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-8 text-center sm:text-left">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-200/80 dark:border-slate-800">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2.5">
-                  <span>⭐</span> Jak se vám líbí PawMeet?
-                </h3>
-                <p suppressHydrationWarning className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                  Ohodnoťte aplikaci v reálném čase.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 shadow-sm">
-                  <span className="text-2xl font-black text-[#5B5BF7]">{averageRating}</span>
-                  <div className="text-left">
-                    <div className="text-amber-500 text-xs font-semibold">{totalRatingCount > 0 ? `★ ${averageRating} / 5.0` : "Zatím bez hodnocení"}</div>
-                    <div className="text-[11px] text-slate-500 font-bold" suppressHydrationWarning>
-                      {loading ? 'Načítám...' : `${totalRatingCount} ${totalRatingCount === 1 ? 'recenze' : totalRatingCount >= 2 && totalRatingCount <= 4 ? 'recenze' : 'recenzí'}`}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setModalContent('reviews')}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer"
-                >
-                  <MessageCircle size={15}/> Zobrazit recenze ({totalRatingCount})
-                </button>
-              </div>
-            </div>
-
-            {!submitted ? (
-              <form onSubmit={handleRatingSubmit} className="space-y-6">
-                <div className="space-y-4 w-full max-w-sm mx-auto sm:mx-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Vyberte hodnocení:
-                    </span>
-                    <span className="text-sm font-black text-amber-500 bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">
-                      ★ {rating.toFixed(1)} / 5.0
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-center gap-1.5 text-3xl select-none">
-                      {[1, 2, 3, 4, 5].map((starIndex) => {
-                        const fillPercentage = Math.max(0, Math.min(100, (rating - (starIndex - 1)) * 100))
-                        return (
-                          <div key={starIndex} className="relative cursor-pointer">
-                            <span className="text-slate-300 dark:text-slate-700">★</span>
-                            <div 
-                              className="absolute top-0 left-0 overflow-hidden text-amber-400 pointer-events-none transition-all duration-75"
-                              style={{ width: `${fillPercentage}%` }}
-                            >
-                              <span>★</span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="5.0"
-                      step="0.1"
-                      value={rating}
-                      onChange={(e) => setRating(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 px-1">
-                    <span>0.1 (Nejhorší)</span>
-                    <span>2.5</span>
-                    <span>5.0 (Nejlepší)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <textarea
-                    value={reviewText}
-                    onChange={(e) => setReviewText(e.target.value)}
-                    placeholder="Napište svoji reálnou zkušenost..."
-                    className="w-full p-4 rounded-2xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none h-24"
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={rating === 0}
-                    className={`px-6 py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
-                      rating > 0 
-                        ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white shadow-lg shadow-[#5B5BF7]/25 cursor-pointer hover:scale-[1.02]' 
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                    }`}
-                  >
-                    Odeslat mé hodnocení ({rating.toFixed(1)} ★)
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="p-6 rounded-2xl bg-[#5B5BF7]/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-center sm:text-left text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <CheckCircle2 size={28}/>
-                  <div>
-                    <p className="text-base font-extrabold">Děkujeme za vaše hodnocení ({rating.toFixed(1)} ★)!</p>
-                    <p className="text-xs font-normal opacity-90 mt-0.5">Vaše hodnocení bylo úspěšně uloženo.</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setModalContent('reviews')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-[#4F46E5] transition-colors shadow-md shrink-0 cursor-pointer"
-                >
-                  Zobrazit v seznamu
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* INFO CARDS */}
-        <section className="w-full max-w-4xl text-left space-y-8 pt-12 border-t border-slate-200/80 dark:border-slate-800">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><Lightbulb size={17}/> {t?.aboutTitle || 'O projektu'}</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.aboutText || 'PawMeet je komunita vytvořená pro majitele mazlíčků, kteří chtějí snadno nacházet nové přátele, bezpečné výběhy a radostné zážitky.'}</p>
-            </div>
-
-            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><ShieldCheck size={17}/> {t?.safetyTitle || 'Bezpečnost'}</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">{t?.safetyText || 'Vaše soukromí je naší prioritou. Přesná poloha se nikdy nezobrazuje a vy sami rozhodujete, s kým se propojíte.'}</p>
-            </div>
-
-            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><FileText size={17}/> Podmínky použití</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Pravidla komunity, práva a povinnosti uživatelů platformy PawMeet.
-              </p>
-              <button 
-                onClick={() => setModalContent('terms')}
-                className="text-xs font-bold text-[#5B5BF7] hover:underline pt-1 inline-block cursor-pointer"
-              >
-                Zobrazit podmínky →
-              </button>
-            </div>
-
-            <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 hover:border-emerald-500/30 transition-colors">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2"><LockKeyhole size={17}/> Ochrana soukromí</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Pravidla zpracování osobních údajů, GPS dat a ochrana podle GDPR.
-              </p>
-              <button 
-                onClick={() => setModalContent('privacy')}
-                className="text-xs font-bold text-[#5B5BF7] hover:underline pt-1 inline-block cursor-pointer"
-              >
-                Zásady soukromí →
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ SECTION */}
-        <section className="w-full max-w-4xl pt-12 mt-10 border-t border-slate-200/80 dark:border-slate-800 text-left">
-          <h2 className="text-2xl sm:text-3xl font-black text-center mb-10">Často kladené otázky</h2>
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div 
-                key={index}
-                className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm"
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full p-6 text-left font-bold text-sm sm:text-base flex justify-between items-center gap-4 text-slate-900 dark:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors"
-                >
-                  <span>{faq.q}</span>
-                  <span className={`transition-transform duration-200 text-[#5B5BF7] font-extrabold ${openFaq === index ? 'rotate-180' : ''}`}>
-                    ▼
-                  </span>
-                </button>
-                {openFaq === index && (
-                  <div className="px-6 pb-6 text-xs sm:text-sm text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/60 pt-4 leading-relaxed">
-                    {faq.a}
-                  </div>
-                )}
-              </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-      </main>
-
-      {/* FOOTER */}
-      <footer className="w-full border-t border-slate-200 dark:border-slate-800 py-10 text-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} PawMeet. Všechna práva vyhrazena.</p>
-          <div className="flex items-center gap-6">
-            <button onClick={() => setModalContent('terms')} className="hover:underline cursor-pointer">Podmínky</button>
-            <button onClick={() => setModalContent('privacy')} className="hover:underline cursor-pointer">Soukromí</button>
-            <button 
-              onClick={openContactModal} 
-              className="hover:underline font-bold text-[#5B5BF7] flex items-center gap-1 cursor-pointer"
-            >
-              Kontakt
-            </button>
+      <section className="pm-steps-section">
+        <div className="pm-container pm-steps-grid">
+          <div className="pm-steps-copy"><p className="pm-kicker">ZAČÍT JE JEDNODUCHÉ</p><h2>Nová psí přátelství začínají malým krokem.</h2><p>Nemusíte hned vyplňovat dlouhý profil ani sdílet osobní údaje. Začněte tím, co právě potřebujete.</p><Link href="/register" className="pm-text-link">Vytvořit si účet <ArrowRight size={17} /></Link></div>
+          <div className="pm-steps-list">
+            <div className="pm-step"><span>01</span><div><h3>Přidejte se</h3><p>Vytvořte si účet a nastavte si profil podle sebe.</p></div></div>
+            <div className="pm-step"><span>02</span><div><h3>Prozkoumejte okolí</h3><p>Podívejte se na dostupné možnosti, místa a komunitní obsah.</p></div></div>
+            <div className="pm-step"><span>03</span><div><h3>Vyrazte ven</h3><p>Domluvte se s ostatními a užijte si společný čas se svým psem.</p></div></div>
           </div>
         </div>
-      </footer>
+      </section>
 
-      {/* MODAL DIALOGS */}
-      {modalContent && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setModalContent(null)}
-        >
-          <div 
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                {modalContent === 'terms' && 'Podmínky použití platformy PawMeet'}
-                {modalContent === 'privacy' && 'Zásady ochrany osobních údajů'}
-                {modalContent === 'reviews' && `Uživatelské recenze (${totalRatingCount})`}
-                {modalContent === 'contact' && 'Napište nám (pawmeet.eu@gmail.com)'}
-              </h3>
-              <button
-                onClick={() => setModalContent(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      <section className="pm-cta-section">
+        <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Tak kam vyrazíte příště?</h2><p>Připojte se ke komunitě a udělejte z další procházky příležitost k novému setkání.</p><Link href="/register" className="pm-button pm-button-light">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
+      </section>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-              
-              {/* REVIEWS MODAL */}
-              {modalContent === 'reviews' && (
-                <div className="space-y-4">
-                  {reviewsList.length === 0 ? (
-                    <p className="text-center text-slate-400 py-8 font-medium">Zatím nebyly přidány žádné recenze.</p>
-                  ) : (
-                    reviewsList.map((rev) => (
-                      <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-extrabold text-slate-900 dark:text-white">Uživatel</span>
-                          <span className="text-amber-400 font-extrabold text-xs">★ {rev.rating.toFixed(1)} / 5.0</span>
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 font-medium">{rev.text}</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {new Date(rev.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* CONTACT FORM MODAL */}
-              {modalContent === 'contact' && (
-                <div className="space-y-4">
-                  {!contactSubmitted ? (
-                    <form onSubmit={handleContactSubmit} className="space-y-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Máte dotaz nebo připomínku? Pošlete nám zprávu přímo odsud na <span className="font-bold text-[#5B5BF7]">pawmeet.eu@gmail.com</span>.
-                      </p>
-
-                      {contactError && (
-                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold">
-                          Odeslání zprávy selhalo. Zkontrolujte prosím připojení nebo to zkuste znovu.
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                          Váš e-mail
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={contactEmail}
-                          onChange={(e) => setContactEmail(e.target.value)}
-                          placeholder="vas@email.cz"
-                          className="w-full p-3 rounded-xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                          Vaše zpráva
-                        </label>
-                        <textarea
-                          required
-                          value={contactMessage}
-                          onChange={(e) => setContactMessage(e.target.value)}
-                          placeholder="Co byste nám chtěli sdělit..."
-                          className="w-full p-3 rounded-xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-32 resize-none"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={contactLoading || !contactEmail.trim() || !contactMessage.trim()}
-                        className={`w-full py-3.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
-                          contactEmail.trim() && contactMessage.trim() && !contactLoading
-                            ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white shadow-lg shadow-[#5B5BF7]/25 cursor-pointer hover:scale-[1.01]'
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {contactLoading ? 'Odesílám...' : 'Odeslat zprávu'}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="p-6 rounded-2xl bg-[#5B5BF7]/10 border border-emerald-500/20 text-center space-y-3">
-                      <Mail size={32} className="mx-auto"/>
-                      <h4 className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">Zpráva byla úspěšně odeslána!</h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        Děkujeme za váš kontakt. Budeme vás kontaktovat na e-mailu <span className="font-bold">{contactEmail}</span> co nejdříve.
-                      </p>
-                      <button
-                        onClick={resetContactForm}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-[#4F46E5] transition-colors shadow-md mt-2 cursor-pointer"
-                      >
-                        Napsat další zprávu
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TERMS MODAL */}
-              {modalContent === 'terms' && (
-                <div className="space-y-4">
-                  <p className="font-bold text-slate-900 dark:text-white">Vítejte v aplikaci PawMeet. Používáním naší platformy souhlasíte s následujícími smluvními podmínkami:</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">1. Úvodní ustanovení</strong>
-                  <p>Aplikace PawMeet slouží k propojování majitelů domácích mazlíčků, sdílení informací, plánování venčení a využití asistenčních služeb AI. Registrací účtu stvrzujete, že jste dosáhli věku 15 let nebo máte souhlas zákonného zástupce.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">2. Uživatelský účet a chování</strong>
-                  <p>Uživatel se zavazuje uvádět pravdivé informace a chovat se v komunitě s respektem. Je přísně zakázáno publikovat nevhodný, urážlivý, nezákonný nebo klamavý obsah, stejně jako obtěžovat ostatní páníčky.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">3. Bezpečnost a odpovědnost</strong>
-                  <p>PawMeet nenese odpovědnost za přímá setkání uživatelů ani za chování jejich zvířat během venčení. Uživatelé jsou plně zodpovědni za bezpečnost svých mazlíčků i sebe samých.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">4. Změny podmínek</strong>
-                  <p>Vyhrazujeme si právo tyto podmínky kdykoliv upravit. O významných změnách budete informováni přímo v aplikaci.</p>
-                </div>
-              )}
-
-              {/* PRIVACY MODAL */}
-              {modalContent === 'privacy' && (
-                <div className="space-y-4">
-                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Aktuální informace o zpracování údajů, nastavení profilu, sdílení polohy a možnostech odstranění účtu najdeš na samostatné stránce zásad ochrany soukromí.</p>
-                  <Link href="/privacy" onClick={() => setModalContent(null)} className="inline-flex items-center gap-2 rounded-xl bg-[#5B5BF7] px-4 py-3 text-sm font-semibold text-white hover:bg-[#4F46E5]">Přečíst zásady ochrany soukromí</Link>
-                </div>
-              )}
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/50">
-              <button
-                onClick={() => setModalContent(null)}
-                className="px-5 py-2 rounded-xl bg-[#5B5BF7] hover:bg-[#4F46E5] text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
-              >
-                Zavřít
-              </button>
-            </div>
-          </div>
+      <footer className="pm-footer">
+        <div className="pm-container pm-footer-top">
+          <div className="pm-footer-brand"><Link href="/" className="pm-brand"><span className="pm-logo"><PawPrint size={23} /></span><span>PawMeet<span className="pm-brand-dot">.</span></span></Link><p>Spojujeme pejskaře po celé republice.</p></div>
+          <div className="pm-footer-links"><div><strong>Objevujte</strong><Link href="/map">Mapa pejskařů</Link><Link href="/calendar">Akce</Link><Link href="/articles">Články a poradna</Link><Link href="/breeds">Katalog plemen</Link></div><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
         </div>
-      )}
-
-      <footer className="relative z-10 mt-auto w-full border-t border-slate-200/80 bg-white/70 px-5 py-8 text-slate-600 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold">PawMeet.eu — Spojujeme pejskaře po celé republice.</p>
-          <nav aria-label="Odkazy v patičce" className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
-            <Link href="/about" className="hover:text-[var(--pm-accent)]">O nás</Link>
-            <Link href="/contact" className="hover:text-[var(--pm-accent)]">Kontakt</Link>
-            <Link href="/breeds" className="hover:text-[var(--pm-accent)]">Katalog plemen</Link>
-            <Link href="/articles" className="hover:text-[var(--pm-accent)]">Články a poradna</Link>
-            <Link href="/privacy" className="hover:text-[var(--pm-accent)]">Soukromí</Link>
-            <Link href="/terms" className="hover:text-[var(--pm-accent)]">Pravidla</Link>
-          </nav>
-        </div>
+        <div className="pm-container pm-footer-bottom"><span>© {new Date().getFullYear()} PawMeet.eu</span><span>Vytvořeno pro lepší společné chvíle.</span></div>
       </footer>
-    </div>
+    </main>
   )
 }
