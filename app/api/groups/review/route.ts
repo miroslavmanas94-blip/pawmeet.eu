@@ -46,7 +46,6 @@ export async function POST(request: Request) {
     approval_status: status,
     reviewed_by: user.id,
     reviewed_at: new Date().toISOString(),
-    is_public: status === 'approved' && group.group_type === 'community' ? true : undefined,
   }).eq('id', group.id)
 
   if (updateError) return NextResponse.json({ error: 'Stav komunity se nepodařilo uložit.' }, { status: 500 })
