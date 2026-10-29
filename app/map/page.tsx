@@ -40,6 +40,9 @@ export default function PetMapPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [locationSearch, setLocationSearch] = useState('')
+  const [isSearchingPlace, setIsSearchingPlace] = useState(false)
+  const [searchedPlace, setSearchedPlace] = useState('')
+  const [placeSearchError, setPlaceSearchError] = useState('')
 
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null)
   const [hasFittedBounds, setHasFittedBounds] = useState(false)
@@ -330,6 +333,31 @@ export default function PetMapPage() {
     })
   }, [usersLocations, currentCoords, currentUserId, isLiveTracking, hasMounted, hasFittedBounds, locationSearch])
 
+  const searchMapPlace = async () => {
+    const query = locationSearch.trim()
+    if (!query || !mapInstanceRef.current || isSearchingPlace) return
+    setIsSearchingPlace(true)
+    setPlaceSearchError('')
+    try {
+      // Nominatim is queried only after an explicit submit, never on each keystroke.
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`)
+      if (!response.ok) throw new Error('Vyhledávání místa není právě dostupné.')
+      const results = await response.json()
+      const place = Array.isArray(results) ? results[0] : null
+      if (!place || !Number.isFinite(Number(place.lat)) || !Number.isFinite(Number(place.lon))) {
+        setPlaceSearchError('Místo se nepodařilo najít. Zkus upřesnit název nebo adresu.')
+        return
+      }
+      mapInstanceRef.current.flyTo([Number(place.lat), Number(place.lon)], 13, { duration: 1 })
+      setSearchedPlace(String(place.display_name || query))
+      setLocationSearch('')
+    } catch (error) {
+      setPlaceSearchError(error instanceof Error ? error.message : 'Vyhledávání místa selhalo.')
+    } finally {
+      setIsSearchingPlace(false)
+    }
+  }
+
   const recenterMap = () => {
     if (currentCoords && mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([currentCoords.lat, currentCoords.lng], 16, { duration: 1 })
@@ -402,7 +430,9 @@ export default function PetMapPage() {
 
       <div className="absolute left-4 right-4 top-[5.25rem] z-20 max-w-md pointer-events-auto">
         <div className="rounded-2xl border border-[#d4e3cf] bg-[#fbfcf4]/90 p-2 shadow-xl backdrop-blur-2xl">
-          <label className="flex items-center gap-2 px-2"><span className="text-[#477353]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#174b35] outline-none placeholder:text-slate-400"/></label>
+          <div className="flex items-center gap-2 px-2"><span className="text-[#477353]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void searchMapPlace()}}} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#174b35] outline-none placeholder:text-slate-400"/><button type="button" onClick={()=>void searchMapPlace()} disabled={!locationSearch.trim()||isSearchingPlace} className="rounded-xl bg-[#286747] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSearchingPlace?'Hledám…':'Najít místo'}</button></div>
+          {searchedPlace&&<div className="px-3 pb-2 text-[11px] text-[#286747]">Mapa: {searchedPlace}</div>}
+          {placeSearchError&&<p role="status" className="px-3 pb-2 text-xs text-red-700">{placeSearchError}</p>}
           {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#dce6d8] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#e8f0e3]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#dcebd7] text-xs font-bold text-[#24563b]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#174b35]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
         </div>
       </div>
