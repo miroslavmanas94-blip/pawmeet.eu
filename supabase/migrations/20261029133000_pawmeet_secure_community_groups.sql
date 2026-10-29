@@ -11,7 +11,6 @@ ON public.groups FOR SELECT TO anon, authenticated
 USING (
   COALESCE(is_private, false) = false
   OR created_by = auth.uid()
-  OR (auth.role() = 'authenticated' AND private.is_group_member(id))
 );
 CREATE POLICY "Authenticated users create own groups"
 ON public.groups FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid());
@@ -25,7 +24,6 @@ ON public.group_members FOR SELECT TO authenticated
 USING (
   user_id = auth.uid()
   OR EXISTS (SELECT 1 FROM public.groups g WHERE g.id = group_members.group_id AND COALESCE(g.is_private, false) = false)
-  OR private.is_group_member(group_id)
 );
 CREATE POLICY "Join public groups or add members to owned groups"
 ON public.group_members FOR INSERT TO authenticated
