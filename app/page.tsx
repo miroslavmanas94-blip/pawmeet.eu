@@ -54,7 +54,7 @@ export default function LandingPage() {
             <div className="pm-art-path" />
             <div className="pm-art-hill pm-art-hill-back" />
             <div className="pm-art-hill pm-art-hill-front" />
-            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><MapPin size={18} /></span><span><strong>Noví parťáci</strong><small>Blíž k přírodě</small></span></div>
+            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><Users size={18} /></span><span><strong>Noví parťáci</strong><small>Blíž k přírodě</small></span></div>
             <div className="pm-dog-illustration"><PawPrint size={76} strokeWidth={1.35} /></div>
             <div className="pm-art-card pm-art-card-bottom"><span className="pm-avatar-stack"><i>A</i><i>M</i><i>K</i></span><span><strong>Procházky ve dvou i ve smečce</strong><small>Začněte jednoduše</small></span></div>
           </div>
