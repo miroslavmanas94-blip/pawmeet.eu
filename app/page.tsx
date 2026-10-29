@@ -804,7 +804,7 @@ export default function LandingPage() {
                   <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Aktuální informace o zpracování údajů, nastavení profilu, sdílení polohy a možnostech odstranění účtu najdeš na samostatné stránce zásad ochrany soukromí.</p>
                   <Link href="/privacy" onClick={() => setModalContent(null)} className="inline-flex items-center gap-2 rounded-xl bg-[#5B5BF7] px-4 py-3 text-sm font-semibold text-white hover:bg-[#4F46E5]">Přečíst zásady ochrany soukromí</Link>
                 </div>
-              )}}
+              )}
 
             </div>
 
