@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createClient } from '@/utils/supabase/server'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   const secretKey = process.env.STRIPE_SECRET_KEY
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const stripe = new Stripe(secretKey, { apiVersion: '2026-08-26.dahlia' })
+    const stripe = new Stripe(secretKey)
     const origin = new URL(req.url).origin
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
