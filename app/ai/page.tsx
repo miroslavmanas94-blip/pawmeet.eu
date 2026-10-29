@@ -227,7 +227,7 @@ export default function PawMeetAIPage() {
       {/* Pevná hlavička přes celou zbývající šířku */}
       <header className="flex-shrink-0 z-40 bg-white border-b border-[#e2e8df] px-4 sm:px-8 py-3.5 flex items-center justify-between w-full">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#edf4e9] border border-[#d4e3ce] flex items-center justify-center text-[#286747]">
+          <div className="w-10 h-10 rounded-xl bg-[#EEF0FF] border border-[#D8DDFE] flex items-center justify-center text-[#5B5BF7]">
             <Sparkles size={20} strokeWidth={1.8}/>
           </div>
           <div>
@@ -238,7 +238,7 @@ export default function PawMeetAIPage() {
 
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="min-h-11 p-2.5 rounded-xl bg-white hover:bg-[#f7f9f5] text-[#286747] border border-[#dbe5d7] font-semibold transition flex items-center gap-2 text-xs"
+          className="min-h-11 p-2.5 rounded-xl bg-white hover:bg-[#f7f9f5] text-[#5B5BF7] border border-[#D8DDFE] font-semibold transition flex items-center gap-2 text-xs"
         >
           <Menu size={16} strokeWidth={1.8}/>
           <span>Historie chatů</span>
@@ -259,7 +259,7 @@ export default function PawMeetAIPage() {
       }`}>
         <div className="p-4 border-b border-[#e2e8df] flex items-center justify-between bg-[#f7f9f5]">
           <div className="flex items-center gap-2">
-            <MessageCircle size={17} className="text-[#286747]"/>
+            <MessageCircle size={17} className="text-[#5B5BF7]"/>
             <h2 className="font-bold text-[#183f2c] text-sm">Historie konverzací</h2>
           </div>
           <button 
@@ -273,7 +273,7 @@ export default function PawMeetAIPage() {
         <div className="p-3">
           <button
             onClick={createNewChat}
-            className="w-full min-h-11 py-2.5 px-4 rounded-xl bg-[#286747] hover:bg-[#1e5037] text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
+            className="w-full min-h-11 py-2.5 px-4 rounded-xl bg-[#5B5BF7] hover:bg-[#4F46E5] text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
           >
             <span>+</span> Nová konverzace
           </button>
@@ -294,7 +294,7 @@ export default function PawMeetAIPage() {
               }`}
             >
               <div className="flex items-center gap-2.5 truncate">
-                <MessageCircle size={16} className="shrink-0 text-[#286747]"/>
+                <MessageCircle size={16} className="shrink-0 text-[#5B5BF7]"/>
                 <div className="truncate">
                   <p className="truncate">{s.title}</p>
                   <span className="text-[10px] text-slate-400 font-normal">{s.createdAt}</span>
@@ -327,14 +327,14 @@ export default function PawMeetAIPage() {
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm ${
               msg.role === 'user'
                 ? 'bg-slate-800 text-white'
-                : 'bg-[#edf4e9] text-[#286747] border border-[#d4e3ce]'
+                : 'bg-[#EEF0FF] text-[#5B5BF7] border border-[#D8DDFE]'
             }`}>
               {msg.role === 'user' ? 'Vy' : <PawPrint size={15} />}
             </div>
 
             <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
               msg.role === 'user'
-                ? 'bg-[#286747] text-white rounded-tr-none'
+                ? 'bg-[#5B5BF7] text-white rounded-tr-none'
                 : 'bg-white text-[#183f2c] border border-[#e2e8df] rounded-tl-none'
             }`}>
               <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -349,13 +349,13 @@ export default function PawMeetAIPage() {
 
         {isGenerating && (
           <div className="flex items-start gap-3 flex-row w-full">
-            <div className="w-8 h-8 rounded-xl bg-[#edf4e9] border border-[#d4e3ce] flex items-center justify-center text-[#286747] animate-pulse">
+            <div className="w-8 h-8 rounded-xl bg-[#EEF0FF] border border-[#D8DDFE] flex items-center justify-center text-[#5B5BF7] animate-pulse">
               <PawPrint size={15}/>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 text-xs text-slate-500 flex items-center gap-2 shadow-sm">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
-              <span className="w-2 h-2 bg-[#78a474] rounded-full animate-bounce [animation-delay:0.2s]" />
-              <span className="w-2 h-2 bg-[#b9d2b0] rounded-full animate-bounce [animation-delay:0.4s]" />
+              <span className="w-2 h-2 bg-[#5B5BF7] rounded-full animate-bounce [animation-delay:0.2s]" />
+              <span className="w-2 h-2 bg-[#C7C9FF] rounded-full animate-bounce [animation-delay:0.4s]" />
               <span className="ml-1 font-medium text-slate-600">{statusMessage || 'PawMeet AI přemýšlí...'}</span>
             </div>
           </div>
@@ -366,7 +366,7 @@ export default function PawMeetAIPage() {
 
       {/* Pevná patka se vstupem roztažená na plnou šířku nad BottomNav */}
       <footer className="flex-shrink-0 z-30 w-full px-4 sm:px-8 pb-20 md:pb-4 pt-2">
-        <div className="relative flex items-center bg-white border border-[#dbe5d7] rounded-2xl p-2 shadow-sm focus-within:border-[#78a474] focus-within:ring-2 focus-within:ring-[#d4e3ce] transition w-full">
+        <div className="relative flex items-center bg-white border border-[#D8DDFE] rounded-2xl p-2 shadow-sm focus-within:border-[#5B5BF7] focus-within:ring-2 focus-within:ring-[#D8DDFE] transition w-full">
           <textarea
             rows={1}
             value={input}
@@ -384,7 +384,7 @@ export default function PawMeetAIPage() {
           <button
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isGenerating}
-            aria-label="Odeslat zprávu" className="flex-shrink-0 w-11 h-11 bg-[#286747] hover:bg-[#1e5037] disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition active:scale-95"
+            aria-label="Odeslat zprávu" className="flex-shrink-0 w-11 h-11 bg-[#5B5BF7] hover:bg-[#4F46E5] disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition active:scale-95"
           >
             <Send size={17} strokeWidth={1.8}/>
           </button>
