@@ -451,7 +451,7 @@ export default function LandingPage() {
                 <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#dcebd7]/70 border border-[#b9d2b0]/70 shadow-sm">
                   <span className="text-2xl font-black text-[#286747]">{averageRating}</span>
                   <div className="text-left">
-                    <div className="text-amber-400 text-xs font-bold">★ {averageRating} / 5.0</div>
+                    <div className="text-amber-500 text-xs font-semibold">{totalRatingCount > 0 ? `★ ${averageRating} / 5.0` : "Zatím bez hodnocení"}</div>
                     <div className="text-[11px] text-slate-500 font-bold" suppressHydrationWarning>
                       {loading ? 'Načítám...' : `${totalRatingCount} ${totalRatingCount === 1 ? 'recenze' : totalRatingCount >= 2 && totalRatingCount <= 4 ? 'recenze' : 'recenzí'}`}
                     </div>
