@@ -189,7 +189,7 @@ export default function PawMeetAIPage() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `${remoteNotice ? remoteNotice + '\n\n' : ''}Nepodařilo se spustit místní AI model (${reason}). Zkontroluj připojení a zkus to znovu. Serverová AI vyžaduje nakonfigurovaného poskytovatele; žádná placená služba nebyla automaticky zapnuta.`,
+        content: `Nepodařilo se spojit se serverovou AI službou (${reason}). Zkus to prosím znovu. Pokud se problém opakuje, serverová AI nemusí být nakonfigurovaná.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => {
