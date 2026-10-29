@@ -5,7 +5,7 @@ const publicExact = new Set([
   '/', '/login', '/register', '/forgot-password', '/reset-password',
   '/update-password', '/obnova-hesla', '/privacy', '/terms', '/about',
   '/contact', '/calendar', '/academy', '/trainer/offers', '/breeds',
-  '/articles', '/auth/callback',
+  '/articles', '/auth/callback', '/offline',
 ])
 
 function isPublicRoute(pathname: string) {
