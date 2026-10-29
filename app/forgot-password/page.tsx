@@ -31,13 +31,11 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-violet-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-violet-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
       <div className="max-w-md w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-auto">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block text-4xl animate-bounce mb-2">
-            🐾
-          </Link>
-          <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+          <Link href="/" className="mx-auto mb-4 inline-flex items-center justify-center"><img src="/logo.png" alt="PawMeet" className="h-14 w-14 rounded-2xl object-cover" /></Link>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] bg-clip-text text-transparent">
             Zapomenuté heslo
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
@@ -47,7 +45,7 @@ export default function ForgotPasswordPage() {
 
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
@@ -62,16 +60,16 @@ export default function ForgotPasswordPage() {
               placeholder="vas@email.cz"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+              className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-[#5B5BF7]/25 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-2 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Odesílám...' : 'Odeslat kód 📩'}
+            {loading ? 'Odesílám...' : 'Odeslat kód'}
           </button>
         </form>
 
@@ -79,7 +77,7 @@ export default function ForgotPasswordPage() {
           Zpět na{' '}
           <Link
             href="/login"
-            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1"
+            className="text-[#5B5BF7] dark:text-[#A5B4FC] font-bold hover:underline ml-1"
           >
             Přihlášení
           </Link>
