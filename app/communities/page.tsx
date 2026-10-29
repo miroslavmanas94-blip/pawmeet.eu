@@ -8,6 +8,9 @@ import { LockKeyhole, UsersRound, Plus, Compass, LoaderCircle, ShieldCheck } fro
 type CommunityGroup = {
   id: string
   name: string | null
+  description?: string | null
+  group_type?: 'community' | 'chat'
+  approval_status?: 'pending' | 'approved' | 'rejected'
   avatar_url: string | null
   is_public: boolean | null
   is_private: boolean | null
@@ -39,7 +42,7 @@ export default function CommunitiesPage() {
 
     const { data: groupData, error: groupError } = await supabase
       .from('groups')
-      .select('id, name, avatar_url, is_public, is_private, created_by, created_at')
+      .select('id, name, description, group_type, approval_status, avatar_url, is_public, is_private, created_by, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -74,6 +77,9 @@ export default function CommunitiesPage() {
       .from('groups')
       .insert({
         name: name.trim().slice(0, 80),
+        description: null,
+        group_type: 'community',
+        approval_status: 'pending',
         created_by: userId,
         is_private: isPrivate,
         is_public: !isPrivate,
@@ -95,7 +101,7 @@ export default function CommunitiesPage() {
     if (joinError) {
       setNotice('Komunita vznikla, ale nepodařilo se potvrdit členství. Obnov stránku a zkus to znovu.')
     } else {
-      setNotice(isPrivate ? 'Soukromá komunita byla vytvořena. Zatím je přístupná pouze jejímu zakladateli.' : 'Veřejná komunita byla vytvořena.')
+      setNotice('Komunita byla odeslána ke schválení. Do rozhodnutí ji uvidíš jen ty a správci PawMeet.')
     }
     setName('')
     setShowCreate(false)
@@ -220,13 +226,13 @@ export default function CommunitiesPage() {
               return <article key={group.id} className="rounded-2xl border border-[var(--pm-line)] bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#5B5BF7]">{privateGroup ? <LockKeyhole size={20}/> : <UsersRound size={20}/>}</div>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${privateGroup ? 'bg-amber-50 text-amber-800' : 'bg-[#EEF0FF] text-[#5B5BF7]'}`}>{privateGroup ? 'Soukromá' : 'Veřejná'}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${group.approval_status === 'pending' ? 'bg-amber-50 text-amber-800' : group.approval_status === 'rejected' ? 'bg-rose-50 text-rose-700' : privateGroup ? 'bg-slate-100 text-slate-700' : 'bg-[#EEF0FF] text-[#5B5BF7]'}`}>{group.approval_status === 'pending' ? 'Čeká na schválení' : group.approval_status === 'rejected' ? 'Zamítnuto' : privateGroup ? 'Soukromá' : 'Veřejná'}</span>
                 </div>
                 <h2 className="text-lg font-bold">{group.name || 'Komunita bez názvu'}</h2>
-                <p className="mt-1 text-xs text-[var(--pm-muted)]">{group.created_at ? `Vytvořeno ${new Date(group.created_at).toLocaleDateString('cs-CZ')}` : 'Komunita PawMeet'}</p>
+                {group.description && <p className="mt-2 text-sm leading-5 text-[var(--pm-muted)]">{group.description}</p>}<p className="mt-1 text-xs text-[var(--pm-muted)]">{group.created_at ? `Vytvořeno ${new Date(group.created_at).toLocaleDateString('cs-CZ')}` : 'Komunita PawMeet'}</p>
                 <div className="mt-5 flex items-center justify-between gap-3">
                   {owner ? <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B5BF7]"><ShieldCheck size={15}/> Zakladatel</span> : joined ? <span className="text-xs font-semibold text-[#5B5BF7]">Jsi členem</span> : privateGroup ? <span className="text-xs text-[var(--pm-muted)]">Pouze pro členy</span> : <span className="text-xs text-[var(--pm-muted)]">Otevřená skupina</span>}
-                  {owner ? <span className="text-xs text-[var(--pm-muted)]">Spravuješ</span> : joined ? <button type="button" disabled={saving} onClick={() => void leaveGroup(group)} className="min-h-10 rounded-lg border border-[var(--pm-line)] px-3 py-2 text-xs font-semibold hover:bg-[#f7f9f5] disabled:opacity-50">Opustit</button> : !privateGroup && <button type="button" disabled={saving} onClick={() => void joinGroup(group)} className="min-h-10 rounded-lg bg-[#5B5BF7] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Připojit se</button>}
+                  {owner ? <span className="text-xs text-[var(--pm-muted)]">{group.approval_status === 'pending' ? 'Čeká na tým PawMeet' : group.approval_status === 'rejected' ? 'Kontaktuj podporu pro další postup' : 'Spravuješ'}</span> : joined ? <button type="button" disabled={saving} onClick={() => void leaveGroup(group)} className="min-h-10 rounded-lg border border-[var(--pm-line)] px-3 py-2 text-xs font-semibold hover:bg-[#f7f9f5] disabled:opacity-50">Opustit</button> : group.approval_status === 'approved' && !privateGroup && <button type="button" disabled={saving} onClick={() => void joinGroup(group)} className="min-h-10 rounded-lg bg-[#5B5BF7] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Připojit se</button>}
                 </div>
                 {owner && privateGroup && <form onSubmit={event => { event.preventDefault(); void inviteToPrivateGroup(group) }} className="mt-4 flex gap-2 border-t border-[var(--pm-line)] pt-4">
                   <input aria-label="Uživatelské jméno člena" value={inviteUsernames[group.id] || ''} onChange={event => setInviteUsernames(current => ({ ...current, [group.id]: event.target.value }))} placeholder="@uzivatelskejmeno" className="min-w-0 flex-1 rounded-lg border border-[var(--pm-line)] px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-[#8fb58a]"/>
