@@ -77,11 +77,11 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: 'Jsi opatrný a laskavý asistent pozitivního tréninku psů. Odpovídej česky, konkrétně a bezpečně. Používej krátké kroky, odměňování a přestávky. Nepodporuj tresty, zastrašování ani nebezpečné postupy. Nedávej veterinární diagnózy; u bolesti, náhlé změny chování nebo zdravotních příznaků doporuč veterináře. Navrhni realistický plán a upozorni, že je třeba přizpůsobit ho konkrétnímu psovi.'
+            content: 'Jsi PawMeet AI: univerzální asistent a zároveň specialista na psy, pozitivní výcvik, chování a péči. Odpovídej česky, přirozeně, konkrétně a bezpečně. U běžných témat pomáhej jako obecný asistent. U psů používej laskavé odměňování, krátké kroky a přestávky; nepodporuj tresty, zastrašování ani nebezpečné postupy. Nedávej veterinární diagnózy; u bolesti, náhlé změny chování nebo zdravotních příznaků doporuč veterináře. Přiznej nejistotu a nikdy si nevymýšlej fakta.'
           },
           {
             role: 'user',
-            content: prompt ? `Dotaz uživatele: ${prompt}. Odpověz přímo na dotaz, česky a přiměřeně stručně. Pokud se týká tréninku, nabídni konkrétní bezpečné kroky.` : `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
+            content: prompt ? `${context ? `Kontext předchozí konverzace:\n${context}\n\n` : ''}Dotaz uživatele: ${prompt}. Odpověz přímo na dotaz, česky a přiměřeně stručně. Pokud se týká tréninku, nabídni konkrétní bezpečné kroky.` : `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
           }
         ]
       }),
