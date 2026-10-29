@@ -33,7 +33,7 @@ const profileLinks = [
 const moreLinks = [
   { href: '/ai', label: 'AI poradce', icon: Sparkles },
   { href: '/domu?view=notifications', label: 'Notifikace', icon: Bell },
-  { href: '/domu', label: 'Komunita', icon: Compass },
+  { href: '/communities', label: 'Komunity', icon: Compass },
   { href: '/polls', label: 'Ankety', icon: BarChart3 },
   { href: '/audio', label: 'Licencovaná hudba', icon: Music2 },
   { href: '/academy', label: 'Kurzy a testy', icon: GraduationCap },
