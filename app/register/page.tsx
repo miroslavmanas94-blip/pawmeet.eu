@@ -9,6 +9,7 @@ import Link from 'next/link'
 
 export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'exists' | 'valid'>('idle')
   const router = useRouter()
@@ -47,6 +48,7 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMsg('')
+    setSuccessMsg('')
     setLoading(true)
 
     try {
@@ -79,11 +81,8 @@ export default function RegisterPage() {
         return
       }
 
-      // 3. Generování unikátní e-mailové adresy pro Supabase Auth (umožní neomezené registrace)
-      const uniqueTag = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
-      const authEmail = rawEmail.includes('@')
-        ? rawEmail.replace('@', `+${uniqueTag}@`)
-        : `${rawEmail}+${uniqueTag}@pawmeet.local`
+      // 3. Nové účty používají skutečnou e-mailovou adresu; starší alias účty mají bezpečný kompatibilní login.
+      const authEmail = rawEmail.toLowerCase()
 
       const firstName = formData.get('firstName') as string
       const lastName = formData.get('lastName') as string
@@ -112,6 +111,16 @@ export default function RegisterPage() {
             birth_date: birthDate || null,
             city,
             bio,
+            pending_pet_profile: {
+              name: petName,
+              type: petType,
+              breed: petBreed,
+              birth_date: petBirthDate || null,
+              gender: petGender,
+              size: petSize,
+              nature: petNature,
+              activities: petActivities,
+            },
           },
         },
       })
@@ -122,26 +131,32 @@ export default function RegisterPage() {
         return
       }
 
-      // 5. Uložení údajů o mazlíčkovi do tabulky 'pets'
-      if (data.user) {
-        const { error: petError } = await supabase.from('pets').insert({
-          user_id: data.user.id,
-          name: petName,
-          type: petType,
-          breed: petBreed,
-          birth_date: petBirthDate,
-          gender: petGender,
-          size: petSize,
-          nature: petNature,
-          activities: petActivities,
-        })
-
-        if (petError) {
-          console.error('Chyba při ukládání mazlíčka:', petError.message)
-        }
+      // 5. Bez potvrzené relace čekáme na potvrzení e-mailu. Údaje o psovi zůstávají
+      // v metadata účtu a po prvním přihlášení se bezpečně doplní do profilu.
+      if (!data.session || !data.user) {
+        setSuccessMsg('Pokud lze účet vytvořit, poslali jsme na zadaný e-mail potvrzovací odkaz. Otevři e-mail a potvrď adresu; potom se přihlas.')
+        setLoading(false)
+        return
       }
 
-      // 6. Přesměrování
+      const { error: petError } = await supabase.from('pets').insert({
+        user_id: data.user.id,
+        name: petName,
+        type: petType,
+        breed: petBreed,
+        birth_date: petBirthDate || null,
+        gender: petGender,
+        size: petSize,
+        nature: petNature,
+        activities: petActivities,
+      })
+      if (!petError) {
+        await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
+      } else {
+        console.error('Chyba při ukládání mazlíčka:', petError.message)
+      }
+
+      // 6. Přesměrování pouze při existující přihlášené relaci
       router.push('/domu')
       router.refresh()
     } catch (err: any) {
@@ -165,8 +180,13 @@ export default function RegisterPage() {
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
+          <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
             {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div role="status" className="mb-6 rounded-2xl border border-[#D8DDFE] bg-[#EEF0FF] p-4 text-sm leading-6 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            {successMsg}
           </div>
         )}
 
