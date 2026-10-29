@@ -217,3 +217,42 @@ html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *::before, ht
   scroll-behavior: auto !important;
   transition-duration: .01ms !important;
 }
+
+/* PawMeet refinement: consistent type, surfaces, spacing and reduced visual noise. */
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.pm-landing-hero {
+  isolation: isolate;
+}
+.pm-landing-hero h1 {
+  letter-spacing: -0.045em;
+}
+.pm-landing-hero a,
+.pm-landing-hero button {
+  min-height: 44px;
+}
+.pm-sidebar a,
+.pm-mobile-bottom a {
+  min-height: 44px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
