@@ -659,7 +659,7 @@ function ChatContent() {
     if (msg.media_type === 'sticker') {
       const match = msg.content.match(/^\[\[pawsticker:(\d+)\]\]$/)
       const sticker = match ? PAWMEET_STICKERS[Number(match[1])] : null
-      return sticker ? <span className="inline-flex min-h-24 min-w-24 flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-[#f4f8e9] to-[#dcebd7] p-3 text-center"><span className="text-5xl">{sticker.emoji}{sticker.accent}</span><span className="mt-1 text-[10px] font-bold text-[#24563b]">{sticker.label}</span></span> : 'Samolepka'
+      return sticker ? <span className="inline-flex min-h-24 min-w-24 flex-col items-center justify-center rounded-3xl bg-gradient-to-br from-[#f4f8e9] to-[#dcebd7] p-3 text-center"><span className="text-5xl">{sticker.emoji}{sticker.accent}</span><span className="mt-1 text-[10px] font-bold text-[#5B5BF7]">{sticker.label}</span></span> : 'Samolepka'
     }
     if (msg.media_type === 'voice' && msg.media_url) return <audio controls preload="metadata" src={msg.media_url} className="max-w-full" aria-label="Hlasová zpráva" />
     if (msg.media_type === 'video' && msg.media_url) return <video controls playsInline src={msg.media_url} className="max-h-72 max-w-full rounded-2xl" />
@@ -776,7 +776,7 @@ function ChatContent() {
             </div>
             <button
               onClick={openNewChatModal}
-              className="w-10 h-10 rounded-full bg-[#286747] text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
+              className="w-10 h-10 rounded-full bg-[#5B5BF7] text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all"
             >
               <PlusIcon />
             </button>
@@ -808,7 +808,7 @@ function ChatContent() {
                       onClick={() => router.push(`/chat?groupId=${group.id}`)}
                       className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
                     >
-                      <div className="w-12 h-12 rounded-full bg-[#e8f0e3]0 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      <div className="w-12 h-12 rounded-full bg-[#EEF0FF]0 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
                         👥
                       </div>
                       <div className="flex-1 min-w-0">
@@ -839,7 +839,7 @@ function ChatContent() {
                         className="flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all text-slate-700"
                       >
                         <div className="relative shrink-0">
-                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-[#286747]">
+                          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center font-bold text-lg bg-indigo-50 text-[#5B5BF7]">
                             {contact.avatar_url ? (
                               <img src={contact.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                             ) : (
@@ -908,7 +908,7 @@ function ChatContent() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => startCall('audio')} 
-                  className="w-10 h-10 rounded-full bg-[#e8f0e3] hover:bg-[#dcebd7] text-slate-600 flex items-center justify-center transition-all active:scale-95"
+                  className="w-10 h-10 rounded-full bg-[#EEF0FF] hover:bg-[#dcebd7] text-slate-600 flex items-center justify-center transition-all active:scale-95"
                 >
                   <PhoneIcon />
                 </button>
@@ -922,7 +922,7 @@ function ChatContent() {
                   onClick={() => { window.location.href = '/calls' }}
                   title="Skupinový hovor"
                   aria-label="Spustit skupinový hovor"
-                  className="h-10 rounded-full bg-[#e8f0e3] px-3 text-xs font-semibold text-[#24563b] transition-all hover:bg-[#dbe8d5] active:scale-95"
+                  className="h-10 rounded-full bg-[#EEF0FF] px-3 text-xs font-semibold text-[#5B5BF7] transition-all hover:bg-[#dbe8d5] active:scale-95"
                 >
                   Skupina
                 </button>
@@ -930,7 +930,7 @@ function ChatContent() {
             )}
           </div>
 
-          <div className="border-b border-[#dce6d8] bg-white/70 px-4 py-2">
+          <div className="border-b border-[#E5E7EB] bg-white/70 px-4 py-2">
             <input value={messageSearch} onChange={e => setMessageSearch(e.target.value)} placeholder="Hledat ve starších zprávách…" aria-label="Hledat ve zprávách" className="w-full rounded-xl border border-[#d5e4ce] bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f2f6ed]/65">
@@ -943,7 +943,7 @@ function ChatContent() {
                       onContextMenu={(e) => handleContextMenu(e, msg)}
                       className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all select-none ${
                         isMine 
-                          ? 'bg-gradient-to-br from-[#286747] to-[#174b35] text-white rounded-br-none shadow-sm' 
+                          ? 'bg-gradient-to-br from-[#5B5BF7] to-[#0F172A] text-white rounded-br-none shadow-sm' 
                           : 'bg-white text-slate-800 rounded-bl-none border border-slate-100 shadow-xs'
                       }`}
                     >
@@ -952,8 +952,8 @@ function ChatContent() {
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 px-1 text-[10px] text-slate-400">
                       <span>{formatTimeOnly(msg.created_at)}</span>
-                      {isMine && msg.read_at && <span className="font-semibold text-[#4d8654]" title="Příjemce zprávu otevřel">Přečteno</span>}
-                      <button type="button" onClick={() => setReplyTarget(msg)} className="hover:text-[#286747]" aria-label="Odpovědět na zprávu">Odpovědět</button>
+                      {isMine && msg.read_at && <span className="font-semibold text-[#9333EA]" title="Příjemce zprávu otevřel">Přečteno</span>}
+                      <button type="button" onClick={() => setReplyTarget(msg)} className="hover:text-[#5B5BF7]" aria-label="Odpovědět na zprávu">Odpovědět</button>
                       {['❤️','🐾','👍'].map(reaction => <button key={reaction} type="button" onClick={() => void toggleMessageReaction(msg, reaction)} className="rounded-full px-1.5 py-0.5 hover:bg-[#edf3e8]" aria-label={'Reakce ' + reaction}>{reaction}{msg.reactions?.[reaction]?.length ? ' ' + msg.reactions[reaction].length : ''}</button>)}
                     </div>
                   </div>
@@ -975,8 +975,8 @@ function ChatContent() {
               <section className="mb-3 rounded-2xl border border-[#d5e4ce] bg-white/90 p-3 shadow-lg backdrop-blur-xl" aria-label={pickerMode === 'emoji' ? 'Výběr emoji' : 'Samolepky'}>
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setPickerMode('emoji')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'emoji' ? 'bg-[#286747] text-white' : 'bg-[#edf3e8] text-[#24563b]'}`}>100 emoji</button>
-                    <button type="button" onClick={() => setPickerMode('stickers')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'stickers' ? 'bg-[#286747] text-white' : 'bg-[#edf3e8] text-[#24563b]'}`}>1 000 samolepek</button>
+                    <button type="button" onClick={() => setPickerMode('emoji')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'emoji' ? 'bg-[#5B5BF7] text-white' : 'bg-[#edf3e8] text-[#5B5BF7]'}`}>100 emoji</button>
+                    <button type="button" onClick={() => setPickerMode('stickers')} className={`rounded-xl px-3 py-2 text-xs font-bold ${pickerMode === 'stickers' ? 'bg-[#5B5BF7] text-white' : 'bg-[#edf3e8] text-[#5B5BF7]'}`}>1 000 samolepek</button>
                   </div>
                   <button type="button" onClick={() => setPickerMode(null)} aria-label="Zavřít výběr" className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100">✕</button>
                 </div>
@@ -1012,7 +1012,7 @@ function ChatContent() {
               </div>
             )}
 
-            {replyTarget && <div className="mb-2 flex items-center justify-between rounded-xl border border-[#d5e4ce] bg-[#f5f8ef] px-3 py-2 text-xs text-[#24563b]"><span className="truncate">Odpovídáš na: {replyTarget.content || 'Média'}</span><button type="button" onClick={() => setReplyTarget(null)} aria-label="Zrušit odpověď" className="ml-2 font-bold">✕</button></div>}
+            {replyTarget && <div className="mb-2 flex items-center justify-between rounded-xl border border-[#d5e4ce] bg-[#f5f8ef] px-3 py-2 text-xs text-[#5B5BF7]"><span className="truncate">Odpovídáš na: {replyTarget.content || 'Média'}</span><button type="button" onClick={() => setReplyTarget(null)} aria-label="Zrušit odpověď" className="ml-2 font-bold">✕</button></div>}
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <button
                 type="button"
@@ -1022,9 +1022,9 @@ function ChatContent() {
                 <PlusIcon />
               </button>
 
-              <button type="button" onClick={() => setPickerMode(mode => mode === 'emoji' ? null : 'emoji')} aria-label="Otevřít emoji" title="100 vlastních emoji" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">☺</button>
-              <button type="button" onClick={() => setPickerMode(mode => mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#24563b] transition hover:bg-[#dcebd7]">✦</button>
-              <button type="button" onClick={() => isRecordingVoice ? stopVoiceRecording() : void startVoiceRecording()} aria-label={isRecordingVoice ? 'Ukončit hlasovou zprávu' : 'Nahrát hlasovou zprávu'} title={isRecordingVoice ? 'Ukončit nahrávání' : 'Hlasová zpráva'} className={'h-11 w-10 shrink-0 rounded-xl text-lg transition ' + (isRecordingVoice ? 'animate-pulse bg-rose-100 text-rose-700' : 'bg-[#edf3e8] text-[#24563b] hover:bg-[#dcebd7]')}>{isRecordingVoice ? '■' : '●'}</button>
+              <button type="button" onClick={() => setPickerMode(mode => mode === 'emoji' ? null : 'emoji')} aria-label="Otevřít emoji" title="100 vlastních emoji" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#5B5BF7] transition hover:bg-[#dcebd7]">☺</button>
+              <button type="button" onClick={() => setPickerMode(mode => mode === 'stickers' ? null : 'stickers')} aria-label="Otevřít samolepky" title="1 000 samolepek" className="h-11 w-10 shrink-0 rounded-xl bg-[#edf3e8] text-xl text-[#5B5BF7] transition hover:bg-[#dcebd7]">✦</button>
+              <button type="button" onClick={() => isRecordingVoice ? stopVoiceRecording() : void startVoiceRecording()} aria-label={isRecordingVoice ? 'Ukončit hlasovou zprávu' : 'Nahrát hlasovou zprávu'} title={isRecordingVoice ? 'Ukončit nahrávání' : 'Hlasová zpráva'} className={'h-11 w-10 shrink-0 rounded-xl text-lg transition ' + (isRecordingVoice ? 'animate-pulse bg-rose-100 text-rose-700' : 'bg-[#edf3e8] text-[#5B5BF7] hover:bg-[#dcebd7]')}>{isRecordingVoice ? '■' : '●'}</button>
               <input
                 type="text"
                 value={newMessage}
