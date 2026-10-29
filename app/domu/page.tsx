@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import HomeSearch from '@/components/HomeSearch'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
@@ -1441,7 +1442,7 @@ export default function HomeFeed() {
 
       {/* Horní lišta */}
       <header className="sticky top-0 z-40 w-full bg-[var(--pm-card)] border-b border-[var(--pm-line)] px-4 sm:px-8 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2"></div>
+        <HomeSearch />
 
         <div className="flex items-center gap-3">
           <button
