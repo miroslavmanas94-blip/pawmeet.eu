@@ -334,6 +334,8 @@ export default function HomeFeed() {
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [doubleTapHeartPostId, setDoubleTapHeartPostId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
+  const [pendingOfflinePosts, setPendingOfflinePosts] = useState(0)
 
   useEffect(() => {
     setIsMounted(true)
@@ -795,6 +797,67 @@ export default function HomeFeed() {
       setIsLoading(false)
     }
   }, [supabase])
+
+  const syncOfflineTextPosts = useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return
+    let queue: OfflineTextPost[] = []
+    try {
+      queue = JSON.parse(localStorage.getItem('pawmeet-offline-text-posts-v1') || '[]')
+      if (!Array.isArray(queue)) queue = []
+    } catch {
+      return
+    }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const mine = queue.filter(item => item.userId === user.id)
+    setPendingOfflinePosts(mine.length)
+    if (!mine.length) return
+
+    const completed = new Set<string>()
+    for (const item of mine) {
+      const { error } = await supabase.from('posts').insert({
+        id: item.id,
+        user_id: item.userId,
+        media_url: JSON.stringify([]),
+        media_type: 'text',
+        caption: item.payload.caption,
+        location: item.payload.location,
+        pet_tag: item.payload.pet_tag,
+        post_type: 'post',
+        alt_text: item.payload.alt_text,
+        status: 'published',
+        scheduled_at: null,
+        audience: item.payload.audience,
+      })
+      if (!error || error.code === '23505') completed.add(item.id)
+      else break
+    }
+
+    const remaining = queue.filter(item => !completed.has(item.id))
+    try { localStorage.setItem('pawmeet-offline-text-posts-v1', JSON.stringify(remaining)) } catch {}
+    setPendingOfflinePosts(remaining.filter(item => item.userId === user.id).length)
+    if (completed.size > 0) {
+      setToastMessage(completed.size === 1 ? 'Offline příspěvek byl odeslán.' : 'Odesláno ' + completed.size + ' offline příspěvků.')
+      await fetchFeedData()
+    }
+  }, [fetchFeedData, supabase])
+
+  useEffect(() => {
+    if (!isMounted) return
+    const updateOnline = () => {
+      const online = navigator.onLine
+      setIsOnline(online)
+      if (online) void syncOfflineTextPosts()
+    }
+    setIsOnline(navigator.onLine)
+    window.addEventListener('online', updateOnline)
+    window.addEventListener('offline', updateOnline)
+    void syncOfflineTextPosts()
+    return () => {
+      window.removeEventListener('online', updateOnline)
+      window.removeEventListener('offline', updateOnline)
+    }
+  }, [isMounted, syncOfflineTextPosts])
 
   useEffect(() => {
     if (!isMounted) return
@@ -1284,10 +1347,37 @@ export default function HomeFeed() {
   }
   const handlePublishContent = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!previewItems.length) return
+    if (!previewItems.length && !(createTab === 'post' && createCaption.trim())) return
 
     if (!currentUser || currentUser.id === 'guest') {
       showToast('Pro publikování příspěvků musíte být přihlášeni!')
+      return
+    }
+
+    if (!navigator.onLine && createTab === 'post' && uploadFiles.length === 0 && createCaption.trim()) {
+      try {
+        const queued: OfflineTextPost = {
+          id: crypto.randomUUID(),
+          userId: currentUser.id,
+          queuedAt: new Date().toISOString(),
+          payload: {
+            caption: createCaption.trim(),
+            location: createLocation.trim() || null,
+            pet_tag: createPetTag.trim() || null,
+            alt_text: createAltText.trim() || null,
+            audience: createAudience,
+          },
+        }
+        const existing = JSON.parse(localStorage.getItem('pawmeet-offline-text-posts-v1') || '[]')
+        const queue: OfflineTextPost[] = Array.isArray(existing) ? existing : []
+        queue.push(queued)
+        localStorage.setItem('pawmeet-offline-text-posts-v1', JSON.stringify(queue))
+        setPendingOfflinePosts(queue.filter(item => item.userId === currentUser.id).length)
+        showToast('Textový příspěvek čeká ve frontě. Po obnovení připojení se odešle.')
+        resetCreateModal()
+      } catch {
+        showToast('Příspěvek se offline nepodařilo uložit. Zkopíruj si text a zkus to znovu.')
+      }
       return
     }
 
@@ -1325,8 +1415,11 @@ export default function HomeFeed() {
         })
       }
 
-      if (uploadedMediaUrls.length === 0) {
-        throw new Error('Nepodařilo se nahrát žádný soubor')
+      if (uploadedMediaUrls.length === 0 && createTab !== 'post') {
+        throw new Error('Příběhy a Reels vyžadují alespoň jedno médium.')
+      }
+      if (uploadedMediaUrls.length === 0 && !createCaption.trim()) {
+        throw new Error('Napiš text příspěvku nebo přidej médium.')
       }
 
       const scheduledDate = scheduleAt ? new Date(scheduleAt) : null
@@ -1364,7 +1457,7 @@ export default function HomeFeed() {
         const { error: postErr } = await supabase.from('posts').insert({
           user_id: currentUser.id,
           media_url: JSON.stringify(uploadedMediaUrls),
-          media_type: createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
+          media_type: uploadedMediaUrls.length === 0 ? 'text' : createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
           caption: createCaption || null,
           location: createLocation || null,
           pet_tag: createPetTag.trim() || null,
@@ -1522,6 +1615,8 @@ export default function HomeFeed() {
           </div>
         )}
       </header>
+
+      {(!isOnline || pendingOfflinePosts > 0) && <div role="status" className="mx-auto mt-3 flex w-[calc(100%-2rem)] max-w-2xl items-center justify-between gap-3 rounded-xl border border-[var(--pm-line)] bg-[var(--pm-card)] px-3 py-2 text-xs text-[var(--pm-muted)] shadow-sm"><span>{!isOnline ? 'Offline režim: textové příspěvky bez médií lze zařadit do fronty. Soukromé zprávy se offline neukládají.' : String(pendingOfflinePosts) + ' příspěvků čeká na odeslání.'}</span>{isOnline && pendingOfflinePosts > 0 && <button type="button" onClick={() => void syncOfflineTextPosts()} className="shrink-0 font-semibold text-[var(--pm-accent)] hover:underline">Synchronizovat</button>}</div>}
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-5 pb-24 flex flex-col items-center">
         
@@ -2306,7 +2401,7 @@ export default function HomeFeed() {
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={requestCloseCreateModal} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
-                <button type="submit" disabled={isUploading || previewItems.length === 0} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
+                <button type="submit" disabled={isUploading || (previewItems.length === 0 && !(createTab === 'post' && createCaption.trim()))} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
                   {isUploading ? 'Ukládám...' : scheduleAt && createTab !== 'story' ? 'Naplánovat' : 'Publikovat'}
                 </button>
               </div>
