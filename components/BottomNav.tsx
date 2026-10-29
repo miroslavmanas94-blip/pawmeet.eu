@@ -53,7 +53,7 @@ export default function BottomNav() {
 
   return (
     <>
-      <aside className="pm-sidebar fixed inset-y-0 left-0 z-[100] hidden w-[244px] flex-col border-r border-[var(--pm-line)] px-4 py-5 lg:flex">
+      <aside className="pm-sidebar sticky top-0 z-[100] hidden h-screen w-[244px] shrink-0 self-start flex-col border-r border-[var(--pm-line)] px-4 py-5 lg:flex">
         <Link href="/domu" className="mb-8 flex items-center gap-3 rounded-2xl px-2 py-2" aria-label="PawMeet – domů">
           <img src="/logo.png" alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
           <span className="min-w-0">
