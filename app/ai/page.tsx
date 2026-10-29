@@ -26,8 +26,6 @@ const INITIAL_WELCOME: Message = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-let localTextGenerator: any = null
-
 export default function PawMeetAIPage() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string>('')
@@ -139,7 +137,6 @@ export default function PawMeetAIPage() {
     setInput('')
     setIsGenerating(true)
     setStatusMessage('Připojuji AI…')
-    let remoteNotice = ''
     const historyContext = currentMessages
       .filter(message => message.id !== 'welcome')
       .slice(-8)
@@ -166,9 +163,7 @@ export default function PawMeetAIPage() {
           setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
           return
         }
-        remoteNotice = typeof remoteData?.error === 'string' ? remoteData.error : typeof remoteData?.message === 'string' ? remoteData.message : `Serverová AI není dostupná (HTTP ${remoteResponse.status}).`
       } catch {
-        remoteNotice = 'Serverovou AI se nepodařilo kontaktovat.'
       }
 
       // No provider is configured. Do not attempt to download a large browser model
@@ -183,7 +178,7 @@ export default function PawMeetAIPage() {
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: (remoteNotice ? remoteNotice + '\\n\\n' : '') + offlineReply,
+        content: offlineReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
