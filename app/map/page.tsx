@@ -43,6 +43,8 @@ export default function PetMapPage() {
   const [isSearchingPlace, setIsSearchingPlace] = useState(false)
   const [searchedPlace, setSearchedPlace] = useState('')
   const [placeSearchError, setPlaceSearchError] = useState('')
+  const [placesMessage, setPlacesMessage] = useState('')
+  const [isLoadingPlaces, setIsLoadingPlaces] = useState(false)
 
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null)
   const [hasFittedBounds, setHasFittedBounds] = useState(false)
@@ -52,6 +54,7 @@ export default function PetMapPage() {
   const tileLayerRef = useRef<any>(null)
   const labelLayerRef = useRef<any>(null)
   const markersRef = useRef<{ [key: string]: any }>({})
+  const placesMarkersRef = useRef<any[]>([])
   const myLocationMarkerRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
   const resolvedAddressRef = useRef(false)
@@ -357,6 +360,59 @@ export default function PetMapPage() {
     })
   }, [usersLocations, currentCoords, currentUserId, isLiveTracking, hasMounted, hasFittedBounds, locationSearch])
 
+  const loadNearbyPlaces = async (category: 'dog_park' | 'veterinary' | 'pet_shop' | 'dog_friendly') => {
+    const map = mapInstanceRef.current
+    if (!map || isLoadingPlaces) return
+    const center = map.getCenter()
+    const lat = Number(center.lat).toFixed(5)
+    const lon = Number(center.lng).toFixed(5)
+    const selectors: Record<typeof category, string> = {
+      dog_park: 'nwr["leisure"="dog_park"](around:10000,LAT,LON);',
+      veterinary: 'nwr["amenity"="veterinary"](around:10000,LAT,LON);',
+      pet_shop: 'nwr["shop"="pet"](around:10000,LAT,LON);',
+      dog_friendly: 'nwr["dog"~"yes|leashed|designated",i](around:10000,LAT,LON);',
+    }
+    const query = `[out:json][timeout:20];(${selectors[category].replaceAll('LAT', lat).replaceAll('LON', lon)});out center tags 50;`
+    const categoryNames = { dog_park: 'psí parky', veterinary: 'veterináře', pet_shop: 'obchody pro zvířata', dog_friendly: 'místa označená jako vhodná pro psy' }
+    setIsLoadingPlaces(true)
+    setPlacesMessage(`Hledám ${categoryNames[category]} v okruhu 10 km…`)
+    try {
+      // Overpass is queried only after a user action; no background scanning or bulk requests.
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: `data=${encodeURIComponent(query)}`,
+      })
+      if (!response.ok) throw new Error('Veřejné vyhledávání míst je dočasně přetížené.')
+      const result = await response.json()
+      const elements = Array.isArray(result?.elements) ? result.elements : []
+      const L = await import('leaflet')
+      placesMarkersRef.current.forEach(marker => map.removeLayer(marker))
+      placesMarkersRef.current = []
+      for (const element of elements) {
+        const placeLat = Number(element.lat ?? element.center?.lat)
+        const placeLon = Number(element.lon ?? element.center?.lon)
+        if (!Number.isFinite(placeLat) || !Number.isFinite(placeLon)) continue
+        const name = typeof element.tags?.name === 'string' ? element.tags.name : categoryNames[category]
+        const popup = document.createElement('div')
+        const title = document.createElement('strong')
+        title.textContent = name
+        popup.appendChild(title)
+        const detail = document.createElement('div')
+        detail.textContent = [element.tags?.['addr:street'], element.tags?.['addr:housenumber'], element.tags?.['addr:city']].filter(Boolean).join(' ')
+        if (detail.textContent) popup.appendChild(detail)
+        const marker = L.circleMarker([placeLat, placeLon], { radius: 7, color: '#286747', fillColor: '#78a474', fillOpacity: 0.9, weight: 2 }).addTo(map)
+        marker.bindPopup(popup)
+        placesMarkersRef.current.push(marker)
+      }
+      setPlacesMessage(elements.length ? `Nalezeno ${placesMarkersRef.current.length} míst v okruhu 10 km. Zdroj: OpenStreetMap.` : 'V okruhu 10 km jsme nenašli žádná odpovídající místa. Zkus přesunout mapu nebo jinou kategorii.')
+    } catch (error) {
+      setPlacesMessage(error instanceof Error ? error.message : 'Místa se nepodařilo načíst. Zkus to za chvíli.')
+    } finally {
+      setIsLoadingPlaces(false)
+    }
+  }
+
   const searchMapPlace = async () => {
     const query = locationSearch.trim()
     if (!query || !mapInstanceRef.current || isSearchingPlace) return
@@ -457,6 +513,13 @@ export default function PetMapPage() {
           <div className="flex items-center gap-2 px-2"><span className="text-[#477353]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void searchMapPlace()}}} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#174b35] outline-none placeholder:text-slate-400"/><button type="button" onClick={()=>void searchMapPlace()} disabled={!locationSearch.trim()||isSearchingPlace} className="rounded-xl bg-[#286747] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSearchingPlace?'Hledám…':'Najít místo'}</button></div>
           {searchedPlace&&<div className="px-3 pb-2 text-[11px] text-[#286747]">Mapa: {searchedPlace}</div>}
           {placeSearchError&&<p role="status" className="px-3 pb-2 text-xs text-red-700">{placeSearchError}</p>}
+          <div className="flex flex-wrap gap-1.5 border-t border-[#dce6d8] px-2 pt-2">
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_park')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Psí parky</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('veterinary')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Veterináři</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('pet_shop')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Obchody</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_friendly')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Dog-friendly</button>
+          </div>
+          {placesMessage&&<p role="status" className="px-3 pt-2 text-[11px] text-slate-600">{placesMessage}</p>}
           {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#dce6d8] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#e8f0e3]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#dcebd7] text-xs font-bold text-[#24563b]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#174b35]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
         </div>
       </div>
