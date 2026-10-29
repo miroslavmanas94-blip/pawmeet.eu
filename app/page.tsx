@@ -2,15 +2,15 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowRight, MapPin, Users, MessageCircle, CalendarDays, BookOpen, ShieldCheck, PawPrint, Menu, X, Heart, Compass } from 'lucide-react'
+import { ArrowRight, Users, MessageCircle, ShieldCheck, PawPrint, Menu, X, Heart, UserRound, Dog, LockKeyhole, Sparkles } from 'lucide-react'
 
 const features = [
-  { icon: MapPin, title: 'Místa pro společné procházky', text: 'Objevujte okolí, zajímavá místa a tipy od dalších pejskařů.', href: '/map' },
-  { icon: Users, title: 'Pejskaři ve vašem okolí', text: 'Poznávejte lidi, kteří mají rádi psy stejně jako vy.', href: '/community' },
-  { icon: MessageCircle, title: 'Domluva bez zmatků', text: 'Mějte prostor pro zprávy a plánování společných setkání.', href: '/messages' },
-  { icon: CalendarDays, title: 'Akce a společné venčení', text: 'Najděte událost nebo dejte ostatním vědět, že vyrážíte ven.', href: '/calendar' },
-  { icon: BookOpen, title: 'Rady pro každodenní život', text: 'Čtěte články a praktické informace o péči a soužití se psem.', href: '/articles' },
-  { icon: ShieldCheck, title: 'Soukromí pod kontrolou', text: 'Rozhodujte sami, co o sobě sdílíte. Poloha se nesdílí automaticky.', href: '/privacy' },
+  { icon: UserRound, title: 'Váš pejskařský profil', text: 'Představte sebe i svého parťáka a sdílejte jen to, co sami chcete.', href: '/profile' },
+  { icon: Users, title: 'Komunita pejskařů', text: 'Poznávejte lidi, kteří mají rádi psy stejně jako vy.', href: '/community' },
+  { icon: MessageCircle, title: 'Zprávy a domluva', text: 'Domluvte si společné venčení a zůstaňte v kontaktu.', href: '/messages' },
+  { icon: Dog, title: 'Profily vašich psů', text: 'Mějte informace o svých psech přehledně na jednom místě.', href: '/dogs' },
+  { icon: Sparkles, title: 'Pomocník PawMeet AI', text: 'Získejte inspiraci pro každodenní soužití a trénink.', href: '/ai' },
+  { icon: LockKeyhole, title: 'Soukromí pod kontrolou', text: 'Rozhodujte sami, co o sobě sdílíte a co zůstane soukromé.', href: '/privacy' },
 ]
 
 export default function LandingPage() {
@@ -28,9 +28,6 @@ export default function LandingPage() {
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
           <nav className={`pm-nav ${menuOpen ? 'is-open' : ''}`} aria-label="Hlavní navigace">
-            <Link href="/map" onClick={() => setMenuOpen(false)}>Mapa</Link>
-            <Link href="/calendar" onClick={() => setMenuOpen(false)}>Akce</Link>
-            <Link href="/articles" onClick={() => setMenuOpen(false)}>Poradna</Link>
             <Link href="/about" onClick={() => setMenuOpen(false)}>O PawMeet</Link>
             <div className="pm-nav-actions">
               <Link href="/login" className="pm-login" onClick={() => setMenuOpen(false)}>Přihlásit se</Link>
@@ -48,7 +45,7 @@ export default function LandingPage() {
             <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá objevovat místa na venčení a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
             <div className="pm-hero-actions">
               <Link href="/register" className="pm-button">Přidat se k PawMeet <ArrowRight size={18} /></Link>
-              <Link href="/map" className="pm-button pm-button-outline"><Compass size={18} /> Prozkoumat možnosti</Link>
+              <Link href="#moznosti" className="pm-button pm-button-outline">Jak PawMeet funguje <ArrowRight size={17} /></Link>
             </div>
             <div className="pm-trust-line"><ShieldCheck size={17} /> Vaše soukromí. Vaše pravidla. Vaše tempo.</div>
           </div>
@@ -57,7 +54,7 @@ export default function LandingPage() {
             <div className="pm-art-path" />
             <div className="pm-art-hill pm-art-hill-back" />
             <div className="pm-art-hill pm-art-hill-front" />
-            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><MapPin size={18} /></span><span><strong>Nová místa</strong><small>Blíž k přírodě</small></span></div>
+            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><MapPin size={18} /></span><span><strong>Noví parťáci</strong><small>Blíž k přírodě</small></span></div>
             <div className="pm-dog-illustration"><PawPrint size={76} strokeWidth={1.35} /></div>
             <div className="pm-art-card pm-art-card-bottom"><span className="pm-avatar-stack"><i>A</i><i>M</i><i>K</i></span><span><strong>Procházky ve dvou i ve smečce</strong><small>Začněte jednoduše</small></span></div>
           </div>
@@ -67,7 +64,7 @@ export default function LandingPage() {
       <section className="pm-intro pm-section">
         <div className="pm-container pm-intro-inner">
           <div><p className="pm-kicker">MÉNĚ HLEDÁNÍ. VÍC SPOLEČNÝCH CHVIL.</p><h2>Pejskařský život je lepší, když na něj nejste sami.</h2></div>
-          <p className="pm-intro-text">Někdy hledáte nový park. Jindy parťáka na procházku, inspiraci nebo akci v okolí. PawMeet chce mít tyhle možnosti přehledně na jednom místě — bez složitého ovládání.</p>
+          <p className="pm-intro-text">Ať chcete poznat nové pejskaře, představit svého psa nebo si domluvit společné venčení, PawMeet vám pomůže udržet důležité věci přehledně na jednom místě.</p>
         </div>
       </section>
 
@@ -90,20 +87,20 @@ export default function LandingPage() {
           <div className="pm-steps-copy"><p className="pm-kicker">ZAČÍT JE JEDNODUCHÉ</p><h2>Nová psí přátelství začínají malým krokem.</h2><p>Nemusíte hned vyplňovat dlouhý profil ani sdílet osobní údaje. Začněte tím, co právě potřebujete.</p><Link href="/register" className="pm-text-link">Vytvořit si účet <ArrowRight size={17} /></Link></div>
           <div className="pm-steps-list">
             <div className="pm-step"><span>01</span><div><h3>Přidejte se</h3><p>Vytvořte si účet a nastavte si profil podle sebe.</p></div></div>
-            <div className="pm-step"><span>02</span><div><h3>Prozkoumejte okolí</h3><p>Podívejte se na dostupné možnosti, místa a komunitní obsah.</p></div></div>
+            <div className="pm-step"><span>02</span><div><h3>Prozkoumejte okolí</h3><p>Prohlédněte si profily a najděte lidi se stejným zájmem.</p></div></div>
             <div className="pm-step"><span>03</span><div><h3>Vyrazte ven</h3><p>Domluvte se s ostatními a užijte si společný čas se svým psem.</p></div></div>
           </div>
         </div>
       </section>
 
       <section className="pm-cta-section">
-        <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Tak kam vyrazíte příště?</h2><p>Připojte se ke komunitě a udělejte z další procházky příležitost k novému setkání.</p><Link href="/register" className="pm-button pm-button-light">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
+        <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Poznejte svou novou smečku.</h2><p>Vytvořte si profil a začněte budovat nová pejskařská přátelství.</p><Link href="/register" className="pm-button pm-button-light">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
       </section>
 
       <footer className="pm-footer">
         <div className="pm-container pm-footer-top">
           <div className="pm-footer-brand"><Link href="/" className="pm-brand"><span className="pm-logo"><PawPrint size={23} /></span><span>PawMeet<span className="pm-brand-dot">.</span></span></Link><p>Spojujeme pejskaře po celé republice.</p></div>
-          <div className="pm-footer-links"><div><strong>Objevujte</strong><Link href="/map">Mapa pejskařů</Link><Link href="/calendar">Akce</Link><Link href="/articles">Články a poradna</Link><Link href="/breeds">Katalog plemen</Link></div><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
+          <div className="pm-footer-links"><div><strong>Komunita</strong><Link href="/community">Pejskaři</Link><Link href="/dogs">Profily psů</Link><Link href="/messages">Zprávy</Link><Link href="/ai">PawMeet AI</Link></div><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
         </div>
         <div className="pm-container pm-footer-bottom"><span>© {new Date().getFullYear()} PawMeet.eu</span><span>Vytvořeno pro lepší společné chvíle.</span></div>
       </footer>
