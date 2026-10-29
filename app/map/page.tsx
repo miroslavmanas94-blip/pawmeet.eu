@@ -104,7 +104,7 @@ export default function PetMapPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('user_locations')
-      .select('user_id, latitude, longitude, address, is_active, updated_at, profiles(username, avatar_url, avatar, pet_name, dog_name, pet_type, dog_breed, pet_gender, dog_gender, bio, age, instagram)')
+      .select('user_id, latitude, longitude, address, is_active, updated_at, profiles(username, avatar_url, bio, display_name, full_name)')
       .eq('is_active', true)
 
     if (error) {
@@ -112,7 +112,31 @@ export default function PetMapPage() {
     }
 
     if (data) {
-      setUsersLocations(data as any)
+      const userIds = data.map((location: any) => location.user_id).filter(Boolean)
+      let petsByUser = new Map<string, { name?: string; type?: string; breed?: string; gender?: string }>()
+      if (userIds.length > 0) {
+        const { data: pets } = await supabase
+          .from('pets')
+          .select('user_id, name, type, breed, gender')
+          .in('user_id', userIds)
+        petsByUser = new Map((pets || []).map((pet: any) => [pet.user_id, pet]))
+      }
+
+      setUsersLocations(data.map((location: any) => {
+        const pet = petsByUser.get(location.user_id)
+        return {
+          ...location,
+          profiles: {
+            ...(location.profiles || {}),
+            pet_name: pet?.name,
+            dog_name: pet?.name,
+            pet_type: pet?.breed || pet?.type,
+            dog_breed: pet?.breed || pet?.type,
+            pet_gender: pet?.gender,
+            dog_gender: pet?.gender,
+          },
+        }
+      }) as UserLocation[])
     }
   }
 
