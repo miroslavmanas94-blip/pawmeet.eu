@@ -12,6 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#5B5BF7',
     lang: 'cs-CZ',
     icons: [
+      { src: '/pawmeet-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
       { src: '/logo.png', sizes: 'any', type: 'image/png', purpose: 'any' },
     ],
   }
