@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import BottomNav from '@/components/BottomNav'
+import { Sparkles, MessageCircle, PawPrint, Trash2, Send, Menu, X } from 'lucide-react'
 
 interface Message {
   id: string
@@ -22,7 +23,7 @@ interface ChatSession {
 const INITIAL_WELCOME: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Ahoj! Vítá tě PawMeet AI 🐾 – tvůj chytrý zvířecí parťák. Můžeš se mě zeptat na cokoli: od běžného povídání přes péči o mazlíčky až po zdraví, výcvik a chování jakéhokoliv zvířete na světě. S čím ti dnes pomůžu?',
+  content: 'Ahoj, jsem PawMeet AI. Pomůžu ti s výcvikem, chováním a péčí o psa i s běžnými otázkami mimo kynologii. U zdravotních potíží nenahrazuji veterináře. S čím dnes potřebuješ poradit?',
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -222,63 +223,58 @@ export default function PawMeetAIPage() {
   }
 
   return (
-    <div className="h-[100dvh] w-full bg-emerald-50/40 text-slate-800 font-sans antialiased flex flex-col overflow-hidden pb-16 md:pb-0 md:pl-[240px] xl:md:pl-[260px]">
+    <div className="h-[100dvh] w-full bg-[#f7f9f5] text-[#183f2c] font-sans antialiased flex flex-col overflow-hidden pb-16 md:pb-0 md:pl-[240px] xl:md:pl-[260px]">
       
       {/* Pevná hlavička přes celou zbývající šířku */}
-      <header className="flex-shrink-0 z-40 bg-white/90 backdrop-blur-xl border-b border-emerald-100 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-sm w-full">
+      <header className="flex-shrink-0 z-40 bg-white border-b border-[#e2e8df] px-4 sm:px-8 py-3.5 flex items-center justify-between w-full">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-md shadow-emerald-500/20">
-            <span className="text-xl text-white">🐾</span>
+          <div className="w-10 h-10 rounded-xl bg-[#edf4e9] border border-[#d4e3ce] flex items-center justify-center text-[#286747]">
+            <Sparkles size={20} strokeWidth={1.8}/>
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-slate-900">PawMeet AI</h1>
-            <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Pro všechna zvířata světa
-            </p>
+            <h1 className="text-base font-bold tracking-tight text-[#183f2c]">PawMeet AI</h1>
+            <p className="text-[11px] text-slate-500">Psí specialista i univerzální asistent</p>
           </div>
         </div>
 
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold transition flex items-center gap-2 text-xs shadow-sm"
+          className="min-h-11 p-2.5 rounded-xl bg-white hover:bg-[#f7f9f5] text-[#286747] border border-[#dbe5d7] font-semibold transition flex items-center gap-2 text-xs"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16m-7 6h7" />
-          </svg>
+          <Menu size={16} strokeWidth={1.8}/>
           <span>Historie chatů</span>
         </button>
       </header>
 
       {/* Overlay pro sidebar */}
       <div 
-        className={`fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm transition-opacity ${
+        className={`fixed inset-0 z-50 bg-[#183f2c]/25 backdrop-blur-sm transition-opacity ${
           isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
       {/* Sidebar historie */}
-      <aside className={`fixed top-0 right-0 z-50 h-full w-80 bg-white shadow-2xl border-l border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col justify-between ${
+      <aside className={`fixed top-0 right-0 z-50 h-full w-80 max-w-[90vw] bg-white shadow-xl border-l border-[#e2e8df] transform transition-transform duration-300 ease-in-out flex flex-col justify-between ${
         isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-emerald-50/50">
+        <div className="p-4 border-b border-[#e2e8df] flex items-center justify-between bg-[#f7f9f5]">
           <div className="flex items-center gap-2">
-            <span className="text-lg">💬</span>
-            <h2 className="font-bold text-slate-800 text-sm">Moje Chaty</h2>
+            <MessageCircle size={17} className="text-[#286747]"/>
+            <h2 className="font-bold text-[#183f2c] text-sm">Historie konverzací</h2>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            aria-label="Zavřít historii" className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
           >
-            ✕
+            <X size={17}/>
           </button>
         </div>
 
         <div className="p-3">
           <button
             onClick={createNewChat}
-            className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition"
+            className="w-full min-h-11 py-2.5 px-4 rounded-xl bg-[#286747] hover:bg-[#1e5037] text-white font-semibold text-xs flex items-center justify-center gap-2 transition"
           >
             <span>+</span> Nová konverzace
           </button>
@@ -299,7 +295,7 @@ export default function PawMeetAIPage() {
               }`}
             >
               <div className="flex items-center gap-2.5 truncate">
-                <span className="text-sm">🐾</span>
+                <MessageCircle size={16} className="shrink-0 text-[#286747]"/>
                 <div className="truncate">
                   <p className="truncate">{s.title}</p>
                   <span className="text-[10px] text-slate-400 font-normal">{s.createdAt}</span>
@@ -308,17 +304,17 @@ export default function PawMeetAIPage() {
 
               <button
                 onClick={(e) => deleteChat(e, s.id)}
-                title="Smazat chat"
+                title="Smazat chat" aria-label="Smazat chat"
                 className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition"
               >
-                🗑️
+                <Trash2 size={15}/>
               </button>
             </div>
           ))}
         </div>
 
         <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400 text-center">
-          PawMeet AI • Všechna zvířata světa
+          PawMeet AI · Tvoje konverzace
         </div>
       </aside>
 
@@ -332,15 +328,15 @@ export default function PawMeetAIPage() {
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm ${
               msg.role === 'user'
                 ? 'bg-slate-800 text-white'
-                : 'bg-gradient-to-tr from-emerald-500 to-teal-600 text-white'
+                : 'bg-[#edf4e9] text-[#286747] border border-[#d4e3ce]'
             }`}>
-              {msg.role === 'user' ? 'Vy' : '🐾'}
+              {msg.role === 'user' ? 'Vy' : <PawPrint size={15}/ >}
             </div>
 
             <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
               msg.role === 'user'
-                ? 'bg-emerald-600 text-white rounded-tr-none shadow-md'
-                : 'bg-white text-slate-800 border border-slate-200/80 rounded-tl-none shadow-sm'
+                ? 'bg-[#286747] text-white rounded-tr-none'
+                : 'bg-white text-[#183f2c] border border-[#e2e8df] rounded-tl-none'
             }`}>
               <p className="whitespace-pre-wrap">{msg.content}</p>
               <span className={`block text-[10px] mt-1.5 text-right ${
@@ -354,13 +350,13 @@ export default function PawMeetAIPage() {
 
         {isGenerating && (
           <div className="flex items-start gap-3 flex-row w-full">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-xs font-bold text-white shadow-sm animate-pulse">
-              🐾
+            <div className="w-8 h-8 rounded-xl bg-[#edf4e9] border border-[#d4e3ce] flex items-center justify-center text-[#286747] animate-pulse">
+              <PawPrint size={15}/>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 text-xs text-slate-500 flex items-center gap-2 shadow-sm">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
-              <span className="w-2 h-2 bg-teal-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-              <span className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+              <span className="w-2 h-2 bg-[#78a474] rounded-full animate-bounce [animation-delay:0.2s]" />
+              <span className="w-2 h-2 bg-[#b9d2b0] rounded-full animate-bounce [animation-delay:0.4s]" />
               <span className="ml-1 font-medium text-slate-600">{statusMessage || 'PawMeet AI přemýšlí...'}</span>
             </div>
           </div>
@@ -371,7 +367,7 @@ export default function PawMeetAIPage() {
 
       {/* Pevná patka se vstupem roztažená na plnou šířku nad BottomNav */}
       <footer className="flex-shrink-0 z-30 w-full px-4 sm:px-8 pb-20 md:pb-4 pt-2">
-        <div className="relative flex items-center bg-white/90 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-2 shadow-xl focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition w-full">
+        <div className="relative flex items-center bg-white border border-[#dbe5d7] rounded-2xl p-2 shadow-sm focus-within:border-[#78a474] focus-within:ring-2 focus-within:ring-[#d4e3ce] transition w-full">
           <textarea
             rows={1}
             value={input}
@@ -382,18 +378,16 @@ export default function PawMeetAIPage() {
                 handleSendMessage()
               }
             }}
-            placeholder="Zeptej se na cokoliv o zvířatech..."
+            placeholder="Napiš dotaz na psa nebo cokoli dalšího…"
             className="w-full bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 px-3 py-2 outline-none resize-none max-h-32"
           />
 
           <button
             onClick={() => handleSendMessage()}
             disabled={!input.trim() || isGenerating}
-            className="flex-shrink-0 w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition shadow-md active:scale-95"
+            aria-label="Odeslat zprávu" className="flex-shrink-0 w-11 h-11 bg-[#286747] hover:bg-[#1e5037] disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition active:scale-95"
           >
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3 21l18-9L3 3l3 9zm0 0h7" />
-            </svg>
+            <Send size={17} strokeWidth={1.8}/>
           </button>
         </div>
       </footer>
