@@ -713,7 +713,10 @@ function ChatContent() {
       .insert({
         name: groupName.trim(),
         description: groupDescription.trim() || null,
-        is_private: groupType === 'private',
+        group_type: 'chat',
+        approval_status: 'approved',
+        is_private: true,
+        is_public: false,
         created_by: currentUserId
       })
       .select()
