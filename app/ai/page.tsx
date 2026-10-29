@@ -35,6 +35,7 @@ export default function PawMeetAIPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -137,17 +138,24 @@ export default function PawMeetAIPage() {
 
     setInput('')
     setIsGenerating(true)
+    setStatusMessage('Připojuji AI…')
+    let remoteNotice = ''
+    const historyContext = currentMessages
+      .filter(message => message.id !== 'welcome')
+      .slice(-8)
+      .map(message => `${message.role === 'user' ? 'Uživatel' : 'PawMeet AI'}: ${message.content}`)
+      .join('\\n')
+      .slice(-1200)
 
     try {
-      // Prefer a configured server-side provider. Credentials stay on the server;
-      // if none is configured, continue with the existing in-browser model.
+      // Server-side AI is optional; provider credentials remain server-side.
       try {
         const remoteResponse = await fetch('/api/ai/coach', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: promptText }),
+          body: JSON.stringify({ prompt: promptText, context: historyContext }),
         })
-        const remoteData = await remoteResponse.json()
+        const remoteData = await remoteResponse.json().catch(() => ({}))
         if (remoteResponse.ok && typeof remoteData?.answer === 'string' && remoteData.answer.trim()) {
           const assistantMsg: Message = {
             id: (Date.now() + 1).toString(),
@@ -158,11 +166,13 @@ export default function PawMeetAIPage() {
           setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
           return
         }
+        remoteNotice = typeof remoteData?.error === 'string' ? remoteData.error : typeof remoteData?.message === 'string' ? remoteData.message : `Serverová AI není dostupná (HTTP ${remoteResponse.status}).`
       } catch {
-        // Offline or provider not configured: use the local browser model below.
+        remoteNotice = 'Serverovou AI se nepodařilo kontaktovat.'
       }
 
-      // Model is downloaded and executed locally in this browser when server AI is unavailable.
+      // Free local inference: the model runs in the visitor's browser.
+      setStatusMessage('Načítám místní AI model. První spuštění může chvíli trvat…')
       if (!localTextGenerator) {
         const transformers = await import('@huggingface/transformers')
         localTextGenerator = await transformers.pipeline(
@@ -171,15 +181,16 @@ export default function PawMeetAIPage() {
           { dtype: 'q4' }
         )
       }
-      const localPrompt = `You are PawMeet, a helpful Czech dog-care assistant. Answer in Czech, clearly and safely. For urgent symptoms advise a veterinarian; never diagnose with certainty.\n\nUser: ${promptText}\nAssistant:`
-      const generated = await localTextGenerator(localPrompt, { max_new_tokens: 180, temperature: 0.65, do_sample: true })
+      setStatusMessage('Připravuji odpověď…')
+      const localPrompt = `Jsi PawMeet AI, univerzální asistent a specialista na psy. Odpovídej česky, přirozeně, užitečně a bezpečně. U psů podporuj pozitivní trénink bez trestů a zastrašování. Nedávej jisté veterinární diagnózy; u naléhavých příznaků doporuč veterináře.\\n\\nPředchozí konverzace:\\n${historyContext || 'Žádná'}\\n\\nUživatel: ${promptText}\\nPawMeet AI:`
+      const generated = await localTextGenerator(localPrompt, { max_new_tokens: 220, temperature: 0.65, do_sample: true })
       const raw = generated?.[0]?.generated_text
-      const reply = typeof raw === 'string' ? raw.slice(raw.lastIndexOf('Assistant:') + 'Assistant:'.length).trim() : ''
+      const reply = typeof raw === 'string' ? raw.slice(raw.lastIndexOf('PawMeet AI:') + 'PawMeet AI:'.length).trim() : ''
 
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: reply || 'Omlouvám se, ale nepodařilo se mi získat odpověď.',
+        content: reply || 'Omlouvám se, místní model vrátil prázdnou odpověď. Zkus dotaz formulovat jinak.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
 
@@ -191,10 +202,11 @@ export default function PawMeetAIPage() {
       }))
     } catch (err: any) {
       console.error(err)
+      const reason = err instanceof Error ? err.message.slice(0, 180) : 'neznámá chyba'
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Lokální model se nepodařilo spustit. Zkontroluj připojení kvůli prvnímu stažení modelu a zkus to znovu. Model běží v prohlížeči a první načtení může trvat déle.',
+        content: `${remoteNotice ? remoteNotice + '\\n\\n' : ''}Nepodařilo se spustit místní AI model (${reason}). Zkontroluj připojení a zkus to znovu. Serverová AI vyžaduje nakonfigurovaného poskytovatele; žádná placená služba nebyla automaticky zapnuta.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => {
@@ -205,6 +217,7 @@ export default function PawMeetAIPage() {
       }))
     } finally {
       setIsGenerating(false)
+      setStatusMessage('')
     }
   }
 
@@ -348,7 +361,7 @@ export default function PawMeetAIPage() {
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
               <span className="w-2 h-2 bg-teal-500 rounded-full animate-bounce [animation-delay:0.2s]" />
               <span className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce [animation-delay:0.4s]" />
-              <span className="ml-1 font-medium text-slate-600">PawMeet AI přemýšlí...</span>
+              <span className="ml-1 font-medium text-slate-600">{statusMessage || 'PawMeet AI přemýšlí...'}</span>
             </div>
           </div>
         )}
