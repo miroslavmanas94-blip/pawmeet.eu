@@ -20,11 +20,8 @@ function isRateLimited(key: string) {
 }
 
 export async function POST(request: Request) {
-  const forwardedFor = request.headers.get('x-forwarded-for') || ''
+  const forwardedFor = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || ''
   const ip = forwardedFor.split(',')[0]?.trim() || 'unknown'
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: 'Příliš mnoho pokusů. Počkej chvíli a zkus to znovu.' }, { status: 429 })
-  }
 
   let body: { email?: unknown; password?: unknown }
   try {
@@ -38,12 +35,18 @@ export async function POST(request: Request) {
   if (!email || !email.includes('@') || !password || password.length > 1024) {
     return NextResponse.json({ error: 'E-mail nebo heslo nejsou správné.' }, { status: 400 })
   }
+  if (isRateLimited(ip + ':' + email)) {
+    return NextResponse.json({ error: 'Příliš mnoho pokusů. Počkej chvíli a zkus to znovu.' }, { status: 429 })
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !anonKey || !serviceKey) {
-    return NextResponse.json({ error: 'Obnovení staršího přihlášení není momentálně dostupné.' }, { status: 503 })
+  if (!url || !anonKey) {
+    return NextResponse.json({ error: 'Přihlášení není momentálně nakonfigurované.' }, { status: 503 })
+  }
+  if (!serviceKey) {
+    return NextResponse.json({ error: 'E-mail nebo heslo nejsou správné.' }, { status: 401 })
   }
 
   try {
