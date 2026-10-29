@@ -1,5 +1,5 @@
 const CACHE_NAME = 'pawmeet-public-shell-v1'
-const STATIC_PATHS = ['/logo.png', '/manifest.webmanifest', '/favicon.ico']
+const STATIC_PATHS = ['/logo.png', '/manifest.webmanifest', '/favicon.ico', '/offline']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
