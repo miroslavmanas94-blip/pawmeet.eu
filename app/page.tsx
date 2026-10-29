@@ -26,7 +26,7 @@ function PawLogo({ className = "w-10 h-10" }: { className?: string }) {
     <img 
       src="/logo.png" 
       alt="PawMeet Logo" 
-      className={`rounded-2xl shadow-xl shadow-emerald-500/10 object-cover shrink-0 border border-[#C7C9FF]/70 ${className}`}
+      className={`rounded-2xl shadow-xl shadow-[#5B5BF7]/10 object-cover shrink-0 border border-[#C7C9FF]/70 ${className}`}
     />
   )
 }
@@ -177,7 +177,7 @@ export default function LandingPage() {
       mockupContent: (
         <div className="space-y-3.5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#0F172A] p-0.5 shadow-md">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#5B5BF7] via-[#9333EA] to-[#0F172A] p-0.5 shadow-md">
               <div className="w-full h-full bg-[#EEF0FF] text-[#5B5BF7] rounded-full flex items-center justify-center"><PawPrint size={18}/></div>
             </div>
             <div>
@@ -185,7 +185,7 @@ export default function LandingPage() {
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Zlatý retrívr • 2 roky</p>
             </div>
           </div>
-          <div className="h-40 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-green-500/10 to-lime-500/10 border border-[#C7C9FF]/70 flex items-center justify-center text-[#5B5BF7] text-xs font-bold shadow-inner">
+          <div className="h-40 rounded-2xl bg-gradient-to-br from-[#5B5BF7]/10 via-[#9333EA]/10 to-[#EEF0FF]/10 border border-[#C7C9FF]/70 flex items-center justify-center text-[#5B5BF7] text-xs font-bold shadow-inner">
             Ilustrační ukázka psí procházky
           </div>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium px-1">
@@ -211,7 +211,7 @@ export default function LandingPage() {
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 text-xs font-semibold">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 text-xs font-semibold">
             <span className="text-slate-700 dark:text-slate-300">Park Riegrovy sady</span>
             <span className="text-emerald-700 font-semibold">Informace o místě</span>
           </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
           <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium">
             ❓ Kolik granulí by měl denně dostat 15kg pes?
           </div>
-          <div className="p-3.5 rounded-xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
+          <div className="p-3.5 rounded-xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-medium space-y-1 shadow-sm">
             <p className="font-bold text-[#5B5BF7] flex items-center gap-1.5">
               <PawPrint size={16}/> AI odpověď:
             </p>
@@ -267,22 +267,31 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="relative min-h-screen w-full overflow-y-auto bg-[#f5f5e9] text-[#0F172A] font-sans transition-colors duration-300 selection:bg-[#b9d7ad] selection:text-[#0F172A] flex flex-col items-center">
+    <div className="relative min-h-screen w-full overflow-y-auto bg-[var(--pm-page)] text-[#0F172A] font-sans transition-colors duration-300 selection:bg-[#D8DDFE] selection:text-[#0F172A] flex flex-col items-center">
       
       {/* Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-[#8fb985]/35 via-[#b4cfa7]/30 to-[#e2e9cf]/30 blur-[140px] pointer-events-none rounded-full" />
-      <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#dcebd7]/70 blur-[150px] pointer-events-none rounded-full" />
-      <div className="absolute top-[75%] left-[-10%] w-[500px] h-[500px] bg-[#d8e6d1]/70 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[600px] bg-gradient-to-tr from-[#5B5BF7]/20 via-[#9333EA]/15 to-[#EEF0FF]/20 blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#EEF0FF]/70 blur-[150px] pointer-events-none rounded-full" />
+      <div className="absolute top-[75%] left-[-10%] w-[500px] h-[500px] bg-[#EEF0FF]/70 blur-[150px] pointer-events-none rounded-full" />
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-white/70 dark:bg-slate-950/75 border-b border-slate-200/60 dark:border-slate-800/80 transition-all">
         <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center w-full">
           <Link href="/" className="flex items-center gap-3 group">
             <PawLogo className="w-10 h-10 transition-transform group-hover:scale-105" />
-            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-[#5B5BF7] via-[#43845a] to-[#9abf88] dark:from-emerald-400 dark:via-green-300 dark:to-lime-400 bg-clip-text text-transparent">
+            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-[#5B5BF7] via-[#9333EA] to-[#0F172A] dark:from-[#A5B4FC] dark:via-[#C4B5FD] dark:to-[#F8FAFC] bg-clip-text text-transparent">
               PawMeet
             </span>
           </Link>
+
+          <nav aria-label="Veřejné stránky" className="hidden xl:flex items-center gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <Link href="/academy" className="hover:text-[var(--pm-accent)]">Akademie</Link>
+            <Link href="/calendar" className="hover:text-[var(--pm-accent)]">Akce</Link>
+            <Link href="/breeds" className="hover:text-[var(--pm-accent)]">Plemena</Link>
+            <Link href="/articles" className="hover:text-[var(--pm-accent)]">Poradna</Link>
+            <Link href="/about" className="hover:text-[var(--pm-accent)]">O nás</Link>
+            <Link href="/contact" className="hover:text-[var(--pm-accent)]">Kontakt</Link>
+          </nav>
 
           <div className="flex items-center gap-3">
             {/* Language Selector */}
@@ -291,7 +300,7 @@ export default function LandingPage() {
                 onClick={() => setIsLangOpen(!isLangOpen)}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-all border border-slate-200/80 dark:border-slate-800 shadow-sm backdrop-blur-md"
               >
-                <span>{currentLangObj.flag}</span>
+                
                 <span className="uppercase tracking-wider">{currentLangObj.code}</span>
                 <span className={`text-[9px] transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`}>▼</span>
               </button>
@@ -303,10 +312,10 @@ export default function LandingPage() {
                       key={item.code}
                       onClick={() => selectLanguage(item.code)}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-left transition-colors ${
-                        lang === item.code ? 'bg-[#dcebd7]/70 text-[#5B5BF7] font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        lang === item.code ? 'bg-[#EEF0FF]/70 text-[#5B5BF7] font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                       }`}
                     >
-                      <span className="text-base">{item.flag}</span>
+                      
                       <span>{item.label}</span>
                     </button>
                   ))}
@@ -323,7 +332,7 @@ export default function LandingPage() {
 
             <Link 
               href="/register" 
-              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-xs sm:text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] items-center gap-2"
+              className="hidden sm:flex px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#5B5BF7]/25 transition-all hover:scale-[1.02] items-center gap-2"
             >
               <span>{t?.join || 'Registrace'}</span>
             </Link>
@@ -335,12 +344,12 @@ export default function LandingPage() {
       <main className="pm-landing-hero relative w-full max-w-6xl mx-auto px-5 sm:px-8 pt-12 sm:pt-20 pb-16 flex flex-col items-center text-center">
         
         <div className="relative mb-8 group cursor-pointer">
-          <div className="absolute inset-0 rounded-3xl bg-[#8fb58a] blur-3xl opacity-20 group-hover:opacity-30 transition-opacity" />
+          <div className="absolute inset-0 rounded-3xl bg-[#5B5BF7] blur-3xl opacity-20 group-hover:opacity-30 transition-opacity" />
           <PawLogo className="relative w-28 h-28 sm:w-36 sm:h-36 shadow-2xl" />
         </div>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#EEF0FF] border border-[#D8DDFE] text-[#5B5BF7] text-xs font-semibold mb-7">
-          <span className="h-2 w-2 rounded-full bg-[#43845a]" aria-hidden="true" />
+          <span className="h-2 w-2 rounded-full bg-[#9333EA]" aria-hidden="true" />
           <span>{t?.badgeDog || 'Komunita pro vašeho psa & kočku'}</span>
         </div>
 
@@ -393,7 +402,7 @@ export default function LandingPage() {
                   onClick={() => setActiveTab(key)}
                   className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                     isActive 
-                      ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' 
+                      ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] text-white shadow-lg shadow-[#5B5BF7]/25 scale-[1.02]' 
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
                   }`}
                 >
@@ -406,7 +415,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center text-left bg-white border border-[#e2e8df] rounded-2xl p-5 sm:p-8 shadow-sm">
             <div className="md:col-span-6 space-y-5">
-              <span className="inline-block px-3.5 py-1 rounded-full bg-[#dcebd7]/70 text-[#5B5BF7] dark:text-emerald-300 text-xs font-extrabold border border-[#C7C9FF]/70">
+              <span className="inline-block px-3.5 py-1 rounded-full bg-[#EEF0FF]/70 text-[#5B5BF7] dark:text-emerald-300 text-xs font-extrabold border border-[#C7C9FF]/70">
                 {tabData[activeTab].badge}
               </span>
               <h3 className="text-2xl sm:text-3xl font-black flex items-center gap-2.5">
@@ -449,7 +458,7 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#dcebd7]/70 border border-[#C7C9FF]/70 shadow-sm">
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-[#EEF0FF]/70 border border-[#C7C9FF]/70 shadow-sm">
                   <span className="text-2xl font-black text-[#5B5BF7]">{averageRating}</span>
                   <div className="text-left">
                     <div className="text-amber-500 text-xs font-semibold">{totalRatingCount > 0 ? `★ ${averageRating} / 5.0` : "Zatím bez hodnocení"}</div>
@@ -521,7 +530,7 @@ export default function LandingPage() {
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
                     placeholder="Napište svoji reálnou zkušenost..."
-                    className="w-full p-4 rounded-2xl bg-[#f5f5e9] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none h-24"
+                    className="w-full p-4 rounded-2xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none h-24"
                   />
                 </div>
 
@@ -531,7 +540,7 @@ export default function LandingPage() {
                     disabled={rating === 0}
                     className={`px-6 py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
                       rating > 0 
-                        ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.02]' 
+                        ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white shadow-lg shadow-[#5B5BF7]/25 cursor-pointer hover:scale-[1.02]' 
                         : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                     }`}
                   >
@@ -550,7 +559,7 @@ export default function LandingPage() {
                 </div>
                 <button 
                   onClick={() => setModalContent('reviews')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shrink-0 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-[#4F46E5] transition-colors shadow-md shrink-0 cursor-pointer"
                 >
                   Zobrazit v seznamu
                 </button>
@@ -723,7 +732,7 @@ export default function LandingPage() {
                           value={contactEmail}
                           onChange={(e) => setContactEmail(e.target.value)}
                           placeholder="vas@email.cz"
-                          className="w-full p-3 rounded-xl bg-[#f5f5e9] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                          className="w-full p-3 rounded-xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                         />
                       </div>
 
@@ -736,7 +745,7 @@ export default function LandingPage() {
                           value={contactMessage}
                           onChange={(e) => setContactMessage(e.target.value)}
                           placeholder="Co byste nám chtěli sdělit..."
-                          className="w-full p-3 rounded-xl bg-[#f5f5e9] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-32 resize-none"
+                          className="w-full p-3 rounded-xl bg-[var(--pm-page)] border border-slate-200 dark:border-slate-800 text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 h-32 resize-none"
                         />
                       </div>
 
@@ -745,7 +754,7 @@ export default function LandingPage() {
                         disabled={contactLoading || !contactEmail.trim() || !contactMessage.trim()}
                         className={`w-full py-3.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all ${
                           contactEmail.trim() && contactMessage.trim() && !contactLoading
-                            ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-emerald-500 hover:to-green-500 text-white shadow-lg shadow-emerald-500/25 cursor-pointer hover:scale-[1.01]'
+                            ? 'bg-gradient-to-r from-[#5B5BF7] to-[#0F172A] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white shadow-lg shadow-[#5B5BF7]/25 cursor-pointer hover:scale-[1.01]'
                             : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                         }`}
                       >
@@ -761,7 +770,7 @@ export default function LandingPage() {
                       </p>
                       <button
                         onClick={resetContactForm}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md mt-2 cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-[#4F46E5] transition-colors shadow-md mt-2 cursor-pointer"
                       >
                         Napsat další zprávu
                       </button>
@@ -792,21 +801,10 @@ export default function LandingPage() {
               {/* PRIVACY MODAL */}
               {modalContent === 'privacy' && (
                 <div className="space-y-4">
-                  <p className="font-bold text-slate-900 dark:text-white">Ochrana vašeho soukromí je pro nás nejvyšší prioritou. Zde jsou podrobné zásady nakládání s vašimi údaji podle GDPR:</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">1. Jaké údaje sbíráme?</strong>
-                  <p>Sbíráme pouze nezbytné údaje pro chod aplikace: e-mailovou adresu, profilové informace o vás a vašich mazlíčcích, a anonymizovaná/přibližná polohová data pro potřeby Živé mapy.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">2. Použití polohových dat (GPS)</strong>
-                  <p>Vaše přesné souřadnice neukládáme ani nezveřejňujeme. Na mapě se zobrazuje pouze přibližná zóna s nastavitelným rádiusem tak, aby byla chráněna vaše adresa a bezpečí.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">3. Sdílení dat se třetími stranami</strong>
-                  <p>Vaše osobní údaje neprodáváme ani nesdílíme se třetími stranami pro marketingové účely. Data zpracováváme výhradně na zabezpečených serverech (Supabase/Vercel) v souladu s evropskou legislativou.</p>
-
-                  <strong className="block text-slate-900 dark:text-white pt-2">4. Vaše práva podle GDPR</strong>
-                  <p>Máte právo na přístup ke svým údajům, jejich opravu, vyexportování nebo trvalé smazání účtu. V případě dotazů nás kontaktujte přímo přes formulář nebo na e-mailu info@pawmeet.eu.</p>
+                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Aktuální informace o zpracování údajů, nastavení profilu, sdílení polohy a možnostech odstranění účtu najdeš na samostatné stránce zásad ochrany soukromí.</p>
+                  <Link href="/privacy" onClick={() => setModalContent(null)} className="inline-flex items-center gap-2 rounded-xl bg-[#5B5BF7] px-4 py-3 text-sm font-semibold text-white hover:bg-[#4F46E5]">Přečíst zásady ochrany soukromí</Link>
                 </div>
-              )}
+              )}}
 
             </div>
 
@@ -814,7 +812,7 @@ export default function LandingPage() {
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/50">
               <button
                 onClick={() => setModalContent(null)}
-                className="px-5 py-2 rounded-xl bg-[#5B5BF7] hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-[#5B5BF7] hover:bg-[#4F46E5] text-white font-bold text-xs transition-colors shadow-md cursor-pointer"
               >
                 Zavřít
               </button>
@@ -823,6 +821,19 @@ export default function LandingPage() {
         </div>
       )}
 
+      <footer className="relative z-10 mt-auto w-full border-t border-slate-200/80 bg-white/70 px-5 py-8 text-slate-600 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold">PawMeet.eu — Spojujeme pejskaře po celé republice.</p>
+          <nav aria-label="Odkazy v patičce" className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
+            <Link href="/about" className="hover:text-[var(--pm-accent)]">O nás</Link>
+            <Link href="/contact" className="hover:text-[var(--pm-accent)]">Kontakt</Link>
+            <Link href="/breeds" className="hover:text-[var(--pm-accent)]">Katalog plemen</Link>
+            <Link href="/articles" className="hover:text-[var(--pm-accent)]">Články a poradna</Link>
+            <Link href="/privacy" className="hover:text-[var(--pm-accent)]">Soukromí</Link>
+            <Link href="/terms" className="hover:text-[var(--pm-accent)]">Pravidla</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   )
 }
