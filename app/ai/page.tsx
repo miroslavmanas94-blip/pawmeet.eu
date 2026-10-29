@@ -330,7 +330,7 @@ export default function PawMeetAIPage() {
                 ? 'bg-slate-800 text-white'
                 : 'bg-[#edf4e9] text-[#286747] border border-[#d4e3ce]'
             }`}>
-              {msg.role === 'user' ? 'Vy' : <PawPrint size={15}/ >}
+              {msg.role === 'user' ? 'Vy' : <PawPrint size={15} />}
             </div>
 
             <div className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
