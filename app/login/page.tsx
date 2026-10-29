@@ -14,7 +14,8 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const redirectTo = searchParams.get('redirectTo') || '/domu'
+  const requestedDestination = searchParams.get('redirectTo') || searchParams.get('next') || '/domu'
+  const redirectTo = requestedDestination.startsWith('/') && !requestedDestination.startsWith('//') ? requestedDestination : '/domu'
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
