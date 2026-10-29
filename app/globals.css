@@ -127,33 +127,37 @@ body {
 /* PawMeet minimalist design system: quiet surfaces, clear contrast, restrained motion */
 :root {
   color-scheme: light;
-  --pm-forest: #183f2c;
-  --pm-green: #286747;
-  --pm-leaf: #e6eee5;
-  --pm-cream: #fbfcf8;
-  --pm-glass: #ffffff;
-  --pm-line: #e2e8df;
-  --pm-active: #eaf3e8;
-  --pm-hover: #f2f6f0;
-  --pm-muted: #68766b;
-  --pm-page: #f7f9f5;
-  --pm-card: #ffffff;
-  --pm-shadow: 0 2px 8px rgba(20, 45, 27, .045);
+  --pm-accent: #5B5BF7;
+  --pm-accent-secondary: #9333EA;
+  --pm-forest: #0F172A;
+  --pm-green: var(--pm-accent);
+  --pm-leaf: #EEF0FF;
+  --pm-cream: #F3F4F6;
+  --pm-glass: #FFFFFF;
+  --pm-line: #E5E7EB;
+  --pm-active: #EEF0FF;
+  --pm-hover: #F8FAFC;
+  --pm-muted: #64748B;
+  --pm-page: #F3F4F6;
+  --pm-card: #FFFFFF;
+  --pm-shadow: 0 2px 12px rgba(15, 23, 42, .06);
 }
 :root.dark {
   color-scheme: dark;
-  --pm-forest: #e7f0e6;
-  --pm-green: #9bc9a3;
-  --pm-leaf: #25382a;
-  --pm-cream: #101712;
-  --pm-glass: #151e17;
-  --pm-line: #2a392d;
-  --pm-active: #233a29;
-  --pm-hover: #1c2b20;
-  --pm-muted: #a8b7aa;
-  --pm-page: #101712;
-  --pm-card: #151e17;
-  --pm-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+  --pm-accent: #A5B4FC;
+  --pm-accent-secondary: #C4B5FD;
+  --pm-forest: #F8FAFC;
+  --pm-green: var(--pm-accent);
+  --pm-leaf: #23264A;
+  --pm-cream: #0B1020;
+  --pm-glass: #111827;
+  --pm-line: #273449;
+  --pm-active: #24264B;
+  --pm-hover: #172033;
+  --pm-muted: #A1A9BC;
+  --pm-page: #0B1020;
+  --pm-card: #111827;
+  --pm-shadow: 0 2px 10px rgba(0, 0, 0, .2);
 }
 html { background: var(--pm-page); color-scheme: light; }
 html.dark { color-scheme: dark; }
@@ -173,9 +177,9 @@ main, header, nav, aside, section, article { scroll-margin-top: 4rem; }
 .rounded-3xl { border-radius: 1rem !important; }
 .rounded-2xl { border-radius: .875rem !important; }
 .rounded-xl { border-radius: .7rem !important; }
-.text-violet-600, .text-indigo-600, .text-purple-600 { color: var(--pm-green) !important; }
-.bg-violet-600, .bg-indigo-600, .bg-purple-600 { background-color: var(--pm-green) !important; }
-.border-violet-500, .border-indigo-500 { border-color: var(--pm-green) !important; }
+.text-violet-600, .text-indigo-600, .text-purple-600 { color: var(--pm-accent) !important; }
+.bg-violet-600, .bg-indigo-600, .bg-purple-600 { background-color: var(--pm-accent) !important; }
+.border-violet-500, .border-indigo-500 { border-color: var(--pm-accent) !important; }
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select {
   border-color: var(--pm-line);
 }
@@ -185,7 +189,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   outline: 2px solid var(--pm-green);
   outline-offset: 2px;
 }
-::selection { background: rgba(120, 164, 116, .25); }
+::selection { background: rgba(91, 91, 247, .18); }
 .pawmeet-glass {
   background: var(--pm-card);
   border: 1px solid var(--pm-line);
