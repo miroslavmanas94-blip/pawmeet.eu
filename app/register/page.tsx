@@ -102,6 +102,7 @@ export default function RegisterPage() {
         email: authEmail,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=%2Fdomu`,
           data: {
             email: rawEmail,
             original_email: rawEmail,
