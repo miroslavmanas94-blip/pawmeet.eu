@@ -51,6 +51,7 @@ export default function PetMapPage() {
   const markersRef = useRef<{ [key: string]: any }>({})
   const myLocationMarkerRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
+  const resolvedAddressRef = useRef(false)
 
   useEffect(() => {
     setHasMounted(true)
@@ -71,7 +72,7 @@ export default function PetMapPage() {
           .eq('user_id', user.id)
           .single()
 
-        if (loc?.is_active && loc.latitude && loc.longitude) {
+        if (loc?.is_active && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
           setCurrentCoords({ lat: loc.latitude, lng: loc.longitude })
           setIsLiveTracking(true)
         }
@@ -100,7 +101,7 @@ export default function PetMapPage() {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('user_locations')
-      .select('*, profiles(*)')
+      .select('user_id, latitude, longitude, address, is_active, updated_at, profiles(username, avatar_url, avatar, pet_name, dog_name, pet_type, dog_breed, pet_gender, dog_gender, bio, age, instagram)')
       .eq('is_active', true)
 
     if (error) {
@@ -148,8 +149,8 @@ export default function PetMapPage() {
       if (!mapInstanceRef.current) {
         const map = L.map(mapContainerRef.current, {
           zoomControl: false,
-          attributionControl: false,
-        }).setView([50.0755, 14.4378], 4)
+          attributionControl: true,
+        }).setView([20, 0], 2)
 
         mapInstanceRef.current = map
       }
@@ -163,18 +164,19 @@ export default function PetMapPage() {
       }
 
       if (mapMode === 'map') {
-        tileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
         }).addTo(mapInstanceRef.current)
       } else {
         tileLayerRef.current = L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 19 }
+          { maxZoom: 19, attribution: 'Tiles &copy; Esri and its data providers' }
         ).addTo(mapInstanceRef.current)
 
         labelLayerRef.current = L.tileLayer(
           'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-          { maxZoom: 19, subdomains: 'abcd' }
+          { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>' }
         ).addTo(mapInstanceRef.current)
       }
     })
@@ -191,6 +193,7 @@ export default function PetMapPage() {
     setIsLiveTracking(nextState)
 
     if (nextState) {
+      resolvedAddressRef.current = false
       if (!navigator.geolocation) {
         alert('Váš prohlížeč nepodporuje geolokaci.')
         setIsLiveTracking(false)
@@ -204,11 +207,20 @@ export default function PetMapPage() {
           setCurrentCoords({ lat, lng })
 
           let addressName = 'Živá poloha'
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-            const geoData = await res.json()
-            addressName = geoData.address?.suburb || geoData.address?.city || geoData.address?.road || 'Aktuální poloha'
-          } catch (e) {}
+          if (!resolvedAddressRef.current) {
+            resolvedAddressRef.current = true
+            try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
+              if (res.ok) {
+                const geoData = await res.json()
+                addressName = geoData.address?.suburb || geoData.address?.city || geoData.address?.town || geoData.address?.village || geoData.address?.road || 'Aktuální poloha'
+              }
+            } catch {
+              // GPS coordinates are still saved if reverse geocoding is unavailable.
+            }
+          } else {
+            addressName = 'Sdílená živá poloha'
+          }
 
           await supabase.from('user_locations').upsert({
             user_id: currentUserId,
@@ -271,7 +283,7 @@ export default function PetMapPage() {
       const markerList: any[] = []
 
       usersLocations.filter((loc) => { const q=locationSearch.trim().toLowerCase(); return !q || [loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(q)) }).forEach((loc) => {
-        if (!loc.latitude || !loc.longitude) return
+        if (!Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) return
 
         const gender = loc.profiles?.pet_gender || loc.profiles?.dog_gender
         const genderBg = gender === 'holka' ? 'bg-pink-500' : 'bg-blue-500'
