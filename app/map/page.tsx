@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { Map as MapIcon, Satellite, LocateFixed, PawPrint, MapPin, Instagram, UserRound } from 'lucide-react'
+import { Map as MapIcon, Satellite, LocateFixed, PawPrint, MapPin, Camera, UserRound } from 'lucide-react'
 
 type UserLocation = {
   user_id: string
@@ -670,7 +670,7 @@ export default function PetMapPage() {
 
           {selectedInstagram && (
             <div className="text-xs text-slate-600 bg-pink-50/50 p-2.5 rounded-2xl mb-3.5 border border-pink-100 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-pink-600 font-bold"><Instagram size={13} aria-hidden="true" /> Instagram:</span>
+              <span className="inline-flex items-center gap-1 text-pink-600 font-bold"><Camera size={13} aria-hidden="true" /> Instagram:</span>
               <span className="font-semibold text-slate-700">@{selectedInstagram.replace('@', '')}</span>
             </div>
           )}
