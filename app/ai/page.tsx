@@ -144,7 +144,7 @@ export default function PawMeetAIPage() {
       .filter(message => message.id !== 'welcome')
       .slice(-8)
       .map(message => `${message.role === 'user' ? 'Uživatel' : 'PawMeet AI'}: ${message.content}`)
-      .join('\\n')
+      .join('\n')
       .slice(-1200)
 
     try {
@@ -182,7 +182,7 @@ export default function PawMeetAIPage() {
         )
       }
       setStatusMessage('Připravuji odpověď…')
-      const localPrompt = `Jsi PawMeet AI, univerzální asistent a specialista na psy. Odpovídej česky, přirozeně, užitečně a bezpečně. U psů podporuj pozitivní trénink bez trestů a zastrašování. Nedávej jisté veterinární diagnózy; u naléhavých příznaků doporuč veterináře.\\n\\nPředchozí konverzace:\\n${historyContext || 'Žádná'}\\n\\nUživatel: ${promptText}\\nPawMeet AI:`
+      const localPrompt = `Jsi PawMeet AI, univerzální asistent a specialista na psy. Odpovídej česky, přirozeně, užitečně a bezpečně. U psů podporuj pozitivní trénink bez trestů a zastrašování. Nedávej jisté veterinární diagnózy; u naléhavých příznaků doporuč veterináře.\n\nPředchozí konverzace:\n${historyContext || 'Žádná'}\n\nUživatel: ${promptText}\nPawMeet AI:`
       const generated = await localTextGenerator(localPrompt, { max_new_tokens: 220, temperature: 0.65, do_sample: true })
       const raw = generated?.[0]?.generated_text
       const reply = typeof raw === 'string' ? raw.slice(raw.lastIndexOf('PawMeet AI:') + 'PawMeet AI:'.length).trim() : ''
@@ -206,7 +206,7 @@ export default function PawMeetAIPage() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `${remoteNotice ? remoteNotice + '\\n\\n' : ''}Nepodařilo se spustit místní AI model (${reason}). Zkontroluj připojení a zkus to znovu. Serverová AI vyžaduje nakonfigurovaného poskytovatele; žádná placená služba nebyla automaticky zapnuta.`,
+        content: `${remoteNotice ? remoteNotice + '\n\n' : ''}Nepodařilo se spustit místní AI model (${reason}). Zkontroluj připojení a zkus to znovu. Serverová AI vyžaduje nakonfigurovaného poskytovatele; žádná placená služba nebyla automaticky zapnuta.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => {
