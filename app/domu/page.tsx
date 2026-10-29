@@ -94,6 +94,13 @@ interface NotificationItem {
   post_id?: string
 }
 
+type OfflineTextPost = {
+  id: string
+  userId: string
+  queuedAt: string
+  payload: { caption: string; location: string | null; pet_tag: string | null; alt_text: string | null; audience: 'public' | 'followers' | 'private' }
+}
+
 const SAMPLE_LOCATIONS = [
   'Praha, Česká republika',
   'Brno, Česká republika',
