@@ -377,7 +377,7 @@ export default function PetMapPage() {
                   ${
                     avatarUrl
                       ? `<img src="${avatarUrl}" class="w-full h-full object-cover" />`
-                      : `<span class="text-base">🐾</span>`
+                      : `<span class="text-base font-bold">P</span>`
                   }
                 </div>
               </div>
@@ -746,7 +746,7 @@ export default function PetMapPage() {
                       {avatarUrl ? (
                         <img src={avatarUrl} className="w-full h-full object-cover" alt="avatar" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-base">🐾</div>
+                        <div className="w-full h-full flex items-center justify-center text-base font-bold">P</div>
                       )}
                     </div>
                     <div>
