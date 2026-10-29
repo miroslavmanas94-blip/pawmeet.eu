@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">PawMeet</title>
+  <defs>
+    <linearGradient id="pawmeet-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B5BF7"/>
+      <stop offset="1" stop-color="#9333EA"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#F3F4F6"/>
+  <g fill="url(#pawmeet-gradient)">
+    <ellipse cx="256" cy="331" rx="112" ry="82" transform="rotate(-8 256 331)"/>
+    <ellipse cx="142" cy="204" rx="39" ry="54" transform="rotate(-25 142 204)"/>
+    <ellipse cx="222" cy="154" rx="39" ry="54" transform="rotate(-8 222 154)"/>
+    <ellipse cx="301" cy="154" rx="39" ry="54" transform="rotate(8 301 154)"/>
+    <ellipse cx="374" cy="204" rx="39" ry="54" transform="rotate(25 374 204)"/>
+  </g>
+</svg>
