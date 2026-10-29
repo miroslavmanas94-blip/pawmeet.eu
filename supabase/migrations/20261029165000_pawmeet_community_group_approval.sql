@@ -37,7 +37,7 @@ DECLARE
   trusted_admin boolean;
 BEGIN
   trusted_admin := COALESCE(auth.role(), '') = 'service_role'
-    OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin');
+    OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND LOWER(p.role) IN ('admin', 'administrator', 'administrátor'));
 
   IF TG_OP = 'INSERT' THEN
     IF NEW.approval_status = 'approved'
