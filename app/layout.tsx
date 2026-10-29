@@ -29,13 +29,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <BottomNav />
-          <main 
+          <div 
             className={`min-h-screen min-w-0 w-full flex-1 transition-all duration-300 ${
               isFullScreenPage ? '' : 'pt-[58px] pb-24 lg:pt-0 lg:pb-0'
             }`}
           >
             {children}
-          </main>
+          </div>
           <Analytics />
         </ThemeProvider>
       </body>
