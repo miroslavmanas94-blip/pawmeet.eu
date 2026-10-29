@@ -35,6 +35,11 @@ export default function PetMapPage() {
   const [hasMounted, setHasMounted] = useState(false)
   const [mapMode, setMapMode] = useState<'map' | 'satellite'>('map')
   const [isLiveTracking, setIsLiveTracking] = useState(false)
+  const [sharingAudience, setSharingAudience] = useState<'nobody' | 'contacts' | 'public'>('nobody')
+  const [sharingPrecision, setSharingPrecision] = useState<'approximate' | 'exact'>('approximate')
+  const [sharingDuration, setSharingDuration] = useState<'1h' | '8h' | '24h' | 'forever'>('8h')
+  const [showSharingSettings, setShowSharingSettings] = useState(false)
+  const [sharingNotice, setSharingNotice] = useState('')
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [usersLocations, setUsersLocations] = useState<UserLocation[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -57,6 +62,7 @@ export default function PetMapPage() {
   const placesMarkersRef = useRef<any[]>([])
   const myLocationMarkerRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
+  const sharingTimeoutRef = useRef<number | null>(null)
   const resolvedAddressRef = useRef(false)
 
   useEffect(() => {
@@ -74,13 +80,26 @@ export default function PetMapPage() {
         setCurrentUserId(user.id)
         const { data: loc } = await supabase
           .from('user_locations')
-          .select('is_active, latitude, longitude')
+          .select('is_active, latitude, longitude, sharing_audience, sharing_precision, sharing_expires_at')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
 
-        if (loc?.is_active && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
+        setSharingAudience(loc?.sharing_audience || 'nobody')
+        setSharingPrecision(loc?.sharing_precision || 'approximate')
+        const expired = Boolean(loc?.sharing_expires_at && new Date(loc.sharing_expires_at).getTime() <= Date.now())
+        if (loc?.is_active && !expired && loc.sharing_audience !== 'nobody' && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
           setCurrentCoords({ lat: loc.latitude, lng: loc.longitude })
           setIsLiveTracking(true)
+          if (loc.sharing_expires_at) {
+            const remaining = new Date(loc.sharing_expires_at).getTime() - Date.now()
+            sharingTimeoutRef.current = window.setTimeout(async () => {
+              await supabase.from('user_locations').update({ is_active: false }).eq('user_id', user.id)
+              setIsLiveTracking(false)
+              setCurrentCoords(null)
+            }, Math.max(0, remaining))
+          }
+        } else if (expired) {
+          await supabase.from('user_locations').update({ is_active: false }).eq('user_id', user.id)
         }
       }
     }
@@ -100,14 +119,15 @@ export default function PetMapPage() {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
       }
+      if (sharingTimeoutRef.current !== null) window.clearTimeout(sharingTimeoutRef.current)
     }
   }, [hasMounted])
 
   const fetchGlobalLocations = async () => {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('user_locations')
-      .select('user_id, latitude, longitude, address, is_active, updated_at, profiles(username, avatar_url, bio, display_name, full_name)')
+      .from('public_map_locations')
+      .select('user_id, latitude, longitude, address, is_active, updated_at, username, avatar_url, bio, display_name, full_name')
       .eq('is_active', true)
 
     if (error) {
@@ -130,7 +150,11 @@ export default function PetMapPage() {
         return {
           ...location,
           profiles: {
-            ...(location.profiles || {}),
+            username: location.username,
+            avatar_url: location.avatar_url,
+            bio: location.bio,
+            display_name: location.display_name,
+            full_name: location.full_name,
             pet_name: pet?.name,
             dog_name: pet?.name,
             pet_type: pet?.breed || pet?.type,
@@ -220,9 +244,17 @@ export default function PetMapPage() {
 
     const supabase = createClient()
     const nextState = !isLiveTracking
+    if (nextState && sharingAudience === 'nobody') {
+      setSharingNotice('Nejdřív vyber, kdo smí polohu vidět. Dokud je zvoleno „Nikdo“, poloha se nesdílí.')
+      setShowSharingSettings(true)
+      return
+    }
+    setSharingNotice('')
     setIsLiveTracking(nextState)
 
     if (nextState) {
+      const durationMs = sharingDuration === '1h' ? 60 * 60 * 1000 : sharingDuration === '8h' ? 8 * 60 * 60 * 1000 : sharingDuration === '24h' ? 24 * 60 * 60 * 1000 : null
+      const expiresAt = durationMs === null ? null : new Date(Date.now() + durationMs).toISOString()
       resolvedAddressRef.current = false
       if (!navigator.geolocation) {
         alert('Váš prohlížeč nepodporuje geolokaci.')
@@ -258,6 +290,9 @@ export default function PetMapPage() {
             longitude: lng,
             address: addressName,
             is_active: true,
+            sharing_audience: sharingAudience,
+            sharing_precision: sharingPrecision,
+            sharing_expires_at: expiresAt,
             updated_at: new Date().toISOString(),
           })
         },
@@ -267,6 +302,19 @@ export default function PetMapPage() {
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       )
+      if (durationMs !== null) {
+        sharingTimeoutRef.current = window.setTimeout(async () => {
+          if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current)
+            watchIdRef.current = null
+          }
+          await supabase.from('user_locations').update({ is_active: false }).eq('user_id', currentUserId)
+          setIsLiveTracking(false)
+          setCurrentCoords(null)
+          setSharingNotice('Čas sdílení polohy vypršel. Poloha už není sdílena.')
+          sharingTimeoutRef.current = null
+        }, durationMs)
+      }
     } else {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
@@ -500,13 +548,54 @@ export default function PetMapPage() {
           </button>
 
           <button
+            type="button"
+            onClick={() => setShowSharingSettings(value => !value)}
+            aria-expanded={showSharingSettings}
+            className="h-11 rounded-2xl border border-slate-200/80 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow-xl backdrop-blur-xl transition hover:bg-white"
+          >
+            Sdílení
+          </button>
+          <button
             onClick={recenterMap}
+            aria-label="Znovu vystředit mapu"
             className="bg-white/90 backdrop-blur-xl w-11 h-11 rounded-2xl border border-slate-200/80 shadow-xl flex items-center justify-center text-slate-700 hover:bg-white active:scale-95 transition-all text-sm"
           >
-            🎯
+            ⌖
           </button>
         </div>
       </div>
+
+      {showSharingSettings && (
+        <section aria-label="Nastavení sdílení polohy" className="absolute right-4 top-[4.25rem] z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-[var(--pm-line)] bg-[var(--pm-card)] p-4 text-[var(--pm-forest)] shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div><h2 className="text-sm font-bold">Soukromí polohy</h2><p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">Sdílení je ve výchozím stavu vypnuté. Vyber publikum, přesnost a dobu.</p></div>
+            <button type="button" onClick={() => setShowSharingSettings(false)} aria-label="Zavřít nastavení sdílení" className="rounded-lg px-2 py-1 text-[var(--pm-muted)] hover:bg-[var(--pm-hover)]">×</button>
+          </div>
+          <label className="mt-4 block text-xs font-semibold">Kdo může polohu vidět?
+            <select value={sharingAudience} disabled={isLiveTracking} onChange={event => setSharingAudience(event.target.value as 'nobody' | 'contacts' | 'public')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="nobody">Nikdo</option>
+              <option value="contacts">Vzájemně se sledujeme</option>
+              <option value="public">Veřejně</option>
+            </select>
+          </label>
+          <label className="mt-3 block text-xs font-semibold">Přesnost polohy
+            <select value={sharingPrecision} disabled={isLiveTracking} onChange={event => setSharingPrecision(event.target.value as 'approximate' | 'exact')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="approximate">Přibližná (zaokrouhlení na zhruba 1 km)</option>
+              <option value="exact">Přesná poloha a adresa</option>
+            </select>
+          </label>
+          <label className="mt-3 block text-xs font-semibold">Doba sdílení
+            <select value={sharingDuration} disabled={isLiveTracking} onChange={event => setSharingDuration(event.target.value as '1h' | '8h' | '24h' | 'forever')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="1h">1 hodina</option><option value="8h">8 hodin</option><option value="24h">24 hodin</option><option value="forever">Dokud sdílení nevypnu</option>
+            </select>
+          </label>
+          {sharingAudience === 'contacts' && <p className="mt-3 text-[11px] leading-5 text-[var(--pm-muted)]">Tuto volbu uvidí pouze přihlášení uživatelé, kteří se s tebou vzájemně sledují.</p>}
+          {sharingPrecision === 'exact' && <p className="mt-2 text-[11px] leading-5 text-amber-700">Přesná poloha se zobrazí jen vybranému publiku. Používej ji pouze tehdy, pokud to opravdu chceš.</p>}
+          {isLiveTracking && <p className="mt-3 text-[11px] text-[var(--pm-muted)]">Nejdřív sdílení vypni, pokud chceš změnit nastavení.</p>}
+          {sharingNotice && <p role="status" className="mt-3 rounded-lg bg-[var(--pm-hover)] p-2 text-xs">{sharingNotice}</p>}
+          <button type="button" onClick={() => setShowSharingSettings(false)} className="mt-4 w-full rounded-xl bg-[var(--pm-accent)] px-3 py-2.5 text-xs font-bold text-white hover:opacity-90">Hotovo</button>
+        </section>
+      )}
 
       <div className="absolute left-4 right-4 top-[5.25rem] z-20 max-w-md pointer-events-auto">
         <div className="rounded-2xl border border-[#D8DDFE] bg-[#fbfcf4]/90 p-2 shadow-xl backdrop-blur-2xl">
