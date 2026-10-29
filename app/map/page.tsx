@@ -5,12 +5,13 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { Map as MapIcon, Satellite, LocateFixed, PawPrint, MapPin, Instagram, UserRound } from 'lucide-react'
 
 type UserLocation = {
   user_id: string
   latitude: number
   longitude: number
-  address: string
+  address: string | null
   is_active: boolean
   updated_at: string
   profiles?: {
@@ -495,7 +496,7 @@ export default function PetMapPage() {
   }
 
   if (!hasMounted) {
-    return <div className="w-full h-screen bg-slate-100" />
+    return <div className="w-full h-screen bg-[var(--pm-page)]" />
   }
 
   const selectedPetName = selectedUser?.profiles?.pet_name || selectedUser?.profiles?.dog_name || 'Bez jména'
@@ -508,7 +509,7 @@ export default function PetMapPage() {
   const selectedInstagram = selectedUser?.profiles?.instagram
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#eef3e7] select-none font-sans">
+    <div className="relative w-full h-screen overflow-hidden bg-[var(--pm-page)] select-none font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* HORNÍ PANEL */}
@@ -517,18 +518,18 @@ export default function PetMapPage() {
           <button
             onClick={() => setMapMode('map')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'map' ? 'bg-[#5B5BF7] text-white shadow-md' : 'text-[#42684a] hover:bg-[#EEF0FF]'
+              mapMode === 'map' ? 'bg-[#5B5BF7] text-white shadow-md' : 'text-[var(--pm-muted)] hover:bg-[#EEF0FF]'
             }`}
           >
-            🗺️ Mapa
+            <MapIcon size={14} aria-hidden="true" /> Mapa
           </button>
           <button
             onClick={() => setMapMode('satellite')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'satellite' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+              mapMode === 'satellite' ? 'bg-[#5B5BF7] text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            🛰️ Satelit
+            <Satellite size={14} aria-hidden="true" /> Satelit
           </button>
         </div>
 
@@ -537,11 +538,11 @@ export default function PetMapPage() {
             onClick={toggleLiveTracking}
             className={`h-11 px-4 rounded-2xl font-bold text-xs shadow-xl flex items-center gap-2.5 border backdrop-blur-xl transition-all active:scale-95 ${
               isLiveTracking
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
+                ? 'bg-[#5B5BF7] text-white border-[#5B5BF7] shadow-[#5B5BF7]/20'
                 : 'bg-white/90 text-slate-700 border-slate-200/80 hover:bg-white'
             }`}
           >
-            <div className={`w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center ${isLiveTracking ? 'bg-emerald-800' : 'bg-slate-300'}`}>
+            <div className={`w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center ${isLiveTracking ? 'bg-[#4F46E5]' : 'bg-slate-300'}`}>
               <div className={`w-3 h-3 rounded-full bg-white shadow-md transition-transform duration-200 ${isLiveTracking ? 'translate-x-3' : 'translate-x-0'}`} />
             </div>
             <span>{isLiveTracking ? 'Poloha ZAP' : 'Poloha VYP'}</span>
@@ -560,7 +561,7 @@ export default function PetMapPage() {
             aria-label="Znovu vystředit mapu"
             className="bg-white/90 backdrop-blur-xl w-11 h-11 rounded-2xl border border-slate-200/80 shadow-xl flex items-center justify-center text-slate-700 hover:bg-white active:scale-95 transition-all text-sm"
           >
-            ⌖
+            <LocateFixed size={17} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -598,7 +599,7 @@ export default function PetMapPage() {
       )}
 
       <div className="absolute left-4 right-4 top-[5.25rem] z-20 max-w-md pointer-events-auto">
-        <div className="rounded-2xl border border-[#D8DDFE] bg-[#fbfcf4]/90 p-2 shadow-xl backdrop-blur-2xl">
+        <div className="rounded-2xl border border-[#D8DDFE] bg-[var(--pm-card)]/95 p-2 shadow-xl backdrop-blur-2xl">
           <div className="flex items-center gap-2 px-2"><span className="text-[#5B5BF7]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void searchMapPlace()}}} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#0F172A] outline-none placeholder:text-slate-400"/><button type="button" onClick={()=>void searchMapPlace()} disabled={!locationSearch.trim()||isSearchingPlace} className="rounded-xl bg-[#5B5BF7] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSearchingPlace?'Hledám…':'Najít místo'}</button></div>
           {searchedPlace&&<div className="px-3 pb-2 text-[11px] text-[#5B5BF7]">Mapa: {searchedPlace}</div>}
           {placeSearchError&&<p role="status" className="px-3 pb-2 text-xs text-red-700">{placeSearchError}</p>}
@@ -609,7 +610,7 @@ export default function PetMapPage() {
             <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_friendly')} className="rounded-lg border border-[#D8DDFE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#5B5BF7] disabled:opacity-50">Dog-friendly</button>
           </div>
           {placesMessage&&<p role="status" className="px-3 pt-2 text-[11px] text-slate-600">{placesMessage}</p>}
-          {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#E5E7EB] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#EEF0FF]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#dcebd7] text-xs font-bold text-[#5B5BF7]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#0F172A]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
+          {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#E5E7EB] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#EEF0FF]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--pm-active)] text-xs font-bold text-[#5B5BF7]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#0F172A]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
         </div>
       </div>
 
@@ -622,7 +623,7 @@ export default function PetMapPage() {
                 {selectedAvatarUrl ? (
                   <img src={selectedAvatarUrl} className="w-full h-full object-cover" alt="avatar" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">🐾</div>
+                  <div className="w-full h-full flex items-center justify-center text-2xl"><PawPrint size={19} aria-hidden="true" /></div>
                 )}
               </div>
               <div className="space-y-1">
@@ -635,8 +636,8 @@ export default function PetMapPage() {
                 <p className="text-xs text-slate-500 font-medium">
                   {selectedUsername ? `@${selectedUsername}` : 'Pejskař'}
                 </p>
-                <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                  <span>📍</span> {selectedUser.address || 'Aktivní poloha'}
+                <p className="text-xs text-[var(--pm-accent)] font-bold flex items-center gap-1">
+                  <MapPin size={12} aria-hidden="true" /> {selectedUser.address || 'Aktivní poloha'}
                 </p>
               </div>
             </div>
@@ -669,7 +670,7 @@ export default function PetMapPage() {
 
           {selectedInstagram && (
             <div className="text-xs text-slate-600 bg-pink-50/50 p-2.5 rounded-2xl mb-3.5 border border-pink-100 flex items-center gap-2">
-              <span className="text-pink-600 font-bold">📸 Instagram:</span>
+              <span className="inline-flex items-center gap-1 text-pink-600 font-bold"><Instagram size={13} aria-hidden="true" /> Instagram:</span>
               <span className="font-semibold text-slate-700">@{selectedInstagram.replace('@', '')}</span>
             </div>
           )}
@@ -679,9 +680,9 @@ export default function PetMapPage() {
             {selectedUsername && (
               <button
                 onClick={() => router.push(`/profile/${selectedUsername}`)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="flex-1 bg-blue-600 hover:bg-[#4F46E5] text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-[#5B5BF7]/20"
               >
-                <span>👤</span> Zobrazit profil
+                <UserRound size={14} aria-hidden="true" /> Zobrazit profil
               </button>
             )}
             <button
@@ -693,7 +694,7 @@ export default function PetMapPage() {
               }}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
             >
-              <span>🗺️</span> Ukázat na mapě
+              <MapPin size={14} aria-hidden="true" /> Ukázat na mapě
             </button>
           </div>
         </div>
@@ -706,12 +707,12 @@ export default function PetMapPage() {
           <div className="flex justify-between items-center w-full px-6 pt-2">
             <div className="flex items-center gap-2.5">
               <span className="text-xs font-extrabold text-slate-900 tracking-tight">Všichni aktivní pejskaři</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-extrabold text-[11px]">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#5B5BF7] font-extrabold text-[11px]">
                 {usersLocations.length}
               </span>
             </div>
             <span className="text-xs font-bold text-blue-600 group-hover:underline">
-              {isDrawerOpen ? 'Skrýt seznam ✕' : 'Zobrazit seznam ▲'}
+              {isDrawerOpen ? 'Skrýt seznam' : 'Zobrazit seznam'}
             </span>
           </div>
         </div>
@@ -719,7 +720,7 @@ export default function PetMapPage() {
         <div className="px-6 pb-24 overflow-y-auto h-[calc(100%-3.5rem)] space-y-2.5">
           {usersLocations.length === 0 ? (
             <div className="text-center py-10 space-y-2">
-              <span className="text-3xl">🐾</span>
+              <PawPrint size={28} className="mx-auto" aria-hidden="true" />
               <p className="text-xs text-slate-400 font-medium">Nikdo v okolí teď nemá zapnutou polohu.</p>
             </div>
           ) : (
@@ -738,7 +739,7 @@ export default function PetMapPage() {
                       mapInstanceRef.current.flyTo([user.latitude, user.longitude], 16, { duration: 1 })
                     }
                   }}
-                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-between cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-between cursor-pointer hover:border-[#C7C9FF] hover:shadow-md transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0 shadow-inner">
@@ -750,17 +751,17 @@ export default function PetMapPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-[#5B5BF7] transition-colors">
                           {petName}
                         </h4>
-                        <span className="text-[10px]">{gender === 'holka' ? '♀️' : '♂️'}</span>
+                        <span className="text-[10px]">{gender === 'holka' ? '♀' : '♂'}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium">
                         @{user.profiles?.username || 'uzivatel'} • {user.profiles?.pet_type || user.profiles?.dog_breed || 'Zvíře'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl">
+                  <span className="text-xs font-extrabold text-emerald-600 bg-[var(--pm-active)] px-2.5 py-1.5 rounded-xl">
                     Aktivní
                   </span>
                 </div>
