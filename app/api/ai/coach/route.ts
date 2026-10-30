@@ -29,22 +29,28 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
-    return NextResponse.json({ error: 'Pro používání serverové AI se nejdřív přihlas.' }, { status: 401 })
+    return NextResponse.json({ error: 'Pro používání PawMeet AI se nejdřív přihlas.' }, { status: 401 })
   }
 
-  // Keep provider credentials server-side. The endpoint is provider-agnostic:
-  // configure AI_API_KEY, AI_BASE_URL and AI_MODEL in the deployment environment.
-  const apiKey = process.env.AI_API_KEY
-  const baseUrl = process.env.AI_BASE_URL
-  const model = process.env.AI_MODEL
+  // Groq is the selected low-cost provider. The key is read only on the server.
+  // Optional AI_* variables keep backward compatibility with an existing provider setup.
+  const groqKey = process.env.GROQ_API_KEY
+  const apiKey = groqKey || process.env.AI_API_KEY
+  const baseUrl = groqKey
+    ? 'https://api.groq.com/openai/v1'
+    : process.env.AI_BASE_URL
+  const model = groqKey
+    ? (process.env.GROQ_MODEL || 'openai/gpt-oss-20b')
+    : process.env.AI_MODEL
+
   if (!apiKey || !baseUrl || !model) {
     return NextResponse.json({
       configured: false,
-      message: 'Generativní AI zatím není připojena. Níže může aplikace nabídnout bezpečný základní plán; pro skutečné AI odpovědi nastav na serveru AI_API_KEY, AI_BASE_URL a AI_MODEL.'
+      provider: 'groq',
+      error: 'PawMeet AI ještě nemá serverový klíč Groq. Administrátor musí ve Vercelu nastavit GROQ_API_KEY; klíč se nikdy nevkládá do prohlížeče.'
     }, { status: 503 })
   }
 
-  // Apply a small daily per-account cap before calling a potentially metered provider.
   const usageDate = new Date().toISOString().slice(0, 10)
   const { data: usage, error: usageError } = await supabase
     .from('ai_usage')
@@ -56,8 +62,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nepodařilo se ověřit denní limit AI.' }, { status: 503 })
   }
   if ((usage?.message_count ?? 0) >= 20) {
-    return NextResponse.json({ error: 'Dnešní limit 20 serverových AI odpovědí je vyčerpán. Zkus to zítra nebo použij lokální model.' }, { status: 429 })
+    return NextResponse.json({ error: 'Dnešní limit 20 AI odpovědí je vyčerpán. Zkus to zítra.' }, { status: 429 })
   }
+
   const { error: usageWriteError } = usage
     ? await supabase.from('ai_usage').update({ message_count: usage.message_count + 1 }).eq('id', usage.id).eq('user_id', user.id)
     : await supabase.from('ai_usage').insert({ user_id: user.id, usage_date: usageDate, message_count: 1 })
@@ -73,7 +80,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model,
         temperature: 0.4,
-        max_tokens: 700,
+        max_tokens: 900,
         messages: [
           {
             role: 'system',
@@ -81,22 +88,29 @@ export async function POST(request: Request) {
           },
           {
             role: 'user',
-            content: prompt ? `${context ? `Kontext předchozí konverzace:\n${context}\n\n` : ''}Dotaz uživatele: ${prompt}. Odpověz přímo na dotaz, česky a přiměřeně stručně. Pokud se týká tréninku, nabídni konkrétní bezpečné kroky.` : `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
+            content: prompt
+              ? `${context ? `Kontext předchozí konverzace:\n${context}\n\n` : ''}Dotaz uživatele: ${prompt}. Odpověz přímo na dotaz, česky a přiměřeně stručně. Pokud se týká tréninku, nabídni konkrétní bezpečné kroky.`
+              : `Pes: ${dogName}. Věk: ${age || 'neuveden'}. Cíl: ${goal}. Kontext: ${context || 'neuveden'}. Navrhni plán na příštích 7 dní, každodenní krátké kroky, způsob odměňování a známky, kdy trénink ukončit.`
           }
         ]
       }),
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(25000)
     })
+
     if (!response.ok) {
+      const providerError = await response.json().catch(() => null)
+      console.error('Groq AI request failed:', response.status, providerError?.error?.message || 'provider error')
       return NextResponse.json({ error: 'AI poskytovatel momentálně neodpovídá. Zkus to později.' }, { status: 502 })
     }
+
     const data = await response.json()
     const answer = data?.choices?.[0]?.message?.content
     if (typeof answer !== 'string' || !answer.trim()) {
       return NextResponse.json({ error: 'AI vrátila prázdnou odpověď.' }, { status: 502 })
     }
-    return NextResponse.json({ configured: true, answer: answer.trim() })
-  } catch {
+    return NextResponse.json({ configured: true, provider: groqKey ? 'groq' : 'custom', answer: answer.trim() })
+  } catch (error) {
+    console.error('PawMeet AI request error:', error)
     return NextResponse.json({ error: 'AI se nepodařilo kontaktovat. Zkontroluj nastavení poskytovatele.' }, { status: 502 })
   }
 }
