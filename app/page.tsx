@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowRight, Users, MessageCircle, ShieldCheck, PawPrint, Menu, X, Heart, UserRound, Dog, LockKeyhole, Sparkles } from 'lucide-react'
+import { ArrowRight, Users, MessageCircle, ShieldCheck, Menu, X, Heart, UserRound, Dog, LockKeyhole, Sparkles } from 'lucide-react'
 
 const features = [
   { icon: UserRound, title: 'Váš pejskařský profil', text: 'Představte sebe i svého parťáka a sdílejte jen to, co sami chcete.', href: '/profile' },
@@ -21,7 +21,7 @@ export default function LandingPage() {
       <header className="pm-header">
         <div className="pm-container pm-header-inner">
           <Link href="/" className="pm-brand" aria-label="PawMeet – domů">
-            <span className="pm-logo"><PawPrint size={25} strokeWidth={2.2} /></span>
+            <img src="/logo.png" alt="Oficiální logo PawMeet" className="pm-logo-image" width="42" height="44" />
             <span>PawMeet<span className="pm-brand-dot">.</span></span>
           </Link>
           <button className="pm-menu-toggle" type="button" aria-label={menuOpen ? 'Zavřít nabídku' : 'Otevřít nabídku'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
@@ -42,7 +42,7 @@ export default function LandingPage() {
           <div className="pm-hero-copy">
             <div className="pm-eyebrow"><span className="pm-eyebrow-dot" /> Místo pro českou pejskařskou komunitu</div>
             <h1>Každá procházka může být <span>začátkem přátelství.</span></h1>
-            <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá objevovat místa na venčení a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
+            <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá poznávat nové parťáky a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
             <div className="pm-hero-actions">
               <Link href="/register" className="pm-button">Přidat se k PawMeet <ArrowRight size={18} /></Link>
               <Link href="#moznosti" className="pm-button pm-button-outline">Jak PawMeet funguje <ArrowRight size={17} /></Link>
@@ -55,7 +55,7 @@ export default function LandingPage() {
             <div className="pm-art-hill pm-art-hill-back" />
             <div className="pm-art-hill pm-art-hill-front" />
             <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><Users size={18} /></span><span><strong>Noví parťáci</strong><small>Blíž k přírodě</small></span></div>
-            <div className="pm-dog-illustration"><PawPrint size={76} strokeWidth={1.35} /></div>
+            <div className="pm-dog-illustration"><Dog size={76} strokeWidth={1.35} /></div>
             <div className="pm-art-card pm-art-card-bottom"><span className="pm-avatar-stack"><i>A</i><i>M</i><i>K</i></span><span><strong>Procházky ve dvou i ve smečce</strong><small>Začněte jednoduše</small></span></div>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function LandingPage() {
 
       <footer className="pm-footer">
         <div className="pm-container pm-footer-top">
-          <div className="pm-footer-brand"><Link href="/" className="pm-brand"><span className="pm-logo"><PawPrint size={23} /></span><span>PawMeet<span className="pm-brand-dot">.</span></span></Link><p>Spojujeme pejskaře po celé republice.</p></div>
+          <div className="pm-footer-brand"><Link href="/" className="pm-brand"><img src="/logo.png" alt="Oficiální logo PawMeet" className="pm-logo-image" width="42" height="44" /><span>PawMeet<span className="pm-brand-dot">.</span></span></Link><p>Spojujeme pejskaře po celé republice.</p></div>
           <div className="pm-footer-links"><div><strong>Komunita</strong><Link href="/community">Pejskaři</Link><Link href="/dogs">Profily psů</Link><Link href="/messages">Zprávy</Link><Link href="/ai">PawMeet AI</Link></div><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
         </div>
         <div className="pm-container pm-footer-bottom"><span>© {new Date().getFullYear()} PawMeet.eu</span><span>Vytvořeno pro lepší společné chvíle.</span></div>
