@@ -9,6 +9,7 @@ import Link from 'next/link'
 
 export default function RegisterPage() {
   const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'exists' | 'valid'>('idle')
   const router = useRouter()
@@ -47,6 +48,7 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMsg('')
+    setSuccessMsg('')
     setLoading(true)
 
     try {
@@ -79,11 +81,8 @@ export default function RegisterPage() {
         return
       }
 
-      // 3. Generování unikátní e-mailové adresy pro Supabase Auth (umožní neomezené registrace)
-      const uniqueTag = `${Date.now()}_${Math.floor(Math.random() * 1000)}`
-      const authEmail = rawEmail.includes('@')
-        ? rawEmail.replace('@', `+${uniqueTag}@`)
-        : `${rawEmail}+${uniqueTag}@pawmeet.local`
+      // 3. Nové účty používají skutečnou e-mailovou adresu; starší alias účty mají bezpečný kompatibilní login.
+      const authEmail = rawEmail.toLowerCase()
 
       const firstName = formData.get('firstName') as string
       const lastName = formData.get('lastName') as string
@@ -103,6 +102,7 @@ export default function RegisterPage() {
         email: authEmail,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=%2Fdomu`,
           data: {
             email: rawEmail,
             original_email: rawEmail,
@@ -112,6 +112,16 @@ export default function RegisterPage() {
             birth_date: birthDate || null,
             city,
             bio,
+            pending_pet_profile: {
+              name: petName,
+              type: petType,
+              breed: petBreed,
+              birth_date: petBirthDate || null,
+              gender: petGender,
+              size: petSize,
+              nature: petNature,
+              activities: petActivities,
+            },
           },
         },
       })
@@ -122,26 +132,32 @@ export default function RegisterPage() {
         return
       }
 
-      // 5. Uložení údajů o mazlíčkovi do tabulky 'pets'
-      if (data.user) {
-        const { error: petError } = await supabase.from('pets').insert({
-          user_id: data.user.id,
-          name: petName,
-          type: petType,
-          breed: petBreed,
-          birth_date: petBirthDate,
-          gender: petGender,
-          size: petSize,
-          nature: petNature,
-          activities: petActivities,
-        })
-
-        if (petError) {
-          console.error('Chyba při ukládání mazlíčka:', petError.message)
-        }
+      // 5. Bez potvrzené relace čekáme na potvrzení e-mailu. Údaje o psovi zůstávají
+      // v metadata účtu a po prvním přihlášení se bezpečně doplní do profilu.
+      if (!data.session || !data.user) {
+        setSuccessMsg('Pokud lze účet vytvořit, poslali jsme na zadaný e-mail potvrzovací odkaz. Otevři e-mail a potvrď adresu; potom se přihlas.')
+        setLoading(false)
+        return
       }
 
-      // 6. Přesměrování
+      const { error: petError } = await supabase.from('pets').insert({
+        user_id: data.user.id,
+        name: petName,
+        type: petType,
+        breed: petBreed,
+        birth_date: petBirthDate || null,
+        gender: petGender,
+        size: petSize,
+        nature: petNature,
+        activities: petActivities,
+      })
+      if (!petError) {
+        await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
+      } else {
+        console.error('Chyba při ukládání mazlíčka:', petError.message)
+      }
+
+      // 6. Přesměrování pouze při existující přihlášené relaci
       router.push('/domu')
       router.refresh()
     } catch (err: any) {
@@ -151,14 +167,12 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-purple-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-purple-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-gradient-to-br from-amber-50 via-indigo-50 to-violet-100 dark:from-gray-950 dark:via-indigo-950/40 dark:to-violet-950/30 text-gray-900 dark:text-gray-100 flex items-center justify-center p-4 sm:p-6">
       <div className="max-w-2xl w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-gray-800/80 my-auto">
         
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block text-4xl animate-bounce mb-2">
-            🐾
-          </Link>
-          <h1 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+          <Link href="/" className="mx-auto mb-4 inline-flex items-center justify-center"><img src="/logo.png" alt="PawMeet" className="h-14 w-14 rounded-2xl object-cover" /></Link>
+          <h1 className="text-3xl font-black bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] bg-clip-text text-transparent">
             Registrace do PawMeet
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
@@ -167,8 +181,13 @@ export default function RegisterPage() {
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-medium">
-            ⚠️ {errorMsg}
+          <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div role="status" className="mb-6 rounded-2xl border border-[#D8DDFE] bg-[#EEF0FF] p-4 text-sm leading-6 text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+            {successMsg}
           </div>
         )}
 
@@ -176,8 +195,8 @@ export default function RegisterPage() {
           
           {/* SEKCE: ÚČET */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-indigo-600 dark:text-indigo-400">
-              🔐 Přihlašovací údaje
+            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
+              Přihlašovací údaje
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -190,7 +209,7 @@ export default function RegisterPage() {
                   type="email"
                   required
                   placeholder="vás@email.cz"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -204,7 +223,7 @@ export default function RegisterPage() {
                   required
                   placeholder="jannovak"
                   onBlur={(e) => checkUsernameExists(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
                 {usernameStatus === 'checking' && (
                   <p className="text-xs text-gray-500 mt-1 ml-1">Ověřuji jméno...</p>
@@ -213,7 +232,7 @@ export default function RegisterPage() {
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1 ml-1 font-medium">✓ Uživatelské jméno je volné</p>
                 )}
                 {usernameStatus === 'exists' && (
-                  <p className="text-xs text-red-500 mt-1 ml-1 font-medium">⚠️ Toto jméno je již obsazené</p>
+                  <p className="text-xs text-red-500 mt-1 ml-1 font-medium">Toto jméno je již obsazené</p>
                 )}
               </div>
             </div>
@@ -228,7 +247,7 @@ export default function RegisterPage() {
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -241,7 +260,7 @@ export default function RegisterPage() {
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -249,7 +268,7 @@ export default function RegisterPage() {
 
           {/* SEKCE: OSOBNÍ ÚDAJE */}
           <div className="space-y-4 pt-2">
-            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-indigo-600 dark:text-indigo-400">
+            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
               👤 Informace o majiteli
             </h2>
 
@@ -262,7 +281,7 @@ export default function RegisterPage() {
                   name="firstName"
                   type="text"
                   placeholder="Jan"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -274,7 +293,7 @@ export default function RegisterPage() {
                   name="lastName"
                   type="text"
                   placeholder="Novák"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -288,7 +307,7 @@ export default function RegisterPage() {
                   name="birthDate"
                   type="date"
                   max={todayStr}
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -300,7 +319,7 @@ export default function RegisterPage() {
                   name="city"
                   type="text"
                   placeholder="Praha"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -313,14 +332,14 @@ export default function RegisterPage() {
                 name="bio"
                 rows={2}
                 placeholder="Něco krátkého o vás..."
-                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
               />
             </div>
           </div>
 
           {/* SEKCE: MAZLÍČEK */}
           <div className="space-y-4 pt-2">
-            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-indigo-600 dark:text-indigo-400">
+            <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
               🐶 Informace o mazlíčkovi
             </h2>
 
@@ -334,7 +353,7 @@ export default function RegisterPage() {
                   type="text"
                   required
                   placeholder="Rex"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -346,7 +365,7 @@ export default function RegisterPage() {
                   name="petType"
                   required
                   defaultValue=""
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 >
                   <option value="" disabled>Vyberte druh...</option>
                   <option value="pes">Pes 🐶</option>
@@ -365,7 +384,7 @@ export default function RegisterPage() {
                   type="text"
                   required
                   placeholder="Zlatý retrívr"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -378,7 +397,7 @@ export default function RegisterPage() {
                   type="date"
                   max={todayStr}
                   required
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -392,7 +411,7 @@ export default function RegisterPage() {
                   name="petGender"
                   required
                   defaultValue=""
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 >
                   <option value="" disabled>Vyberte...</option>
                   <option value="kluk">Kluk ♂</option>
@@ -407,7 +426,7 @@ export default function RegisterPage() {
                 <select
                   name="petSize"
                   defaultValue="stredni"
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 >
                   <option value="maly">Malý</option>
                   <option value="stredni">Střední</option>
@@ -425,7 +444,7 @@ export default function RegisterPage() {
                   name="petNature"
                   type="text"
                   placeholder="Hravý, přátelský, klidný..."
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
 
@@ -437,7 +456,7 @@ export default function RegisterPage() {
                   name="petActivities"
                   type="text"
                   placeholder="Frisbee, procházky v lese..."
-                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
             </div>
@@ -446,9 +465,9 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading || usernameStatus === 'exists'}
-            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50 cursor-pointer"
+            className="w-full py-4 bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-[#5B5BF7]/25 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Vytvářím účet...' : 'Zaregistrovat se 🚀'}
+            {loading ? 'Vytvářím účet...' : 'Zaregistrovat se'}
           </button>
         </form>
 
@@ -456,7 +475,7 @@ export default function RegisterPage() {
           Již máte účet?{' '}
           <Link
             href="/login"
-            className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline ml-1"
+            className="text-[#5B5BF7] dark:text-[#A5B4FC] font-bold hover:underline ml-1"
           >
             Přihlaste se
           </Link>

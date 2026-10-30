@@ -5,12 +5,13 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { Map as MapIcon, Satellite, LocateFixed, PawPrint, MapPin, Camera, UserRound } from 'lucide-react'
 
 type UserLocation = {
   user_id: string
   latitude: number
   longitude: number
-  address: string
+  address: string | null
   is_active: boolean
   updated_at: string
   profiles?: {
@@ -35,6 +36,11 @@ export default function PetMapPage() {
   const [hasMounted, setHasMounted] = useState(false)
   const [mapMode, setMapMode] = useState<'map' | 'satellite'>('map')
   const [isLiveTracking, setIsLiveTracking] = useState(false)
+  const [sharingAudience, setSharingAudience] = useState<'nobody' | 'contacts' | 'public'>('nobody')
+  const [sharingPrecision, setSharingPrecision] = useState<'approximate' | 'exact'>('approximate')
+  const [sharingDuration, setSharingDuration] = useState<'1h' | '8h' | '24h' | 'forever'>('8h')
+  const [showSharingSettings, setShowSharingSettings] = useState(false)
+  const [sharingNotice, setSharingNotice] = useState('')
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [usersLocations, setUsersLocations] = useState<UserLocation[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -57,6 +63,7 @@ export default function PetMapPage() {
   const placesMarkersRef = useRef<any[]>([])
   const myLocationMarkerRef = useRef<any>(null)
   const watchIdRef = useRef<number | null>(null)
+  const sharingTimeoutRef = useRef<number | null>(null)
   const resolvedAddressRef = useRef(false)
 
   useEffect(() => {
@@ -74,13 +81,26 @@ export default function PetMapPage() {
         setCurrentUserId(user.id)
         const { data: loc } = await supabase
           .from('user_locations')
-          .select('is_active, latitude, longitude')
+          .select('is_active, latitude, longitude, sharing_audience, sharing_precision, sharing_expires_at')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
 
-        if (loc?.is_active && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
+        setSharingAudience(loc?.sharing_audience || 'nobody')
+        setSharingPrecision(loc?.sharing_precision || 'approximate')
+        const expired = Boolean(loc?.sharing_expires_at && new Date(loc.sharing_expires_at).getTime() <= Date.now())
+        if (loc?.is_active && !expired && loc.sharing_audience !== 'nobody' && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
           setCurrentCoords({ lat: loc.latitude, lng: loc.longitude })
           setIsLiveTracking(true)
+          if (loc.sharing_expires_at) {
+            const remaining = new Date(loc.sharing_expires_at).getTime() - Date.now()
+            sharingTimeoutRef.current = window.setTimeout(async () => {
+              await supabase.from('user_locations').update({ is_active: false }).eq('user_id', user.id)
+              setIsLiveTracking(false)
+              setCurrentCoords(null)
+            }, Math.max(0, remaining))
+          }
+        } else if (expired) {
+          await supabase.from('user_locations').update({ is_active: false }).eq('user_id', user.id)
         }
       }
     }
@@ -100,14 +120,15 @@ export default function PetMapPage() {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
       }
+      if (sharingTimeoutRef.current !== null) window.clearTimeout(sharingTimeoutRef.current)
     }
   }, [hasMounted])
 
   const fetchGlobalLocations = async () => {
     const supabase = createClient()
     const { data, error } = await supabase
-      .from('user_locations')
-      .select('user_id, latitude, longitude, address, is_active, updated_at, profiles(username, avatar_url, bio, display_name, full_name)')
+      .from('public_map_locations')
+      .select('user_id, latitude, longitude, address, is_active, updated_at, username, avatar_url, bio, display_name, full_name')
       .eq('is_active', true)
 
     if (error) {
@@ -130,7 +151,11 @@ export default function PetMapPage() {
         return {
           ...location,
           profiles: {
-            ...(location.profiles || {}),
+            username: location.username,
+            avatar_url: location.avatar_url,
+            bio: location.bio,
+            display_name: location.display_name,
+            full_name: location.full_name,
             pet_name: pet?.name,
             dog_name: pet?.name,
             pet_type: pet?.breed || pet?.type,
@@ -220,9 +245,17 @@ export default function PetMapPage() {
 
     const supabase = createClient()
     const nextState = !isLiveTracking
+    if (nextState && sharingAudience === 'nobody') {
+      setSharingNotice('Nejdřív vyber, kdo smí polohu vidět. Dokud je zvoleno „Nikdo“, poloha se nesdílí.')
+      setShowSharingSettings(true)
+      return
+    }
+    setSharingNotice('')
     setIsLiveTracking(nextState)
 
     if (nextState) {
+      const durationMs = sharingDuration === '1h' ? 60 * 60 * 1000 : sharingDuration === '8h' ? 8 * 60 * 60 * 1000 : sharingDuration === '24h' ? 24 * 60 * 60 * 1000 : null
+      const expiresAt = durationMs === null ? null : new Date(Date.now() + durationMs).toISOString()
       resolvedAddressRef.current = false
       if (!navigator.geolocation) {
         alert('Váš prohlížeč nepodporuje geolokaci.')
@@ -258,6 +291,9 @@ export default function PetMapPage() {
             longitude: lng,
             address: addressName,
             is_active: true,
+            sharing_audience: sharingAudience,
+            sharing_precision: sharingPrecision,
+            sharing_expires_at: expiresAt,
             updated_at: new Date().toISOString(),
           })
         },
@@ -267,6 +303,19 @@ export default function PetMapPage() {
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       )
+      if (durationMs !== null) {
+        sharingTimeoutRef.current = window.setTimeout(async () => {
+          if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current)
+            watchIdRef.current = null
+          }
+          await supabase.from('user_locations').update({ is_active: false }).eq('user_id', currentUserId)
+          setIsLiveTracking(false)
+          setCurrentCoords(null)
+          setSharingNotice('Čas sdílení polohy vypršel. Poloha už není sdílena.')
+          sharingTimeoutRef.current = null
+        }, durationMs)
+      }
     } else {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current)
@@ -328,7 +377,7 @@ export default function PetMapPage() {
                   ${
                     avatarUrl
                       ? `<img src="${avatarUrl}" class="w-full h-full object-cover" />`
-                      : `<span class="text-base">🐾</span>`
+                      : `<span class="text-base font-bold">P</span>`
                   }
                 </div>
               </div>
@@ -401,7 +450,7 @@ export default function PetMapPage() {
         const detail = document.createElement('div')
         detail.textContent = [element.tags?.['addr:street'], element.tags?.['addr:housenumber'], element.tags?.['addr:city']].filter(Boolean).join(' ')
         if (detail.textContent) popup.appendChild(detail)
-        const marker = L.circleMarker([placeLat, placeLon], { radius: 7, color: '#286747', fillColor: '#78a474', fillOpacity: 0.9, weight: 2 }).addTo(map)
+        const marker = L.circleMarker([placeLat, placeLon], { radius: 7, color: '#5B5BF7', fillColor: '#5B5BF7', fillOpacity: 0.9, weight: 2 }).addTo(map)
         marker.bindPopup(popup)
         placesMarkersRef.current.push(marker)
       }
@@ -447,7 +496,7 @@ export default function PetMapPage() {
   }
 
   if (!hasMounted) {
-    return <div className="w-full h-screen bg-slate-100" />
+    return <div className="w-full h-screen bg-[var(--pm-page)]" />
   }
 
   const selectedPetName = selectedUser?.profiles?.pet_name || selectedUser?.profiles?.dog_name || 'Bez jména'
@@ -460,7 +509,7 @@ export default function PetMapPage() {
   const selectedInstagram = selectedUser?.profiles?.instagram
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#eef3e7] select-none font-sans">
+    <div className="relative w-full h-screen overflow-hidden bg-[var(--pm-page)] select-none font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
       {/* HORNÍ PANEL */}
@@ -469,18 +518,18 @@ export default function PetMapPage() {
           <button
             onClick={() => setMapMode('map')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'map' ? 'bg-[#286747] text-white shadow-md' : 'text-[#42684a] hover:bg-[#e8f0e3]'
+              mapMode === 'map' ? 'bg-[#5B5BF7] text-white shadow-md' : 'text-[var(--pm-muted)] hover:bg-[#EEF0FF]'
             }`}
           >
-            🗺️ Mapa
+            <MapIcon size={14} aria-hidden="true" /> Mapa
           </button>
           <button
             onClick={() => setMapMode('satellite')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              mapMode === 'satellite' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+              mapMode === 'satellite' ? 'bg-[#5B5BF7] text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            🛰️ Satelit
+            <Satellite size={14} aria-hidden="true" /> Satelit
           </button>
         </div>
 
@@ -489,38 +538,79 @@ export default function PetMapPage() {
             onClick={toggleLiveTracking}
             className={`h-11 px-4 rounded-2xl font-bold text-xs shadow-xl flex items-center gap-2.5 border backdrop-blur-xl transition-all active:scale-95 ${
               isLiveTracking
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-500/20'
+                ? 'bg-[#5B5BF7] text-white border-[#5B5BF7] shadow-[#5B5BF7]/20'
                 : 'bg-white/90 text-slate-700 border-slate-200/80 hover:bg-white'
             }`}
           >
-            <div className={`w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center ${isLiveTracking ? 'bg-emerald-800' : 'bg-slate-300'}`}>
+            <div className={`w-7 h-4 rounded-full p-0.5 transition-colors relative flex items-center ${isLiveTracking ? 'bg-[#4F46E5]' : 'bg-slate-300'}`}>
               <div className={`w-3 h-3 rounded-full bg-white shadow-md transition-transform duration-200 ${isLiveTracking ? 'translate-x-3' : 'translate-x-0'}`} />
             </div>
             <span>{isLiveTracking ? 'Poloha ZAP' : 'Poloha VYP'}</span>
           </button>
 
           <button
+            type="button"
+            onClick={() => setShowSharingSettings(value => !value)}
+            aria-expanded={showSharingSettings}
+            className="h-11 rounded-2xl border border-slate-200/80 bg-white/90 px-3 text-xs font-bold text-slate-700 shadow-xl backdrop-blur-xl transition hover:bg-white"
+          >
+            Sdílení
+          </button>
+          <button
             onClick={recenterMap}
+            aria-label="Znovu vystředit mapu"
             className="bg-white/90 backdrop-blur-xl w-11 h-11 rounded-2xl border border-slate-200/80 shadow-xl flex items-center justify-center text-slate-700 hover:bg-white active:scale-95 transition-all text-sm"
           >
-            🎯
+            <LocateFixed size={17} aria-hidden="true" />
           </button>
         </div>
       </div>
 
+      {showSharingSettings && (
+        <section aria-label="Nastavení sdílení polohy" className="absolute right-4 top-[4.25rem] z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-[var(--pm-line)] bg-[var(--pm-card)] p-4 text-[var(--pm-forest)] shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div><h2 className="text-sm font-bold">Soukromí polohy</h2><p className="mt-1 text-xs leading-5 text-[var(--pm-muted)]">Sdílení je ve výchozím stavu vypnuté. Vyber publikum, přesnost a dobu.</p></div>
+            <button type="button" onClick={() => setShowSharingSettings(false)} aria-label="Zavřít nastavení sdílení" className="rounded-lg px-2 py-1 text-[var(--pm-muted)] hover:bg-[var(--pm-hover)]">×</button>
+          </div>
+          <label className="mt-4 block text-xs font-semibold">Kdo může polohu vidět?
+            <select value={sharingAudience} disabled={isLiveTracking} onChange={event => setSharingAudience(event.target.value as 'nobody' | 'contacts' | 'public')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="nobody">Nikdo</option>
+              <option value="contacts">Vzájemně se sledujeme</option>
+              <option value="public">Veřejně</option>
+            </select>
+          </label>
+          <label className="mt-3 block text-xs font-semibold">Přesnost polohy
+            <select value={sharingPrecision} disabled={isLiveTracking} onChange={event => setSharingPrecision(event.target.value as 'approximate' | 'exact')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="approximate">Přibližná (zaokrouhlení na zhruba 1 km)</option>
+              <option value="exact">Přesná poloha a adresa</option>
+            </select>
+          </label>
+          <label className="mt-3 block text-xs font-semibold">Doba sdílení
+            <select value={sharingDuration} disabled={isLiveTracking} onChange={event => setSharingDuration(event.target.value as '1h' | '8h' | '24h' | 'forever')} className="mt-1.5 w-full rounded-xl border border-[var(--pm-line)] bg-[var(--pm-page)] p-2.5 text-sm disabled:opacity-60">
+              <option value="1h">1 hodina</option><option value="8h">8 hodin</option><option value="24h">24 hodin</option><option value="forever">Dokud sdílení nevypnu</option>
+            </select>
+          </label>
+          {sharingAudience === 'contacts' && <p className="mt-3 text-[11px] leading-5 text-[var(--pm-muted)]">Tuto volbu uvidí pouze přihlášení uživatelé, kteří se s tebou vzájemně sledují.</p>}
+          {sharingPrecision === 'exact' && <p className="mt-2 text-[11px] leading-5 text-amber-700">Přesná poloha se zobrazí jen vybranému publiku. Používej ji pouze tehdy, pokud to opravdu chceš.</p>}
+          {isLiveTracking && <p className="mt-3 text-[11px] text-[var(--pm-muted)]">Nejdřív sdílení vypni, pokud chceš změnit nastavení.</p>}
+          {sharingNotice && <p role="status" className="mt-3 rounded-lg bg-[var(--pm-hover)] p-2 text-xs">{sharingNotice}</p>}
+          <button type="button" onClick={() => setShowSharingSettings(false)} className="mt-4 w-full rounded-xl bg-[var(--pm-accent)] px-3 py-2.5 text-xs font-bold text-white hover:opacity-90">Hotovo</button>
+        </section>
+      )}
+
       <div className="absolute left-4 right-4 top-[5.25rem] z-20 max-w-md pointer-events-auto">
-        <div className="rounded-2xl border border-[#d4e3cf] bg-[#fbfcf4]/90 p-2 shadow-xl backdrop-blur-2xl">
-          <div className="flex items-center gap-2 px-2"><span className="text-[#477353]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void searchMapPlace()}}} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#174b35] outline-none placeholder:text-slate-400"/><button type="button" onClick={()=>void searchMapPlace()} disabled={!locationSearch.trim()||isSearchingPlace} className="rounded-xl bg-[#286747] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSearchingPlace?'Hledám…':'Najít místo'}</button></div>
-          {searchedPlace&&<div className="px-3 pb-2 text-[11px] text-[#286747]">Mapa: {searchedPlace}</div>}
+        <div className="rounded-2xl border border-[#D8DDFE] bg-[var(--pm-card)]/95 p-2 shadow-xl backdrop-blur-2xl">
+          <div className="flex items-center gap-2 px-2"><span className="text-[#5B5BF7]" aria-hidden="true">⌕</span><input value={locationSearch} onChange={e=>setLocationSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void searchMapPlace()}}} placeholder="Hledat pejskaře, psa nebo místo…" aria-label="Hledat na mapě" className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-[#0F172A] outline-none placeholder:text-slate-400"/><button type="button" onClick={()=>void searchMapPlace()} disabled={!locationSearch.trim()||isSearchingPlace} className="rounded-xl bg-[#5B5BF7] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{isSearchingPlace?'Hledám…':'Najít místo'}</button></div>
+          {searchedPlace&&<div className="px-3 pb-2 text-[11px] text-[#5B5BF7]">Mapa: {searchedPlace}</div>}
           {placeSearchError&&<p role="status" className="px-3 pb-2 text-xs text-red-700">{placeSearchError}</p>}
-          <div className="flex flex-wrap gap-1.5 border-t border-[#dce6d8] px-2 pt-2">
-            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_park')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Psí parky</button>
-            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('veterinary')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Veterináři</button>
-            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('pet_shop')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Obchody</button>
-            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_friendly')} className="rounded-lg border border-[#d4e3cf] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#286747] disabled:opacity-50">Dog-friendly</button>
+          <div className="flex flex-wrap gap-1.5 border-t border-[#E5E7EB] px-2 pt-2">
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_park')} className="rounded-lg border border-[#D8DDFE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#5B5BF7] disabled:opacity-50">Psí parky</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('veterinary')} className="rounded-lg border border-[#D8DDFE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#5B5BF7] disabled:opacity-50">Veterináři</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('pet_shop')} className="rounded-lg border border-[#D8DDFE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#5B5BF7] disabled:opacity-50">Obchody</button>
+            <button type="button" disabled={isLoadingPlaces} onClick={()=>void loadNearbyPlaces('dog_friendly')} className="rounded-lg border border-[#D8DDFE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#5B5BF7] disabled:opacity-50">Dog-friendly</button>
           </div>
           {placesMessage&&<p role="status" className="px-3 pt-2 text-[11px] text-slate-600">{placesMessage}</p>}
-          {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#dce6d8] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#e8f0e3]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#dcebd7] text-xs font-bold text-[#24563b]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#174b35]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
+          {locationSearch.trim()&&<div className="max-h-48 overflow-y-auto border-t border-[#E5E7EB] pt-1">{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).slice(0,6).map(loc=><button key={loc.user_id} onClick={()=>{setSelectedUser(loc);if(mapInstanceRef.current)mapInstanceRef.current.flyTo([loc.latitude,loc.longitude],15,{duration:1})}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-[#EEF0FF]"><span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--pm-active)] text-xs font-bold text-[#5B5BF7]">{loc.profiles?.avatar_url||loc.profiles?.avatar?<img src={loc.profiles?.avatar_url||loc.profiles?.avatar} alt="" className="h-full w-full object-cover"/>:(loc.profiles?.username||loc.profiles?.pet_name||'P').slice(0,1).toUpperCase()}</span><span className="min-w-0"><span className="block truncate text-xs font-bold text-[#0F172A]">{loc.profiles?.pet_name||loc.profiles?.dog_name||loc.profiles?.username||'Pejskař'}</span><span className="block truncate text-[11px] text-slate-500">{loc.profiles?.username?'@'+loc.profiles.username+' · ':''}{loc.address||'Poloha sdílena'}</span></span></button>)}{usersLocations.filter(loc=>[loc.address,loc.profiles?.username,loc.profiles?.pet_name,loc.profiles?.dog_name,loc.profiles?.pet_type,loc.profiles?.dog_breed].some(value=>String(value||'').toLowerCase().includes(locationSearch.trim().toLowerCase()))).length===0&&<p className="px-3 py-3 text-xs text-slate-500">Nic jsme nenašli.</p>}</div>}
         </div>
       </div>
 
@@ -533,7 +623,7 @@ export default function PetMapPage() {
                 {selectedAvatarUrl ? (
                   <img src={selectedAvatarUrl} className="w-full h-full object-cover" alt="avatar" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl">🐾</div>
+                  <div className="w-full h-full flex items-center justify-center text-2xl"><PawPrint size={19} aria-hidden="true" /></div>
                 )}
               </div>
               <div className="space-y-1">
@@ -546,8 +636,8 @@ export default function PetMapPage() {
                 <p className="text-xs text-slate-500 font-medium">
                   {selectedUsername ? `@${selectedUsername}` : 'Pejskař'}
                 </p>
-                <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                  <span>📍</span> {selectedUser.address || 'Aktivní poloha'}
+                <p className="text-xs text-[var(--pm-accent)] font-bold flex items-center gap-1">
+                  <MapPin size={12} aria-hidden="true" /> {selectedUser.address || 'Aktivní poloha'}
                 </p>
               </div>
             </div>
@@ -580,7 +670,7 @@ export default function PetMapPage() {
 
           {selectedInstagram && (
             <div className="text-xs text-slate-600 bg-pink-50/50 p-2.5 rounded-2xl mb-3.5 border border-pink-100 flex items-center gap-2">
-              <span className="text-pink-600 font-bold">📸 Instagram:</span>
+              <span className="inline-flex items-center gap-1 text-pink-600 font-bold"><Camera size={13} aria-hidden="true" /> Instagram:</span>
               <span className="font-semibold text-slate-700">@{selectedInstagram.replace('@', '')}</span>
             </div>
           )}
@@ -590,9 +680,9 @@ export default function PetMapPage() {
             {selectedUsername && (
               <button
                 onClick={() => router.push(`/profile/${selectedUsername}`)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+                className="flex-1 bg-blue-600 hover:bg-[#4F46E5] text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-[#5B5BF7]/20"
               >
-                <span>👤</span> Zobrazit profil
+                <UserRound size={14} aria-hidden="true" /> Zobrazit profil
               </button>
             )}
             <button
@@ -604,7 +694,7 @@ export default function PetMapPage() {
               }}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
             >
-              <span>🗺️</span> Ukázat na mapě
+              <MapPin size={14} aria-hidden="true" /> Ukázat na mapě
             </button>
           </div>
         </div>
@@ -617,12 +707,12 @@ export default function PetMapPage() {
           <div className="flex justify-between items-center w-full px-6 pt-2">
             <div className="flex items-center gap-2.5">
               <span className="text-xs font-extrabold text-slate-900 tracking-tight">Všichni aktivní pejskaři</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 font-extrabold text-[11px]">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#5B5BF7] font-extrabold text-[11px]">
                 {usersLocations.length}
               </span>
             </div>
             <span className="text-xs font-bold text-blue-600 group-hover:underline">
-              {isDrawerOpen ? 'Skrýt seznam ✕' : 'Zobrazit seznam ▲'}
+              {isDrawerOpen ? 'Skrýt seznam' : 'Zobrazit seznam'}
             </span>
           </div>
         </div>
@@ -630,7 +720,7 @@ export default function PetMapPage() {
         <div className="px-6 pb-24 overflow-y-auto h-[calc(100%-3.5rem)] space-y-2.5">
           {usersLocations.length === 0 ? (
             <div className="text-center py-10 space-y-2">
-              <span className="text-3xl">🐾</span>
+              <PawPrint size={28} className="mx-auto" aria-hidden="true" />
               <p className="text-xs text-slate-400 font-medium">Nikdo v okolí teď nemá zapnutou polohu.</p>
             </div>
           ) : (
@@ -649,29 +739,29 @@ export default function PetMapPage() {
                       mapInstanceRef.current.flyTo([user.latitude, user.longitude], 16, { duration: 1 })
                     }
                   }}
-                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-between cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 flex items-center justify-between cursor-pointer hover:border-[#C7C9FF] hover:shadow-md transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex-shrink-0 shadow-inner">
                       {avatarUrl ? (
                         <img src={avatarUrl} className="w-full h-full object-cover" alt="avatar" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-base">🐾</div>
+                        <div className="w-full h-full flex items-center justify-center text-base font-bold">P</div>
                       )}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-[#5B5BF7] transition-colors">
                           {petName}
                         </h4>
-                        <span className="text-[10px]">{gender === 'holka' ? '♀️' : '♂️'}</span>
+                        <span className="text-[10px]">{gender === 'holka' ? '♀' : '♂'}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium">
                         @{user.profiles?.username || 'uzivatel'} • {user.profiles?.pet_type || user.profiles?.dog_breed || 'Zvíře'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl">
+                  <span className="text-xs font-extrabold text-emerald-600 bg-[var(--pm-active)] px-2.5 py-1.5 rounded-xl">
                     Aktivní
                   </span>
                 </div>

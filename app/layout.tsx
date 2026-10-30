@@ -2,6 +2,7 @@
 
 import { Analytics } from '@vercel/analytics/react'
 import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 
 // @ts-ignore: Side-effect CSS import
 import './globals.css'
@@ -15,6 +16,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+    }
+  }, [])
   
   // Přidali jsme '/ai', aby layout nezkresloval odsazení pro AI stránku, která si plnou šířku a odsazení řídí sama
   const isFullScreenPage = ['/', '/login', '/register', '/obnova-hesla', '/reset-password', '/forgot-password', '/update-password', '/ai'].includes(pathname)

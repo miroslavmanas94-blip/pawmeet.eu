@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
+import HomeSearch from '@/components/HomeSearch'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
@@ -91,6 +92,13 @@ interface NotificationItem {
   created_at: string
   is_read: boolean
   post_id?: string
+}
+
+type OfflineTextPost = {
+  id: string
+  userId: string
+  queuedAt: string
+  payload: { caption: string; location: string | null; pet_tag: string | null; alt_text: string | null; audience: 'public' | 'followers' | 'private' }
 }
 
 const SAMPLE_LOCATIONS = [
@@ -333,6 +341,8 @@ export default function HomeFeed() {
   const [commentInput, setCommentInput] = useState<Record<string, string>>({})
   const [doubleTapHeartPostId, setDoubleTapHeartPostId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(true)
+  const [pendingOfflinePosts, setPendingOfflinePosts] = useState(0)
 
   useEffect(() => {
     setIsMounted(true)
@@ -794,6 +804,67 @@ export default function HomeFeed() {
       setIsLoading(false)
     }
   }, [supabase])
+
+  const syncOfflineTextPosts = useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return
+    let queue: OfflineTextPost[] = []
+    try {
+      queue = JSON.parse(localStorage.getItem('pawmeet-offline-text-posts-v1') || '[]')
+      if (!Array.isArray(queue)) queue = []
+    } catch {
+      return
+    }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const mine = queue.filter(item => item.userId === user.id)
+    setPendingOfflinePosts(mine.length)
+    if (!mine.length) return
+
+    const completed = new Set<string>()
+    for (const item of mine) {
+      const { error } = await supabase.from('posts').insert({
+        id: item.id,
+        user_id: item.userId,
+        media_url: JSON.stringify([]),
+        media_type: 'text',
+        caption: item.payload.caption,
+        location: item.payload.location,
+        pet_tag: item.payload.pet_tag,
+        post_type: 'post',
+        alt_text: item.payload.alt_text,
+        status: 'published',
+        scheduled_at: null,
+        audience: item.payload.audience,
+      })
+      if (!error || error.code === '23505') completed.add(item.id)
+      else break
+    }
+
+    const remaining = queue.filter(item => !completed.has(item.id))
+    try { localStorage.setItem('pawmeet-offline-text-posts-v1', JSON.stringify(remaining)) } catch {}
+    setPendingOfflinePosts(remaining.filter(item => item.userId === user.id).length)
+    if (completed.size > 0) {
+      setToastMessage(completed.size === 1 ? 'Offline příspěvek byl odeslán.' : 'Odesláno ' + completed.size + ' offline příspěvků.')
+      await fetchFeedData()
+    }
+  }, [fetchFeedData, supabase])
+
+  useEffect(() => {
+    if (!isMounted) return
+    const updateOnline = () => {
+      const online = navigator.onLine
+      setIsOnline(online)
+      if (online) void syncOfflineTextPosts()
+    }
+    setIsOnline(navigator.onLine)
+    window.addEventListener('online', updateOnline)
+    window.addEventListener('offline', updateOnline)
+    void syncOfflineTextPosts()
+    return () => {
+      window.removeEventListener('online', updateOnline)
+      window.removeEventListener('offline', updateOnline)
+    }
+  }, [isMounted, syncOfflineTextPosts])
 
   useEffect(() => {
     if (!isMounted) return
@@ -1283,10 +1354,37 @@ export default function HomeFeed() {
   }
   const handlePublishContent = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!previewItems.length) return
+    if (!previewItems.length && !(createTab === 'post' && createCaption.trim())) return
 
     if (!currentUser || currentUser.id === 'guest') {
       showToast('Pro publikování příspěvků musíte být přihlášeni!')
+      return
+    }
+
+    if (!navigator.onLine && createTab === 'post' && uploadFiles.length === 0 && createCaption.trim()) {
+      try {
+        const queued: OfflineTextPost = {
+          id: crypto.randomUUID(),
+          userId: currentUser.id,
+          queuedAt: new Date().toISOString(),
+          payload: {
+            caption: createCaption.trim(),
+            location: createLocation.trim() || null,
+            pet_tag: createPetTag.trim() || null,
+            alt_text: createAltText.trim() || null,
+            audience: createAudience,
+          },
+        }
+        const existing = JSON.parse(localStorage.getItem('pawmeet-offline-text-posts-v1') || '[]')
+        const queue: OfflineTextPost[] = Array.isArray(existing) ? existing : []
+        queue.push(queued)
+        localStorage.setItem('pawmeet-offline-text-posts-v1', JSON.stringify(queue))
+        setPendingOfflinePosts(queue.filter(item => item.userId === currentUser.id).length)
+        showToast('Textový příspěvek čeká ve frontě. Po obnovení připojení se odešle.')
+        resetCreateModal()
+      } catch {
+        showToast('Příspěvek se offline nepodařilo uložit. Zkopíruj si text a zkus to znovu.')
+      }
       return
     }
 
@@ -1324,8 +1422,11 @@ export default function HomeFeed() {
         })
       }
 
-      if (uploadedMediaUrls.length === 0) {
-        throw new Error('Nepodařilo se nahrát žádný soubor')
+      if (uploadedMediaUrls.length === 0 && createTab !== 'post') {
+        throw new Error('Příběhy a Reels vyžadují alespoň jedno médium.')
+      }
+      if (uploadedMediaUrls.length === 0 && !createCaption.trim()) {
+        throw new Error('Napiš text příspěvku nebo přidej médium.')
       }
 
       const scheduledDate = scheduleAt ? new Date(scheduleAt) : null
@@ -1363,7 +1464,7 @@ export default function HomeFeed() {
         const { error: postErr } = await supabase.from('posts').insert({
           user_id: currentUser.id,
           media_url: JSON.stringify(uploadedMediaUrls),
-          media_type: createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
+          media_type: uploadedMediaUrls.length === 0 ? 'text' : createTab === 'reel' ? 'video' : uploadedMediaUrls[0].type,
           caption: createCaption || null,
           location: createLocation || null,
           pet_tag: createPetTag.trim() || null,
@@ -1441,12 +1542,12 @@ export default function HomeFeed() {
 
       {/* Horní lišta */}
       <header className="sticky top-0 z-40 w-full bg-[var(--pm-card)] border-b border-[var(--pm-line)] px-4 sm:px-8 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2"></div>
+        <HomeSearch />
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => { setCreateTab('post'); setIsCreateOpen(true); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#286747] to-[#4d8654] hover:opacity-90 text-white font-black text-xs shadow-md shadow-emerald-900/20 transition cursor-pointer active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] hover:opacity-90 text-white font-black text-xs shadow-md shadow-emerald-900/20 transition cursor-pointer active:scale-95"
           >
             <span className="text-sm font-black">+</span>
             <span>Vytvořit</span>
@@ -1522,6 +1623,8 @@ export default function HomeFeed() {
         )}
       </header>
 
+      {(!isOnline || pendingOfflinePosts > 0) && <div role="status" className="mx-auto mt-3 flex w-[calc(100%-2rem)] max-w-2xl items-center justify-between gap-3 rounded-xl border border-[var(--pm-line)] bg-[var(--pm-card)] px-3 py-2 text-xs text-[var(--pm-muted)] shadow-sm"><span>{!isOnline ? 'Offline režim: textové příspěvky bez médií lze zařadit do fronty. Soukromé zprávy se offline neukládají.' : String(pendingOfflinePosts) + ' příspěvků čeká na odeslání.'}</span>{isOnline && pendingOfflinePosts > 0 && <button type="button" onClick={() => void syncOfflineTextPosts()} className="shrink-0 font-semibold text-[var(--pm-accent)] hover:underline">Synchronizovat</button>}</div>}
+
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-5 pb-24 flex flex-col items-center">
         
         {/* Příběhy */}
@@ -1554,7 +1657,7 @@ export default function HomeFeed() {
                       setCreateTab('story')
                       setIsCreateOpen(true)
                     }}
-                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#286747] to-[#4d8654] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black shadow-lg border-2 border-white z-20 cursor-pointer"
+                    className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-black shadow-lg border-2 border-white z-20 cursor-pointer"
                   >
                     +
                   </button>
@@ -1622,7 +1725,7 @@ export default function HomeFeed() {
                   <div className="flex justify-between items-center px-4 py-3 border-b border-[#d7e4d3] bg-[#f6f8ef]/80">
                     <div className="flex items-center gap-3">
                       <Link href={`/profile/${post.user.username}`} className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#174b35] shadow-sm shrink-0">
+                        <div className="w-10 h-10 rounded-full p-[1.5px] bg-gradient-to-tr from-[#b7d7a9] via-[#43845a] to-[#0F172A] shadow-sm shrink-0">
                           <div className="w-full h-full rounded-full overflow-hidden bg-white flex items-center justify-center font-bold text-slate-800">
                             {post.user.avatar_url ? (
                               <img src={post.user.avatar_url} alt={post.user.username} className="w-full h-full object-cover" />
@@ -1633,11 +1736,11 @@ export default function HomeFeed() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-sm font-extrabold text-[#174b35] tracking-wide group-hover:underline truncate">{post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}</span>
-                            {post.user.is_verified && <span className="text-[#286747] text-xs" aria-label="Ověřený profil">✓</span>}
+                            <span className="text-sm font-extrabold text-[#0F172A] tracking-wide group-hover:underline truncate">{post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}</span>
+                            {post.user.is_verified && <span className="text-[#5B5BF7] text-xs" aria-label="Ověřený profil">✓</span>}
                             <span className="text-slate-500 text-[11px] shrink-0">· {post.created_at}</span>
                           </div>
-                          <span className="block text-[11px] font-medium text-[#66816a] truncate">@{post.user.username}</span>
+                          <span className="block text-[11px] font-medium text-[#64748B] truncate">@{post.user.username}</span>
                           {post.location && <span className="text-[11px] font-semibold text-[#4d7c53] block">{post.location}</span>}
                         </div>
                       </Link>
@@ -1798,7 +1901,7 @@ export default function HomeFeed() {
                   <div className="px-4 py-3 space-y-1.5 bg-white">
                     {post.caption && (
                       <p className="text-xs text-slate-800 leading-relaxed">
-                        <Link href={`/profile/${post.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                        <Link href={`/profile/${post.user.username}`} className="font-extrabold mr-1.5 text-[#0F172A] hover:underline">
                           {post.user.full_name?.trim() && post.user.full_name !== 'Uživatel' ? post.user.full_name : post.user.username}
                         </Link>
                         {post.caption}
@@ -2051,14 +2154,14 @@ export default function HomeFeed() {
                     type="button"
                     onClick={() => changeCreateTab(tab)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition ${
-                      createTab === tab ? 'bg-gradient-to-r from-[#286747] to-[#4d8654] text-white shadow-md' : 'text-slate-500 hover:text-[#174b35]'
+                      createTab === tab ? 'bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] text-white shadow-md' : 'text-slate-500 hover:text-[#0F172A]'
                     }`}
                   >
                     {tab === 'post' ? 'Příspěvek' : tab === 'story' ? 'Příběh' : 'Reel'}
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={requestCloseCreateModal} aria-label="Zavřít editor" className="rounded-xl p-2 text-slate-500 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#286747]">✕</button>
+              <button type="button" onClick={requestCloseCreateModal} aria-label="Zavřít editor" className="rounded-xl p-2 text-slate-500 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5B5BF7]">✕</button>
             </div>
 
             <form onSubmit={handlePublishContent} className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -2070,7 +2173,7 @@ export default function HomeFeed() {
                 onTouchStart={() => setIsDraggingText(true)}
                 onTouchEnd={() => setIsDraggingText(false)}
                 onTouchMove={handleTouchOrMouseMove}
-                className="relative border-2 border-dashed border-[#dce6d8] hover:border-[#6d9b72] rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition cursor-crosshair"
+                className="relative border-2 border-dashed border-[#E5E7EB] hover:border-[#6d9b72] rounded-2xl overflow-hidden bg-slate-950 flex flex-col items-center justify-center min-h-[220px] select-none transition cursor-crosshair"
               >
                 <input
                   type="file"
@@ -2213,41 +2316,41 @@ export default function HomeFeed() {
                         max="48" 
                         value={textSize} 
                         onChange={(e) => setTextSize(Number(e.target.value))}
-                        className="w-full accent-[#286747] cursor-pointer"
+                        className="w-full accent-[#5B5BF7] cursor-pointer"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-2xl border border-[#dce6d8] bg-white/80 p-3">
-                <label className="mb-1 block text-[11px] font-bold text-[#286747]" htmlFor="creator-alt-text">Alternativní popis média</label>
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white/80 p-3">
+                <label className="mb-1 block text-[11px] font-bold text-[#5B5BF7]" htmlFor="creator-alt-text">Alternativní popis média</label>
                 <input id="creator-alt-text" value={createAltText} onChange={(e) => setCreateAltText(e.target.value)} maxLength={300}
-                  placeholder="Popiš fotografii pro čtečky obrazovky…" className="w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                  placeholder="Popiš fotografii pro čtečky obrazovky…" className="w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[10px] text-slate-500">Text, lokalita a alternativní popis se průběžně ukládají jako koncept v tomto prohlížeči.</span>
-                  {draftRestored && <button type="button" onClick={() => { setCreateCaption(''); setCreateLocation(''); setCreatePetTag(''); setImageOverlayText(''); setCreateAltText(''); setDraftRestored(false); try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {} }} className="text-[10px] font-bold text-[#286747] underline">Smazat koncept</button>}
+                  {draftRestored && <button type="button" onClick={() => { setCreateCaption(''); setCreateLocation(''); setCreatePetTag(''); setImageOverlayText(''); setCreateAltText(''); setDraftRestored(false); try { localStorage.removeItem('pawmeet-create-draft-v1') } catch {} }} className="text-[10px] font-bold text-[#5B5BF7] underline">Smazat koncept</button>}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#dce6d8] bg-white/80 p-3">
-                <label className="mb-1 block text-[11px] font-bold text-[#286747]" htmlFor="creator-pet-tag">Označit psa</label>
+              <div className="rounded-2xl border border-[#E5E7EB] bg-white/80 p-3">
+                <label className="mb-1 block text-[11px] font-bold text-[#5B5BF7]" htmlFor="creator-pet-tag">Označit psa</label>
                 <input id="creator-pet-tag" value={createPetTag} onChange={(e) => setCreatePetTag(e.target.value)} maxLength={100}
-                  placeholder="Jméno psa nebo označení profilu…" className="w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                  placeholder="Jméno psa nebo označení profilu…" className="w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
               </div>
 
               {createTab !== 'story' && (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <label className="text-[11px] font-semibold text-slate-600">Viditelnost
-                      <select value={createAudience} onChange={(e) => setCreateAudience(e.target.value as 'public' | 'followers' | 'private')} className="mt-1 w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]">
+                      <select value={createAudience} onChange={(e) => setCreateAudience(e.target.value as 'public' | 'followers' | 'private')} className="mt-1 w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]">
                         <option value="public">Veřejné</option>
                         <option value="followers">Pouze sledující</option>
                         <option value="private">Soukromé</option>
                       </select>
                     </label>
                     <label className="text-[11px] font-semibold text-slate-600">Naplánovat publikování
-                      <input type="datetime-local" value={scheduleAt} min={new Date(Date.now() + 60000).toISOString().slice(0,16)} onChange={(e) => setScheduleAt(e.target.value)} className="mt-1 w-full rounded-xl border border-[#dce6d8] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
+                      <input type="datetime-local" value={scheduleAt} min={new Date(Date.now() + 60000).toISOString().slice(0,16)} onChange={(e) => setScheduleAt(e.target.value)} className="mt-1 w-full rounded-xl border border-[#E5E7EB] bg-white p-2.5 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
                     </label>
                   </div>
                   <div>
@@ -2257,12 +2360,12 @@ export default function HomeFeed() {
                       placeholder={createTab === 'reel' ? 'Popiš svůj Reel, přidej #hashtag…' : 'Co se děje u tebe a tvého parťáka? Přidej #hashtag…'}
                       value={createCaption}
                       onChange={(e) => setCreateCaption(e.target.value)}
-                      className="w-full text-xs p-3 bg-[#f6f8ef] border border-[#dce6d8] rounded-xl text-slate-800 outline-none resize-y focus:border-[#6d9b72]"
+                      className="w-full text-xs p-3 bg-[#f6f8ef] border border-[#E5E7EB] rounded-xl text-slate-800 outline-none resize-y focus:border-[#6d9b72]"
                     />
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap gap-1.5">
                         {['#psi','#vycvik','#agility','#dogpuller','#vylet'].map(tag => (
-                          <button key={tag} type="button" onClick={() => setCreateCaption(value => `${value.trim()}${value.trim() ? ' ' : ''}${tag} `)} className="rounded-full border border-[#d5e4ce] bg-white/80 px-2.5 py-1 text-[10px] font-bold text-[#286747] transition hover:bg-[#e7f1e1]">{tag}</button>
+                          <button key={tag} type="button" onClick={() => setCreateCaption(value => `${value.trim()}${value.trim() ? ' ' : ''}${tag} `)} className="rounded-full border border-[#d5e4ce] bg-white/80 px-2.5 py-1 text-[10px] font-bold text-[#5B5BF7] transition hover:bg-[#e7f1e1]">{tag}</button>
                         ))}
                       </div>
                       <span className="text-[10px] font-medium text-slate-500">{createCaption.length}/2200</span>
@@ -2291,7 +2394,7 @@ export default function HomeFeed() {
                               setCreateLocation(loc)
                               setShowLocationSuggestions(false)
                             }}
-                            className="p-2 text-xs text-slate-700 hover:bg-slate-100 hover:text-[#286747] cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-1.5"
+                            className="p-2 text-xs text-slate-700 hover:bg-slate-100 hover:text-[#5B5BF7] cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-1.5"
                           >
                             <span>📍</span>
                             <span>{loc}</span>
@@ -2305,7 +2408,7 @@ export default function HomeFeed() {
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={requestCloseCreateModal} className="px-3.5 py-2 text-xs text-slate-500 hover:text-slate-900 font-bold">Zrušit</button>
-                <button type="submit" disabled={isUploading || previewItems.length === 0} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
+                <button type="submit" disabled={isUploading || (previewItems.length === 0 && !(createTab === 'post' && createCaption.trim()))} className="px-4 py-2 text-xs font-extrabold bg-gradient-to-r from-violet-600 to-rose-500 text-white rounded-xl disabled:opacity-50 hover:opacity-90 transition shadow">
                   {isUploading ? 'Ukládám...' : scheduleAt && createTab !== 'story' ? 'Naplánovat' : 'Publikovat'}
                 </button>
               </div>
@@ -2344,7 +2447,7 @@ export default function HomeFeed() {
               <div className="flex-1 p-4 overflow-y-auto space-y-3">
                 {selectedPostForDetail.caption && (
                   <p className="text-xs text-slate-800 border-b border-slate-100 pb-3">
-                    <Link href={`/profile/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-[#174b35] hover:underline">
+                    <Link href={`/profile/${selectedPostForDetail.user.username}`} className="font-extrabold mr-1.5 text-[#0F172A] hover:underline">
                       {selectedPostForDetail.user.full_name?.trim() && selectedPostForDetail.user.full_name !== 'Uživatel' ? selectedPostForDetail.user.full_name : selectedPostForDetail.user.username}
                     </Link>
                     {selectedPostForDetail.caption}
