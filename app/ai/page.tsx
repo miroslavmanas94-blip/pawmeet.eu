@@ -153,7 +153,10 @@ export default function PawMeetAIPage() {
           body: JSON.stringify({ prompt: promptText, context: historyContext }),
         })
         const remoteData = await remoteResponse.json().catch(() => ({}))
-        if (remoteResponse.ok && typeof remoteData?.answer === 'string' && remoteData.answer.trim()) {
+        if (!remoteResponse.ok) {
+          throw new Error(typeof remoteData?.error === 'string' ? remoteData.error : 'Serverová AI momentálně není dostupná.')
+        }
+        if (typeof remoteData?.answer === 'string' && remoteData.answer.trim()) {
           const assistantMsg: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
@@ -163,33 +166,20 @@ export default function PawMeetAIPage() {
           setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
           return
         }
-      } catch {
+        throw new Error('Serverová AI nevrátila odpověď.')
+      } catch (remoteError) {
+        throw remoteError
       }
 
-      // No provider is configured. Do not attempt to download a large browser model
-      // that commonly fails on mobile/network restrictions; respond honestly in a basic mode.
-      const lowerPrompt = promptText.toLocaleLowerCase('cs')
-      let offlineReply = 'Teď běžím v základním režimu bez připojeného generativního AI modelu, takže nechci předstírat, že tuto odpověď vytvořila AI. Můžu ti pomoct připravit otázku nebo bezpečný postup. Pro skutečně generované odpovědi musí být připojen poskytovatel AI na serveru.'
-      if (/výcvik|trénink|přivol|štěká|tahá|kouše|socializ|odměn|poslušn/.test(lowerPrompt)) {
-        offlineReply = 'Základní bezpečný postup: vyber jeden malý a konkrétní cíl, cvič v klidném prostředí 3–5 minut, odměňuj chování, které chceš vidět častěji, a skonči dřív, než je pes unavený nebo ve stresu. Zvyšuj obtížnost postupně. Vyhni se trestům a nátlaku.\n\nPoznámka: Jde o obecné doporučení v základním režimu, nikoli o odpověď generovanou AI. Pokud mi popíšeš situaci a věk psa, můžu ti pomoct dotaz lépe strukturovat.'
-      } else if (/zdrav|bolest|zvrac|průjem|nejí|kulh|veterin/.test(lowerPrompt)) {
-        offlineReply = 'U zdravotních potíží nemohu stanovit diagnózu. Pokud má pes potíže s dýcháním, kolabuje, má silné bolesti, opakovaně zvrací nebo mohl pozřít jed, kontaktuj ihned veterináře. U ostatních nových nebo přetrvávajících příznaků se poraď s veterinářem.\n\nPoznámka: Generativní AI teď není připojena; jde o obecnou bezpečnostní informaci.'
-      }
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: offlineReply,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }
-      setSessions(prev => prev.map(s => s.id === activeSession.id ? { ...s, messages: [...s.messages, assistantMsg] } : s))
-      return
+      // The remote endpoint is the only source of assistant answers.
+      // If the provider is not configured, the error is surfaced below instead of fabricating an AI reply.
     } catch (err: any) {
       console.error(err)
-      const reason = err instanceof Error ? err.message.slice(0, 180) : 'neznámá chyba'
+      const reason = err instanceof Error ? err.message.slice(0, 240) : 'neznámá chyba'
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Nepodařilo se spojit se serverovou AI službou (${reason}). Zkus to prosím znovu. Pokud se problém opakuje, serverová AI nemusí být nakonfigurovaná.`,
+        content: reason,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
       setSessions(prev => prev.map(s => {
