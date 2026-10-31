@@ -43,6 +43,7 @@ export default function PetMapPage() {
   const [sharingNotice, setSharingNotice] = useState('')
   const [currentCoords, setCurrentCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [usersLocations, setUsersLocations] = useState<UserLocation[]>([])
+  const [viewportBounds, setViewportBounds] = useState<{ north:number; south:number; east:number; west:number } | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [locationSearch, setLocationSearch] = useState('')
@@ -208,6 +209,13 @@ export default function PetMapPage() {
         }).setView([20, 0], 2)
 
         mapInstanceRef.current = map
+      const syncVisibleArea = () => {
+        const bounds = map.getBounds()
+        setViewportBounds({ north: bounds.getNorth(), south: bounds.getSouth(), east: bounds.getEast(), west: bounds.getWest() })
+      }
+      map.on('moveend', syncVisibleArea)
+      map.whenReady(syncVisibleArea)
+
       }
 
       if (tileLayerRef.current) {
@@ -409,6 +417,8 @@ export default function PetMapPage() {
     })
   }, [usersLocations, currentCoords, currentUserId, isLiveTracking, hasMounted, hasFittedBounds, locationSearch])
 
+  const visibleUsers = usersLocations.filter(user => !viewportBounds || (user.latitude <= viewportBounds.north && user.latitude >= viewportBounds.south && user.longitude <= viewportBounds.east && user.longitude >= viewportBounds.west))
+
   const loadNearbyPlaces = async (category: 'dog_park' | 'veterinary' | 'pet_shop' | 'dog_friendly' | 'park' | 'dog_cafe' | 'water') => {
     const map = mapInstanceRef.current
     if (!map || isLoadingPlaces) return
@@ -421,11 +431,11 @@ export default function PetMapPage() {
       pet_shop: 'nwr["shop"="pet"](around:10000,LAT,LON);',
       dog_friendly: 'nwr["dog"~"yes|leashed|designated",i](around:10000,LAT,LON);',
       park: 'nwr["leisure"="park"](around:10000,LAT,LON);',
-      dog_cafe: 'nwr["amenity"~"cafe|restaurant|pub|bar"](around:10000,LAT,LON);',
+      dog_cafe: 'nwr["amenity"~"cafe|restaurant|pub|bar"]["dog"~"yes|leashed|designated",i](around:10000,LAT,LON);',
       water: 'nwr["amenity"="drinking_water"](around:10000,LAT,LON);',
     }
     const query = `[out:json][timeout:20];(${selectors[category].replaceAll('LAT', lat).replaceAll('LON', lon)});out center tags 50;`
-    const categoryNames = { dog_park: 'psí parky', veterinary: 'veterináře', pet_shop: 'obchody pro zvířata', dog_friendly: 'místa označená jako vhodná pro psy', park: 'parky', dog_cafe: 'kavárny a restaurace', water: 'místa s pitnou vodou' }
+    const categoryNames = { dog_park: 'psí parky', veterinary: 'veterináře', pet_shop: 'obchody pro zvířata', dog_friendly: 'místa označená jako vhodná pro psy', park: 'parky', dog_cafe: 'dog-friendly kavárny a restaurace', water: 'místa s pitnou vodou' }
     setIsLoadingPlaces(true)
     setPlacesMessage(`Hledám ${categoryNames[category]} v okruhu 10 km…`)
     try {
@@ -712,7 +722,7 @@ export default function PetMapPage() {
           <div className="w-12 h-1.5 bg-slate-300 rounded-full group-hover:bg-slate-400 transition-colors" />
           <div className="flex justify-between items-center w-full px-6 pt-2">
             <div className="flex items-center gap-2.5">
-              <span className="text-xs font-extrabold text-slate-900 tracking-tight">Všichni aktivní pejskaři</span>
+              <span className="text-xs font-extrabold text-slate-900 tracking-tight">Pejskaři v zobrazené oblasti</span>
               <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#5B5BF7] font-extrabold text-[11px]">
                 {usersLocations.length}
               </span>
@@ -724,13 +734,13 @@ export default function PetMapPage() {
         </div>
 
         <div className="px-6 pb-24 overflow-y-auto h-[calc(100%-3.5rem)] space-y-2.5">
-          {usersLocations.length === 0 ? (
+          {visibleUsers.length === 0 ? (
             <div className="text-center py-10 space-y-2">
               <PawPrint size={28} className="mx-auto" aria-hidden="true" />
               <p className="text-xs text-slate-400 font-medium">Nikdo v okolí teď nemá zapnutou polohu.</p>
             </div>
           ) : (
-            usersLocations.map((user) => {
+            visibleUsers.map((user) => {
               const petName = user.profiles?.pet_name || user.profiles?.dog_name || 'Bez jména'
               const gender = user.profiles?.pet_gender || user.profiles?.dog_gender
               const avatarUrl = user.profiles?.avatar_url || user.profiles?.avatar
