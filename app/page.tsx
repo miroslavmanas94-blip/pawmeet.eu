@@ -55,25 +55,30 @@ export default function LandingPage() {
       <section className="pm-hero">
         <div className="pm-container pm-hero-grid">
           <div className="pm-hero-copy pm-reveal">
-            <div className="pm-eyebrow"><span className="pm-eyebrow-dot" /> Místo pro českou pejskařskou komunitu</div>
+            <div className="pm-eyebrow"><span className="pm-eyebrow-dot" /> Česká komunita lidí a jejich psů</div>
             <h1>Každá procházka může být <span>začátkem přátelství.</span></h1>
-            <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá poznávat nové parťáky a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
+            <p className="pm-hero-text">PawMeet propojuje pejskaře, jejich psy, oblíbená místa i společné akce. Objevujte okolí, poznávejte nové parťáky a plánujte další společné chvíle na jednom místě.</p>
             <div className="pm-hero-actions">
               <Link href="/register" className="pm-button">Přidat se k PawMeet <ArrowRight size={18} /></Link>
               <Link href="#moznosti" className="pm-button pm-button-outline">Jak PawMeet funguje <ArrowRight size={17} /></Link>
             </div>
             <div className="pm-trust-line"><ShieldCheck size={17} /> Vaše soukromí. Vaše pravidla. Vaše tempo.</div>
           </div>
-          <div className="pm-hero-art pm-hero-product pm-reveal" aria-label="Ukázka prostředí PawMeet">
-            <div className="pm-product-top"><span className="pm-product-brand"><img src="/logo.png" alt="" /> PawMeet</span><span className="pm-product-live"><i /> Komunita v pohybu</span></div>
-            <div className="pm-product-map">
-              <div className="pm-map-grid" />
-              <svg className="pm-route-line" viewBox="0 0 520 280" aria-hidden="true"><path d="M38 218 C105 194 110 120 190 137 S284 224 340 157 S420 66 486 80" /></svg>
-              <span className="pm-map-pin pin-one"><i /></span><span className="pm-map-pin pin-two"><i /></span><span className="pm-map-pin pin-three"><i /></span>
-              <div className="pm-map-label label-one">Společná procházka</div><div className="pm-map-label label-two">Psí parťáci poblíž</div>
-              <div className="pm-map-center"><span>Vaše okolí</span><strong>Objevujte spolu</strong></div>
-            </div>
-            <div className="pm-product-bottom"><div className="pm-product-stat"><span className="pm-stat-icon">↗</span><span><strong>Nová spojení</strong><small>Začněte ve svém okolí</small></span></div><div className="pm-product-avatars"><i>J</i><i>M</i><i>K</i><b>+12</b></div></div>
+          <div className="pm-hero-art pm-constellation pm-reveal" aria-label="Grafická kompozice propojující pejskaře a jejich okolí">
+            <div className="pm-constellation-glow" />
+            <div className="pm-constellation-orbit orbit-one" />
+            <div className="pm-constellation-orbit orbit-two" />
+            <div className="pm-constellation-orbit orbit-three" />
+            <svg className="pm-constellation-lines" viewBox="0 0 560 420" aria-hidden="true">
+              <path d="M96 280 C142 194 205 242 250 154 S360 95 450 150" />
+              <path d="M250 154 C280 232 352 270 440 305" />
+              <path d="M96 280 C180 330 290 350 440 305" />
+            </svg>
+            <div className="pm-constellation-core"><img src="/pawmeet-icon.svg" alt="" /><span>Jedna komunita</span><strong>Spousta společných příběhů</strong></div>
+            <div className="pm-constellation-node node-a"><span className="node-symbol">01</span><strong>Noví parťáci</strong><small>Lidé ve vašem okolí</small></div>
+            <div className="pm-constellation-node node-b"><span className="node-symbol">02</span><strong>Psí místa</strong><small>Kam vyrazit společně</small></div>
+            <div className="pm-constellation-node node-c"><span className="node-symbol">03</span><strong>Společné chvíle</strong><small>Akce a procházky</small></div>
+            <div className="pm-constellation-caption">PROPOJENÍ, KTERÉ DÁVÁ SMYSL</div>
           </div>
         </div>
       </section>
