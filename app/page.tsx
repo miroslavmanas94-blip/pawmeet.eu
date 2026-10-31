@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowRight, Users, MessageCircle, ShieldCheck, Menu, X, Heart, UserRound, Dog, LockKeyhole, Sparkles } from 'lucide-react'
 
 const features = [
@@ -15,6 +15,21 @@ const features = [
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    const elements = Array.from(document.querySelectorAll<HTMLElement>('.pm-reveal'))
+    if (!('IntersectionObserver' in window)) { elements.forEach((el) => el.classList.add('is-visible')); return }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible')
+          observer.unobserve(entry.target)
+        }
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' })
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <main className="pm-page">
@@ -39,7 +54,7 @@ export default function LandingPage() {
 
       <section className="pm-hero">
         <div className="pm-container pm-hero-grid">
-          <div className="pm-hero-copy">
+          <div className="pm-hero-copy pm-reveal">
             <div className="pm-eyebrow"><span className="pm-eyebrow-dot" /> Místo pro českou pejskařskou komunitu</div>
             <h1>Každá procházka může být <span>začátkem přátelství.</span></h1>
             <p className="pm-hero-text">PawMeet propojuje pejskaře, pomáhá poznávat nové parťáky a usnadňuje domlouvání společných procházek. Váš pes nemusí poznávat svět sám — a vy také ne.</p>
@@ -49,31 +64,33 @@ export default function LandingPage() {
             </div>
             <div className="pm-trust-line"><ShieldCheck size={17} /> Vaše soukromí. Vaše pravidla. Vaše tempo.</div>
           </div>
-          <div className="pm-hero-art" aria-label="Ilustrace procházky se psem">
-            <div className="pm-art-sun" />
-            <div className="pm-art-path" />
-            <div className="pm-art-hill pm-art-hill-back" />
-            <div className="pm-art-hill pm-art-hill-front" />
-            <div className="pm-art-card pm-art-card-top"><span className="pm-art-card-icon"><Users size={18} /></span><span><strong>Noví parťáci</strong><small>Blíž k přírodě</small></span></div>
-            <div className="pm-dog-illustration"><Dog size={76} strokeWidth={1.35} /></div>
-            <div className="pm-art-card pm-art-card-bottom"><span className="pm-avatar-stack"><i>A</i><i>M</i><i>K</i></span><span><strong>Procházky ve dvou i ve smečce</strong><small>Začněte jednoduše</small></span></div>
+          <div className="pm-hero-art pm-hero-product pm-reveal" aria-label="Ukázka prostředí PawMeet">
+            <div className="pm-product-top"><span className="pm-product-brand"><img src="/logo.png" alt="" /> PawMeet</span><span className="pm-product-live"><i /> Komunita v pohybu</span></div>
+            <div className="pm-product-map">
+              <div className="pm-map-grid" />
+              <svg className="pm-route-line" viewBox="0 0 520 280" aria-hidden="true"><path d="M38 218 C105 194 110 120 190 137 S284 224 340 157 S420 66 486 80" /></svg>
+              <span className="pm-map-pin pin-one"><i /></span><span className="pm-map-pin pin-two"><i /></span><span className="pm-map-pin pin-three"><i /></span>
+              <div className="pm-map-label label-one">Společná procházka</div><div className="pm-map-label label-two">Psí parťáci poblíž</div>
+              <div className="pm-map-center"><span>Vaše okolí</span><strong>Objevujte spolu</strong></div>
+            </div>
+            <div className="pm-product-bottom"><div className="pm-product-stat"><span className="pm-stat-icon">↗</span><span><strong>Nová spojení</strong><small>Začněte ve svém okolí</small></span></div><div className="pm-product-avatars"><i>J</i><i>M</i><i>K</i><b>+12</b></div></div>
           </div>
         </div>
       </section>
 
-      <section className="pm-intro pm-section">
+      <section className="pm-intro pm-section pm-reveal">
         <div className="pm-container pm-intro-inner">
           <div><p className="pm-kicker">MÉNĚ HLEDÁNÍ. VÍC SPOLEČNÝCH CHVIL.</p><h2>Pejskařský život je lepší, když na něj nejste sami.</h2></div>
           <p className="pm-intro-text">Ať chcete poznat nové pejskaře, představit svého psa nebo si domluvit společné venčení, PawMeet vám pomůže udržet důležité věci přehledně na jednom místě.</p>
         </div>
       </section>
 
-      <section className="pm-section pm-features-section" id="moznosti">
+      <section className="pm-section pm-features-section pm-reveal" id="moznosti">
         <div className="pm-container">
           <div className="pm-section-heading"><p className="pm-kicker">CO NA PAWMEET NAJDETE</p><h2>Vše důležité přehledně.</h2><p>Jednoduché prostředí, srozumitelné informace a funkce, které dávají smysl.</p></div>
           <div className="pm-feature-grid">
             {features.map(({ icon: Icon, title, text, href }) => (
-              <Link href={href} className="pm-feature-card" key={title}>
+              <Link href={href} className="pm-feature-card pm-reveal" key={title}>
                 <span className="pm-feature-icon"><Icon size={22} strokeWidth={1.8} /></span>
                 <h3>{title}</h3><p>{text}</p><span className="pm-feature-link">Zjistit více <ArrowRight size={15} /></span>
               </Link>
@@ -82,7 +99,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="pm-steps-section">
+      <section className="pm-steps-section pm-reveal">
         <div className="pm-container pm-steps-grid">
           <div className="pm-steps-copy"><p className="pm-kicker">ZAČÍT JE JEDNODUCHÉ</p><h2>Nová psí přátelství začínají malým krokem.</h2><p>Nemusíte hned vyplňovat dlouhý profil ani sdílet osobní údaje. Začněte tím, co právě potřebujete.</p><Link href="/register" className="pm-text-link">Vytvořit si účet <ArrowRight size={17} /></Link></div>
           <div className="pm-steps-list">
@@ -93,7 +110,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="pm-cta-section">
+      <section className="pm-cta-section pm-reveal">
         <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Poznejte svou novou smečku.</h2><p>Vytvořte si profil a začněte budovat nová pejskařská přátelství.</p><Link href="/register" className="pm-button pm-button-light">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
       </section>
 
