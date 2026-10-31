@@ -773,7 +773,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="flex w-full h-full min-h-screen bg-white overflow-hidden relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
+    <div className="pm-chat-shell flex w-full h-full min-h-screen bg-white overflow-hidden relative font-sans" onClick={() => setSelectedMsgMenu(null)}>
       
       {/* SEZNAM AKTIVNÍCH CHATŮ A SKUPIN */}
       {(!activeUserId && !activeGroupId) && (
@@ -941,7 +941,7 @@ function ChatContent() {
           <div className="border-b border-[#E5E7EB] bg-white/70 px-4 py-2">
             <input value={messageSearch} onChange={e => setMessageSearch(e.target.value)} placeholder="Hledat ve starších zprávách…" aria-label="Hledat ve zprávách" className="w-full rounded-xl border border-[#d5e4ce] bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-[#6d9b72]" />
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f2f6ed]/65">
+          <div className="pm-chat-history flex-1 overflow-y-auto p-4 space-y-4">
             {messages.filter(msg => !messageSearch.trim() || msg.content?.toLowerCase().includes(messageSearch.toLowerCase())).map((msg) => {
               const isMine = msg.sender_id === currentUserId
               return (
@@ -949,7 +949,7 @@ function ChatContent() {
                   <div className={`flex flex-col max-w-[75%] ${isMine ? 'items-end' : 'items-start'}`}>
                     <div 
                       onContextMenu={(e) => handleContextMenu(e, msg)}
-                      className={`px-4 py-2.5 rounded-2xl text-sm font-medium transition-all select-none ${
+                      className={`pm-chat-bubble px-4 py-2.5 rounded-2xl text-sm font-medium transition-all select-none ${
                         isMine 
                           ? 'bg-gradient-to-br from-[#5B5BF7] to-[#0F172A] text-white rounded-br-none shadow-sm' 
                           : 'bg-white text-slate-800 rounded-bl-none border border-slate-100 shadow-xs'
@@ -972,7 +972,7 @@ function ChatContent() {
           </div>
 
           {/* SPODNÍ VSTUPNÍ POLE POUZE S TLAČÍTKEM PLUS NA FOTKY */}
-          <div className="p-3 border-t border-slate-100 bg-white shrink-0 relative">
+          <div className="pm-chat-composer p-3 border-t shrink-0 relative">
             {isTyping && (
               <div className="px-2 pb-2 text-xs text-indigo-600 font-semibold animate-pulse">
                 píše zprávu...
