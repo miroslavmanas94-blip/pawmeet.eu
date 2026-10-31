@@ -47,6 +47,8 @@ type Post = {
   [key: string]: any
 }
 
+type ProfilePet = { id: string; name: string; breed: string | null; activities: string | null; nature: string | null }
+
 type FollowUser = {
   id: string
   username: string
@@ -63,6 +65,7 @@ export default function ProfilePage() {
 
   // Stavy pro příspěvky a modal feed
   const [posts, setPosts] = useState<Post[]>([])
+  const [pets, setPets] = useState<ProfilePet[]>([])
   const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null)
 
   // Stavy pro interakce (komentáře)
@@ -128,6 +131,9 @@ export default function ProfilePage() {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
+
+        const { data: petsData } = await supabase.from('pets').select('id,name,breed,activities,nature').eq('user_id', user.id).order('created_at', { ascending: false })
+        setPets((petsData || []) as ProfilePet[])
 
         const rawPosts = postsData || []
         const postIds = rawPosts.map((p) => p.id)
@@ -426,12 +432,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col items-center antialiased">
+    <div className="pm-profile-page min-h-screen w-full flex flex-col items-center antialiased">
       {/* Hlavní kontejner */}
-      <div className="w-full max-w-4xl px-4 py-8 flex-1">
+      <div className="w-full max-w-5xl px-4 py-8 flex-1">
         
         {/* HORNÍ SEKCE: Profilová karta */}
-        <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 mb-8">
+        <div className="pm-profile-card rounded-[30px] p-6 md:p-8 border flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12 mb-7">
           
           {/* Profilový obrázek s gradientem */}
           <div className="relative group flex-shrink-0">
@@ -532,8 +538,16 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        <section className="pm-dog-center mb-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><p className="pm-profile-kicker">MOJE SMEČKA</p><h2 className="text-xl font-extrabold tracking-tight">Psi a společné aktivity</h2><p className="mt-1 text-sm opacity-70">Přehled parťáků, se kterými tvoříš svůj PawMeet příběh.</p></div>
+            <Link href="/profile/dogs" className="pm-profile-action">Spravovat psí profily <span aria-hidden="true">→</span></Link>
+          </div>
+          {pets.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{pets.map(pet => <article key={pet.id} className="pm-dog-card"><div className="pm-dog-avatar" aria-hidden="true">P</div><div className="min-w-0"><h3 className="font-bold truncate">{pet.name}</h3><p className="text-xs opacity-65 truncate">{pet.breed || 'Plemeno zatím nevyplněno'}</p>{pet.activities && <p className="mt-2 text-xs opacity-75 line-clamp-2">{pet.activities}</p>}</div></article>)}</div> : <div className="pm-dog-empty mt-4"><div><strong>Zatím tu nemáš žádný psí profil</strong><p className="mt-1 text-xs opacity-70">Přidej svého psa a měj jeho informace i aktivity na jednom místě.</p></div><Link href="/profile/dogs">Přidat psa <span aria-hidden="true">→</span></Link></div>}
+        </section>
+
         {/* ZÁLOŽKY */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 mb-6 flex justify-center text-xs font-bold text-slate-500 shadow-sm">
+        <div className="pm-profile-tabs rounded-2xl border p-1.5 mb-6 flex justify-center text-xs font-bold shadow-sm">
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex-1 py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition ${
