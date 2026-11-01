@@ -123,7 +123,7 @@ export default function RegisterPage() {
               size: petSize,
               nature: petNature,
               activities: petActivities,
-            } : null,,
+            } : null,
           },
         },
       })
