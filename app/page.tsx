@@ -64,22 +64,20 @@ export default function LandingPage() {
             </div>
             <div className="pm-trust-line"><ShieldCheck size={17} /> Vaše soukromí. Vaše pravidla. Vaše tempo.</div>
           </div>
-          <div className="pm-hero-art pm-constellation pm-reveal" aria-label="Grafická kompozice propojující pejskaře a jejich okolí">
-            <div className="pm-constellation-glow" />
-            <div className="pm-constellation-orbit orbit-one" />
-            <div className="pm-constellation-orbit orbit-two" />
-            <div className="pm-constellation-orbit orbit-three" />
-            <svg className="pm-constellation-lines" viewBox="0 0 560 420" aria-hidden="true">
-              <path d="M96 280 C142 194 205 242 250 154 S360 95 450 150" />
-              <path d="M250 154 C280 232 352 270 440 305" />
-              <path d="M96 280 C180 330 290 350 440 305" />
-            </svg>
-            <div className="pm-constellation-core"><img src="/pawmeet-icon.svg" alt="" /><span>Jedna komunita</span><strong>Spousta společných příběhů</strong></div>
-            <div className="pm-constellation-node node-a"><span className="node-symbol">01</span><strong>Noví parťáci</strong><small>Lidé ve vašem okolí</small></div>
-            <div className="pm-constellation-node node-b"><span className="node-symbol">02</span><strong>Psí místa</strong><small>Kam vyrazit společně</small></div>
-            <div className="pm-constellation-node node-c"><span className="node-symbol">03</span><strong>Společné chvíle</strong><small>Akce a procházky</small></div>
-            <div className="pm-constellation-caption">PROPOJENÍ, KTERÉ DÁVÁ SMYSL</div>
-          </div>
+          <div className="pm-hero-art pm-studio-art pm-reveal" aria-label="Originální ilustrace dvou psů na procházce v přírodě">
+            <div className="pm-studio-sun" />
+            <div className="pm-studio-cloud cloud-one" />
+            <div className="pm-studio-cloud cloud-two" />
+            <div className="pm-studio-hill hill-back" />
+            <div className="pm-studio-hill hill-mid" />
+            <div className="pm-studio-hill hill-front" />
+            <div className="pm-studio-path" />
+            <div className="pm-studio-dog dog-large"><Dog size={94} strokeWidth={1.55} /><span className="dog-bandana" /></div>
+            <div className="pm-studio-dog dog-small"><Dog size={70} strokeWidth={1.6} /><span className="dog-bandana" /></div>
+            <div className="pm-studio-card studio-card-top"><span className="studio-card-icon"><Users size={18}/></span><span><strong>Noví parťáci</strong><small>Blíž, než si myslíte</small></span></div>
+            <div className="pm-studio-card studio-card-bottom"><span className="studio-card-icon"><Heart size={18}/></span><span><strong>Společné chvíle</strong><small>Začínají právě tady</small></span></div>
+            <span className="pm-studio-sparkle sparkle-one">✦</span><span className="pm-studio-sparkle sparkle-two">✦</span>
+          </div>>
         </div>
       </section>
 
