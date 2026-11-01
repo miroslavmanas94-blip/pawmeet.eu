@@ -17,7 +17,7 @@ const primary = [
 
 const publicRoutes = [
   '/', '/login', '/register', '/obnova-hesla', '/reset-password',
-  '/forgot-password', '/update-password', '/privacy', '/terms',
+  '/forgot-password', '/update-password', '/about', '/contact', '/privacy', '/terms',
 ]
 
 export default function BottomNav() {
