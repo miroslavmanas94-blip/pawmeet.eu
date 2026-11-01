@@ -116,7 +116,7 @@ export default function LandingPage() {
       </section>
 
       <section className="pm-cta-section pm-reveal">
-        <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Poznejte svou novou smečku.</h2><p>Vytvořte si profil a začněte budovat nová pejskařská přátelství.</p><Link href="/register" className="pm-button pm-button-light">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
+        <div className="pm-container"><div className="pm-cta"><div className="pm-cta-mark"><Heart size={25} /></div><p className="pm-kicker">PRO LIDI, KTEŘÍ MAJÍ RÁDI PSY</p><h2>Poznejte svou novou smečku.</h2><p>Vytvořte si profil a začněte budovat nová pejskařská přátelství.</p><Link href="/register" className="pm-button pm-button-light pm-cta-button">Začít s PawMeet <ArrowRight size={18} /></Link></div></div>
       </section>
 
       <footer className="pm-footer">
