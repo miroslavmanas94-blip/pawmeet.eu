@@ -1,18 +1,12 @@
 import { NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
-  try {
-    const { prompt, history } = await req.json()
+export const dynamic = 'force-dynamic'
 
-    // Zde můžeš později napojit reálné SDK (např. Google Gen AI SDK) pro volání AI s vyhledáváním
-    const reply = `Tohle je chytrá odpověď od PawMeet AI pro tvůj dotaz: "${prompt}". Jakmile zapojíš API klíč, poběží to naplno.`
-
-    return NextResponse.json({ reply })
-  } catch (error) {
-    console.error('API Error:', error)
-    return NextResponse.json(
-      { error: 'Chyba při zpracování požadavku na serveru.' },
-      { status: 500 }
-    )
-  }
+// This legacy endpoint returned fabricated AI text and accepted anonymous requests.
+// The supported, authenticated assistant is implemented at /api/ai/coach.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Tento starý endpoint už není podporován. Použij aktuální PawMeet AI.' },
+    { status: 410 }
+  )
 }
