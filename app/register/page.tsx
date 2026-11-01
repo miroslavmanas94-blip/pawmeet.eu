@@ -114,7 +114,7 @@ export default function RegisterPage() {
             birth_date: birthDate || null,
             city,
             bio,
-            pending_pet_profile: {
+            pending_pet_profile: petName.trim() && petType ? {
               name: petName,
               type: petType,
               breed: petBreed,
@@ -123,7 +123,7 @@ export default function RegisterPage() {
               size: petSize,
               nature: petNature,
               activities: petActivities,
-            },
+            } : null,,
           },
         },
       })
@@ -381,7 +381,6 @@ export default function RegisterPage() {
                 <input
                   name="petBreed"
                   type="text"
-                  required
                   placeholder="Zlatý retrívr"
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
@@ -395,7 +394,6 @@ export default function RegisterPage() {
                   name="petBirthDate"
                   type="date"
                   max={todayStr}
-                  required
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
               </div>
@@ -408,7 +406,6 @@ export default function RegisterPage() {
                 </label>
                 <select
                   name="petGender"
-                  required
                   defaultValue=""
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 >
