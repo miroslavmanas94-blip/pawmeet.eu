@@ -9,6 +9,18 @@ export default function PrivacyPage() {
       <h1 className="mt-5 text-4xl font-bold tracking-tight">Ochrana soukromí</h1>
       <p className="mt-3 text-sm text-[var(--pm-muted)]">Pracovní znění pro PawMeet.eu · aktualizováno 29. října 2026</p>
       <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><strong>Důležité:</strong> Před ostrým komerčním provozem je nutné doplnit a právně ověřit úplné identifikační údaje provozovatele, smluvní informace o zpracovatelích a závazné lhůty uchování. Tento text není právní stanovisko.</div>
+      <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
+        <h2 className="font-bold">Údaje provozovatele – před spuštěním doplnit</h2>
+        <p className="mt-2">V aktuální pracovní verzi nejsou potvrzené všechny identifikační údaje provozovatele. Nejsou proto nahrazené smyšlenými údaji.</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          <li>Jméno a příjmení nebo úplná obchodní firma / název</li>
+          <li>Sídlo nebo adresa provozovatele a případné IČO</li>
+          <li>Informace o zápisu v rejstříku, pokud se uplatní</li>
+          <li>Konkrétní zpracovatelé, účely, právní základy a doby uchování</li>
+          <li>Ověřené informace o cookies, analytice a případných předáních údajů</li>
+        </ul>
+        <p className="mt-2">Toto upozornění není právní stanovisko a samo o sobě nezaručuje soulad s právními předpisy.</p>
+      </section>
       <div className="pawmeet-glass mt-6 space-y-7 rounded-2xl p-6 sm:p-8">
         <section><h2 className="text-lg font-bold">1. Jaké údaje můžeš přidat</h2><p className="mt-2 text-sm leading-6 text-[var(--pm-muted)]">PawMeet může zpracovávat údaje, které vložíš do účtu a profilů: e-mail, přezdívku, profilovou fotografii, město, informace o psech, příspěvky, zprávy, registrace na akce, tréninkové záznamy a nastavení soukromí. Rozsah závisí na tom, které funkce používáš.</p></section>
         <section><h2 className="text-lg font-bold">2. Účel použití</h2><p className="mt-2 text-sm leading-6 text-[var(--pm-muted)]">Údaje slouží k přihlášení, zobrazení profilů podle nastavení, fungování chatu a komunit, správě akcí, tréninkových funkcí, zabezpečení a odpovědím na podporu. Údaje nesmí být použity k jiným účelům, které uživateli nebyly srozumitelně sděleny.</p></section>
