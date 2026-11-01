@@ -2,12 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 
 export default function RegisterPage() {
+  const [step, setStep] = useState(1)
+  const formRef = useRef<HTMLFormElement>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [loading, setLoading] = useState(false)
@@ -140,21 +142,20 @@ export default function RegisterPage() {
         return
       }
 
-      const { error: petError } = await supabase.from('pets').insert({
-        user_id: data.user.id,
-        name: petName,
-        type: petType,
-        breed: petBreed,
-        birth_date: petBirthDate || null,
-        gender: petGender,
-        size: petSize,
-        nature: petNature,
-        activities: petActivities,
-      })
-      if (!petError) {
-        await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
-      } else {
-        console.error('Chyba při ukládání mazlíčka:', petError.message)
+      if (petName.trim() && petType) {
+        const { error: petError } = await supabase.from('pets').insert({
+          user_id: data.user.id,
+          name: petName,
+          type: petType,
+          breed: petBreed,
+          birth_date: petBirthDate || null,
+          gender: petGender,
+          size: petSize,
+          nature: petNature,
+          activities: petActivities,
+        })
+        if (!petError) await supabase.auth.updateUser({ data: { pending_pet_profile: null } })
+        else console.error('Chyba při ukládání mazlíčka:', petError.message)
       }
 
       // 6. Přesměrování pouze při existující přihlášené relaci
@@ -176,7 +177,7 @@ export default function RegisterPage() {
             Registrace do PawMeet
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
-            Vytvořte profil pro sebe i svého mazlíčka. Položky s <span className="text-red-500 font-bold">*</span> jsou povinné.
+            Krátce vytvoříme účet. Profil i údaje o psovi můžete doplnit později.
           </p>
         </div>
 
@@ -191,10 +192,10 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleRegister} className="space-y-6">
+        <form ref={formRef} onSubmit={handleRegister} className="space-y-6">
           
           {/* SEKCE: ÚČET */}
-          <div className="space-y-4">
+          <div className={`space-y-4 ${step === 1 ? "" : "hidden"}`}>
             <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
               Přihlašovací údaje
             </h2>
@@ -267,7 +268,7 @@ export default function RegisterPage() {
           </div>
 
           {/* SEKCE: OSOBNÍ ÚDAJE */}
-          <div className="space-y-4 pt-2">
+          <div className={`space-y-4 pt-2 ${step === 2 ? "" : "hidden"}`}>
             <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
               👤 Informace o majiteli
             </h2>
@@ -338,7 +339,7 @@ export default function RegisterPage() {
           </div>
 
           {/* SEKCE: MAZLÍČEK */}
-          <div className="space-y-4 pt-2">
+          <div className={`space-y-4 pt-2 ${step === 3 ? "" : "hidden"}`}>
             <h2 className="text-lg font-bold border-b pb-2 border-gray-200 dark:border-gray-800 text-[#5B5BF7] dark:text-[#A5B4FC]">
               🐶 Informace o mazlíčkovi
             </h2>
@@ -351,7 +352,6 @@ export default function RegisterPage() {
                 <input
                   name="petName"
                   type="text"
-                  required
                   placeholder="Rex"
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 />
@@ -363,7 +363,6 @@ export default function RegisterPage() {
                 </label>
                 <select
                   name="petType"
-                  required
                   defaultValue=""
                   className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 focus:ring-2 focus:ring-[#5B5BF7] outline-none text-sm font-medium"
                 >
@@ -462,13 +461,10 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || usernameStatus === 'exists'}
-            className="w-full py-4 bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] hover:from-[#4F46E5] hover:to-[#7E22CE] text-white font-black text-lg rounded-2xl shadow-lg hover:shadow-[#5B5BF7]/25 hover:scale-[1.02] active:scale-95 transition-all duration-200 mt-4 disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? 'Vytvářím účet...' : 'Zaregistrovat se'}
-          </button>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            {step > 1 ? <button type="button" onClick={() => setStep(value => Math.max(1, value - 1))} className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Zpět</button> : <span className="text-xs text-slate-500">Krok {step} ze 3</span>}
+            {step < 3 ? <button type="button" onClick={() => { if (step === 1 && !formRef.current?.reportValidity()) return; if (step === 1 && usernameStatus === 'exists') { setErrorMsg('Toto uživatelské jméno je již obsazené.'); return; } setErrorMsg(''); setStep(value => Math.min(3, value + 1)); }} className="ml-auto rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] px-5 py-3 text-sm font-bold text-white shadow-lg">Pokračovat <span aria-hidden="true">→</span></button> : <button type="submit" disabled={loading || usernameStatus === 'exists'} className="ml-auto rounded-xl bg-gradient-to-r from-[#5B5BF7] to-[#9333EA] px-5 py-3.5 text-sm font-bold text-white shadow-lg disabled:opacity-50">{loading ? 'Vytvářím účet…' : 'Vytvořit účet'}</button>}
+          </div>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
