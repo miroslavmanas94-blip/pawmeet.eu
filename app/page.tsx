@@ -77,7 +77,7 @@ export default function LandingPage() {
             <div className="pm-studio-card studio-card-top"><span className="studio-card-icon"><Users size={18}/></span><span><strong>Noví parťáci</strong><small>Blíž, než si myslíte</small></span></div>
             <div className="pm-studio-card studio-card-bottom"><span className="studio-card-icon"><Heart size={18}/></span><span><strong>Společné chvíle</strong><small>Začínají právě tady</small></span></div>
             <span className="pm-studio-sparkle sparkle-one">✦</span><span className="pm-studio-sparkle sparkle-two">✦</span>
-          </div>>
+          </div>
         </div>
       </section>
 
