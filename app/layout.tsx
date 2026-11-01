@@ -18,6 +18,15 @@ export default function RootLayout({
   const pathname = usePathname()
 
   useEffect(() => {
+    const appleIcon = document.querySelector('link[rel="apple-touch-icon"]') || document.createElement('link')
+    appleIcon.setAttribute('rel', 'apple-touch-icon')
+    appleIcon.setAttribute('href', '/logo.png')
+    document.head.appendChild(appleIcon)
+    const iconLink = document.querySelector('link[rel="icon"]') || document.createElement('link')
+    iconLink.setAttribute('rel', 'icon')
+    iconLink.setAttribute('href', '/logo.png')
+    iconLink.setAttribute('type', 'image/png')
+    document.head.appendChild(iconLink)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => undefined)
     }
