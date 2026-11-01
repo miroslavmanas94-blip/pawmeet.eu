@@ -120,7 +120,7 @@ export default function LandingPage() {
       <footer className="pm-footer">
         <div className="pm-container pm-footer-top">
           <div className="pm-footer-brand"><Link href="/" className="pm-brand"><img src="/logo.png" alt="Oficiální logo PawMeet" className="pm-logo-image" width="42" height="44" /><span>PawMeet<span className="pm-brand-dot">.</span></span></Link><p>Spojujeme pejskaře po celé republice.</p></div>
-          <div className="pm-footer-links"><div><strong>Komunita</strong><Link href="/community">Pejskaři</Link><Link href="/dogs">Profily psů</Link><Link href="/messages">Zprávy</Link><Link href="/ai">PawMeet AI</Link></div><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
+          <div className="pm-footer-links"><div><strong>PawMeet</strong><Link href="/about">O nás</Link><Link href="/contact">Kontakt</Link><Link href="/terms">Podmínky používání</Link><Link href="/privacy">Soukromí</Link></div></div>
         </div>
         <div className="pm-container pm-footer-bottom"><span>© {new Date().getFullYear()} PawMeet.eu</span><span>Vytvořeno pro lepší společné chvíle.</span></div>
       </footer>
