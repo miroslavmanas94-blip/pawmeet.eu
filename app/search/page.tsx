@@ -32,6 +32,7 @@ const icons = {
 export default function SearchPage() {
   const [category, setCategory] = useState<Category>('all')
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [results, setResults] = useState<Result[]>([])
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -40,10 +41,18 @@ export default function SearchPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const initialQuery = params.get('q')
-    if (initialQuery) setQuery(initialQuery)
+    if (initialQuery) {
+      setQuery(initialQuery)
+      setDebouncedQuery(initialQuery)
+    }
     if (params.get('scope') === 'all') setCategory('all')
     createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null))
   }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim().slice(0, 120)), 280)
+    return () => window.clearTimeout(timer)
+  }, [query])
 
   useEffect(() => {
     let cancelled = false
@@ -51,7 +60,7 @@ export default function SearchPage() {
       setLoading(true)
       setErrorMessage('')
       const supabase = createClient()
-      const term = query.trim().slice(0, 120)
+      const term = debouncedQuery
       const like = '%' + term.replace(/[%_,]/g, ' ') + '%'
       const applyTextFilter = (request: any, columns: string[]) => term ? request.or(columns.map(column => column + '.ilike.' + like).join(',')) : request
       try {
@@ -172,7 +181,7 @@ export default function SearchPage() {
     }
     void search()
     return () => { cancelled = true }
-  }, [category, query, currentUserId])
+  }, [category, debouncedQuery, currentUserId])
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-7 pb-28 text-[var(--pm-forest)] md:px-8 md:py-10">
