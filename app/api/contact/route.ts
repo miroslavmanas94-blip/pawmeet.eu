@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const resend = new Resend(apiKey)
     const { error } = await resend.emails.send({
       from: 'PawMeet Web <onboarding@resend.dev>',
-      to: ['pawmeet.eu@gmail.com'],
+      to: ['info@pawmeet.eu'],
       replyTo: email,
       subject: '[PawMeet] Nová zpráva z kontaktního formuláře',
       text: `Odesílatel: ${email}\n\nZpráva:\n${message}`,
