@@ -8,11 +8,10 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/domu',
     scope: '/',
     display: 'standalone',
-    background_color: '#F3F4F6',
+    background_color: '#F7F7FC',
     theme_color: '#5B5BF7',
     lang: 'cs-CZ',
     icons: [
-      { src: '/pawmeet-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
       { src: '/logo.png', sizes: 'any', type: 'image/png', purpose: 'any' },
     ],
   }
