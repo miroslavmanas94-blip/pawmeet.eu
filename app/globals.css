@@ -220,3 +220,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .pm-chat-shell .hover\\:bg-\\[\\#edf3e8\\]:hover{background:#efeeff}
 .pm-chat-shell .bg-\\[\\#EEF0FF\\]{background:#efeeff}
 @media(max-width:640px){.pm-chat-shell{min-height:100dvh}.pm-chat-bubble{max-width:min(82vw,32rem)}}
+
+/* CTA kontrast a instalace PawMeet na plochu */
+.pm-cta-button{background:#fff!important;color:#4338ca!important;border:2px solid #fff!important;box-shadow:0 10px 30px rgba(25,18,90,.18)}.pm-cta-button:hover{background:#f4f1ff!important;color:#312e81!important;border-color:#f4f1ff!important}.pm-cta-button svg{color:currentColor!important}
+/* Map locate control stays tappable and visible on phones */
