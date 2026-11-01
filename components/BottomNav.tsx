@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { Home, MessageCircle, MapPinned, CalendarDays, Sparkles, UserRound } from 'lucide-react'
+import { Home, MessageCircle, MapPinned, CalendarDays, Search, Sparkles, UserRound } from 'lucide-react'
 
 const primary = [
   { href: '/domu', label: 'Domů', icon: Home },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/map', label: 'Mapa', icon: MapPinned },
   { href: '/calendar', label: 'Akce', icon: CalendarDays },
+  { href: '/search', label: 'Hledat', icon: Search },
   { href: '/ai', label: 'AI', icon: Sparkles },
   { href: '/profile', label: 'Profil', icon: UserRound },
 ]
@@ -85,7 +86,7 @@ export default function BottomNav() {
         </div>
       </aside>
 
-      <nav aria-label="Hlavní navigace" className="pm-mobile-bottom fixed inset-x-0 bottom-0 z-[100] grid grid-cols-6 border-t border-[var(--pm-line)] px-1 pb-[max(env(safe-area-inset-bottom),4px)] pt-1 lg:hidden">
+      <nav aria-label="Hlavní navigace" className="pm-mobile-bottom fixed inset-x-0 bottom-0 z-[100] grid grid-cols-7 border-t border-[var(--pm-line)] px-1 pb-[max(env(safe-area-inset-bottom),4px)] pt-1 lg:hidden">
         {primary.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)
